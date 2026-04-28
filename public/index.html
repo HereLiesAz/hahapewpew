@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>haha pew pew - Sentient Tragedy (Secured)</title>
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        background-color: #0a0a0a;
+        background-image: radial-gradient(circle at 50% 50%, #2a2a2a 0%, #000 100%);
+        color: #d3d3d3;
+        font-family: 'Courier New', Courier, monospace;
+        user-select: none;
+    }
+    canvas { display: block; }
+    #console {
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        font-size: 10px;
+        color: #555;
+        pointer-events: none;
+        max-height: 150px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column-reverse;
+    }
+</style>
+</head>
+<body>
+
+<div id="console"></div>
+<canvas id="wasteland"></canvas>
+
+<script>
+const canvas = document.getElementById('wasteland');
+const ctx = canvas.getContext('2d');
+const log = document.getElementById('console');
+let W = canvas.width = window.innerWidth;
+let H = canvas.height = window.innerHeight;
+const groundY = H - 150;
+
+window.addEventListener('resize', () => {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+});
+
+function systemLog(msg) {
+    const el = document.createElement('div');
+    el.innerText = `[SYS] ${msg}`;
+    log.prepend(el);
+    if (log.children.length > 15) log.removeChild(log.lastChild);
+}
+
+class MessageBus {
+    constructor() {
+        this.listeners = [];
+        this.history = []; 
+    }
+    subscribe(entity) {
+        this.listeners.push(entity);
+    }
+    broadcast(sender, message) {
+        systemLog(`[${sender.name.toUpperCase()}]: ${message}`);
+        this.history.push(`${sender.name}: ${message}`);
+        if (this.history.length > 5) this.history.shift();
+
+        this.listeners.forEach(listener => {
+            if (listener !== sender) listener.hear(sender, message);
+        });
+    }
+}
+const ether = new MessageBus();
+
+async function askTheVoid(characterName, contextPrompt) {
+    try {
+        const response = await fetch('/api/think', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                characterName: characterName,
+                contextPrompt: contextPrompt,
+                history: ether.history
+            })
+        });
+        const data = await response.json();
+        return data.reply || "...";
+    } catch (e) {
+        systemLog(`API Error for ${characterName}: ${e.message}`);
+        return "CONNECTION SEVERED.";
+    }
+}
+
+class Entity {
+    constructor(name, x, color, width, height) {
+        this.name = name;
+        this.x = x;
+        this.y = groundY;
+        this.color = color;
+        this.w = width;
+        this.h = height;
+        
+        this.vx = 0;
+        this.state = 'idle';
+        this.dialogue = null;
+        this.dialogueTimer = 0;
+        this.isThinking = false;
+        
+        this.boredom = 0;
+        this.cooldown = Math.random() * 500 + 200;
+        
+        ether.subscribe(this);
+    }
+
+    update() {
+        this.boredom++;
+        if (this.cooldown > 0) this.cooldown--;
+
+        if (this.state === 'idle' && Math.random() < 0.01) {
+            this.state = 'wandering';
+            this.vx = (Math.random() - 0.5) * 1.5;
+        } else if (this.state === 'wandering' && Math.random() < 0.02) {
+            this.state = 'idle';
+            this.vx = 0;
+        }
+
+        this.x += this.vx;
+        if (this.x < 100) this.x = 100;
+        if (this.x > W - 100) this.x = W - 100;
+
+        if (!this.isThinking && this.boredom > 600 && this.cooldown <= 0 && Math.random() < 0.005) {
+            this.initiateThought();
+        }
+
+        if (this.dialogueTimer > 0) this.dialogueTimer--;
+        else if (!this.isThinking) this.dialogue = null;
+    }
+
+    async initiateThought() {
+        this.isThinking = true;
+        this.dialogue = "..."; 
+        this.boredom = 0;
+        this.cooldown = 800; 
+
+        const thought = await askTheVoid(this.name, "Initiate a random thought about the wasteland or your companions.");
+        
+        this.isThinking = false;
+        this.dialogue = thought;
+        this.dialogueTimer = 300;
+        ether.broadcast(this, thought);
+    }
+
+    async hear(sender, message) {
+        if (!this.isThinking && this.cooldown <= 0 && Math.random() < 0.4) {
+            this.isThinking = true;
+            this.dialogue = "...";
+            this.cooldown = 800;
+
+            const delay = 1000 + Math.random() * 2000;
+            setTimeout(async () => {
+                const reply = await askTheVoid(this.name, `${sender.name} just said: "${message}". Respond to them.`);
+                this.isThinking = false;
+                this.dialogue = reply;
+                this.dialogueTimer = 300;
+                ether.broadcast(this, reply);
+            }, delay);
+        }
+    }
+
+    draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, this.w/1.5, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = this.color;
+        ctx.fillRect(-this.w/2, -this.h, this.w, this.h);
+        ctx.strokeStyle = '#fff';
+        ctx.strokeRect(-this.w/2, -this.h, this.w, this.h);
+
+        ctx.fillStyle = '#666';
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(this.name, 0, 15);
+
+        ctx.restore();
+
+        if (this.dialogue) this.drawBubble();
+    }
+
+    drawBubble() {
+        ctx.save();
+        ctx.font = 'bold 13px "Courier New"';
+        const tw = ctx.measureText(this.dialogue).width;
+        const bx = this.x - tw / 2;
+        const by = this.y - this.h - 40;
+
+        ctx.fillStyle = this.name === 'Qwerty' ? '#000' : (this.name === 'Shift' ? '#2a0a0a' : '#ddd');
+        ctx.fillRect(bx - 10, by - 20, tw + 20, 30);
+        ctx.strokeStyle = '#fff';
+        ctx.strokeRect(bx - 10, by - 20, tw + 20, 30);
+        
+        ctx.fillStyle = this.name === 'Qwerty' ? '#0f0' : (this.name === 'Shift' ? '#f00' : '#000');
+        ctx.fillText(this.dialogue, bx, by);
+        
+        if (this.isThinking) {
+            ctx.fillStyle = '#ff0';
+            ctx.fillText("~", bx - 20, by); 
+        }
+        ctx.restore();
+    }
+}
+
+class Tab extends Entity {
+    constructor(x) { super('Tab', x, '#a0855b', 40, 90); }
+    update() {
+        super.update();
+        this.vx *= 0.95; 
+    }
+}
+
+class Shift extends Entity {
+    constructor(x) { super('Shift', x, '#444', 50, 45); }
+    update() {
+        super.update();
+        if (Math.random() < 0.05) this.x += (Math.random() - 0.5) * 4; 
+    }
+}
+
+class Qwerty extends Entity {
+    constructor(x) { super('Qwerty', x, '#222', 40, 50); }
+}
+
+const cast = [
+    new Shift(W / 2 - 150),
+    new Tab(W / 2),
+    new Qwerty(W / 2 + 150)
+];
+
+systemLog("Synapses wired securely. Booting the void.");
+
+function loop() {
+    ctx.clearRect(0, 0, W, H);
+    
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, groundY);
+    ctx.lineTo(W, groundY);
+    ctx.stroke();
+
+    cast.forEach(e => {
+        e.update();
+        e.draw();
+    });
+
+    requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>
