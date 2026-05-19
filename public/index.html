@@ -404,12 +404,12 @@ class Shift extends Entity {
         ctx.stroke();
         // separate eye recesses (lower on the dome)
         ctx.fillStyle = '#111';
-        ctx.fillRect(-22, -25, 18, 9);
-        ctx.fillRect(4, -25, 18, 9);
+        ctx.fillRect(-22, -25, 20, 9);
+        ctx.fillRect(2, -25, 20, 9);
         // wide slit eyes (red when killing)
         ctx.fillStyle = world.killingNow ? '#ff2020' : '#fff';
-        ctx.fillRect(-20, -22, 14, 3);
-        ctx.fillRect(6, -22, 14, 3);
+        ctx.fillRect(-21, -22, 18, 3);
+        ctx.fillRect(3, -22, 18, 3);
 
         ctx.restore();
 
