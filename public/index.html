@@ -220,33 +220,652 @@ class Tab extends Entity {
     constructor(x) { super('Tab', x, '#a0855b', 40, 90); }
     update() {
         super.update();
-        this.vx *= 0.95; 
+        this.vx *= 0.95;
+    }
+    draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, this.w / 1.5, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // bare legs
+        ctx.fillStyle = '#e8c8a4';
+        ctx.fillRect(-7, -20, 5, 20);
+        ctx.fillRect(2, -20, 5, 20);
+        // ballet flats
+        ctx.fillStyle = '#1a1a1a';
+        ctx.beginPath();
+        ctx.ellipse(-5, 0, 6, 2, 0, 0, Math.PI * 2);
+        ctx.ellipse(5, 0, 6, 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // dress (A-line, gray)
+        ctx.fillStyle = '#8a8a92';
+        ctx.beginPath();
+        ctx.moveTo(-10, -55);
+        ctx.lineTo(10, -55);
+        ctx.lineTo(17, -20);
+        ctx.lineTo(-17, -20);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#3a3a40';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // arms
+        ctx.fillStyle = '#e8c8a4';
+        ctx.fillRect(-14, -54, 4, 22);
+        ctx.fillRect(10, -54, 4, 22);
+
+        // cardboard box head
+        const bxT = -90, bxB = -55, bxL = -17, bxR = 17;
+        ctx.fillStyle = '#b8924f';
+        ctx.fillRect(bxL, bxT, bxR - bxL, bxB - bxT);
+        ctx.strokeStyle = '#5a3e1f';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(bxL, bxT, bxR - bxL, bxB - bxT);
+        // top seam (since box is upside down)
+        ctx.beginPath();
+        ctx.moveTo(bxL, bxT + 4);
+        ctx.lineTo(bxR, bxT + 4);
+        ctx.stroke();
+
+        // "THIS END UP" label, rotated 180° (box is upside down)
+        ctx.save();
+        ctx.translate(bxL + 14, bxT + 22);
+        ctx.rotate(Math.PI);
+        ctx.fillStyle = '#7a2222';
+        ctx.font = 'bold 4px "Courier New"';
+        ctx.textAlign = 'left';
+        ctx.fillText('THIS END UP', 0, 0);
+        // arrow head pointing the same way the text reads (down, in screen)
+        ctx.beginPath();
+        ctx.moveTo(2, 4);
+        ctx.lineTo(8, 4);
+        ctx.lineTo(5, 8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        // angry face — big eyes
+        ctx.fillStyle = '#1a1a1a';
+        ctx.beginPath();
+        ctx.arc(-6, bxT + 15, 4, 0, Math.PI * 2);
+        ctx.arc(6, bxT + 15, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(-7, bxT + 13, 1.5, 1.5);
+        ctx.fillRect(5.5, bxT + 13, 1.5, 1.5);
+        // angry brows
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-11, bxT + 8);
+        ctx.lineTo(-3, bxT + 13);
+        ctx.moveTo(11, bxT + 8);
+        ctx.lineTo(3, bxT + 13);
+        ctx.stroke();
+        // gritted teeth
+        const mY = bxT + 24;
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(-10, mY, 20, 7);
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-10, mY, 20, 7);
+        for (let i = -7; i <= 7; i += 3) {
+            ctx.beginPath();
+            ctx.moveTo(i, mY);
+            ctx.lineTo(i, mY + 7);
+            ctx.stroke();
+        }
+
+        ctx.restore();
+
+        if (this.dialogue) this.drawBubble();
     }
 }
 
 class Shift extends Entity {
-    constructor(x) { super('Shift', x, '#444', 50, 45); }
+    constructor(x) {
+        super('Shift', x, '#999', 50, 45);
+        this.firing = 0;
+        this.target = null;
+    }
     update() {
         super.update();
-        if (Math.random() < 0.05) this.x += (Math.random() - 0.5) * 4; 
+        if (Math.random() < 0.05) this.x += (Math.random() - 0.5) * 4;
+        if (this.firing > 0) {
+            this.firing--;
+            if (this.target && this.firing % 5 === 0) {
+                spawnPewPew(this.target.x + (Math.random()-0.5)*30, this.target.y - this.target.h/2 + (Math.random()-0.5)*20);
+            }
+            if (this.firing === 0 && this.target) {
+                killEntity(this.target);
+                this.target = null;
+                world.killingNow = false;
+            }
+        }
+    }
+    fire(target) {
+        this.firing = 55;
+        this.target = target;
+        this.dialogue = "> Engaging.";
+        this.dialogueTimer = 80;
+        world.killingNow = true;
+        ether.broadcast(this, "> Engaging.");
+    }
+    draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, this.w / 1.6, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // tiny legs
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(-5, -5, 3, 5);
+        ctx.fillRect(2, -5, 3, 5);
+        // feet
+        ctx.beginPath();
+        ctx.ellipse(-3.5, 0, 4, 2, 0, 0, Math.PI * 2);
+        ctx.ellipse(3.5, 0, 4, 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // tiny body
+        ctx.fillStyle = '#7d7d80';
+        ctx.fillRect(-7, -15, 14, 10);
+        ctx.strokeStyle = '#222';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-7, -15, 14, 10);
+        // body panel
+        ctx.fillStyle = '#555';
+        ctx.fillRect(-3, -13, 6, 6);
+        ctx.strokeRect(-3, -13, 6, 6);
+        // stubby arms
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(-10, -13, 3, 7);
+        ctx.fillRect(7, -13, 3, 7);
+
+        // ENORMOUS dome head
+        ctx.fillStyle = '#9a9a9a';
+        ctx.beginPath();
+        ctx.arc(0, -15, 24, Math.PI, 0);
+        ctx.fill();
+        ctx.strokeStyle = '#222';
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-24, -15);
+        ctx.lineTo(24, -15);
+        ctx.stroke();
+        // separate eye recesses (lower on the dome)
+        ctx.fillStyle = '#111';
+        ctx.fillRect(-22, -25, 18, 9);
+        ctx.fillRect(4, -25, 18, 9);
+        // wide slit eyes (red when killing)
+        ctx.fillStyle = world.killingNow ? '#ff2020' : '#fff';
+        ctx.fillRect(-20, -22, 14, 3);
+        ctx.fillRect(6, -22, 14, 3);
+
+        ctx.restore();
+
+        if (this.dialogue) this.drawBubble();
+
+        if (this.firing > 0 && this.target) {
+            ctx.save();
+            ctx.translate(this.x, this.y - this.h / 2);
+            const dx = this.target.x - this.x;
+            const dy = (this.target.y - this.target.h / 2) - (this.y - this.h / 2);
+            const angle = Math.atan2(dy, dx);
+            ctx.rotate(angle);
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0, -18, 95, 36);
+            ctx.fillStyle = '#3a3a3a';
+            ctx.fillRect(85, -22, 20, 44);
+            ctx.fillStyle = '#0a0a0a';
+            for (let i = -2; i <= 2; i++) {
+                ctx.beginPath();
+                ctx.arc(95, i * 8, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            if (this.firing % 4 < 2) {
+                ctx.fillStyle = '#ffd040';
+                ctx.beginPath();
+                ctx.arc(112, 0, 10, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
     }
 }
 
 class Qwerty extends Entity {
     constructor(x) { super('Qwerty', x, '#222', 40, 50); }
+    draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, this.w / 1.6, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // tiny legs
+        ctx.fillStyle = '#0a0a0a';
+        ctx.fillRect(-5, -5, 3, 5);
+        ctx.fillRect(2, -5, 3, 5);
+        ctx.beginPath();
+        ctx.ellipse(-3.5, 0, 4, 2, 0, 0, Math.PI * 2);
+        ctx.ellipse(3.5, 0, 4, 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // tiny body
+        ctx.fillStyle = '#3a3a3a';
+        ctx.fillRect(-6, -16, 12, 11);
+        ctx.strokeStyle = '#0a0a0a';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-6, -16, 12, 11);
+        // panel
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(-3, -13, 6, 6);
+        ctx.strokeRect(-3, -13, 6, 6);
+        // stubby arms
+        ctx.fillStyle = '#0a0a0a';
+        ctx.fillRect(-9, -14, 3, 8);
+        ctx.fillRect(6, -14, 3, 8);
+
+        // ENORMOUS trapezoidal head (wider at top, much wider than body)
+        ctx.fillStyle = '#222';
+        ctx.beginPath();
+        ctx.moveTo(-28, -50);
+        ctx.lineTo(28, -50);
+        ctx.lineTo(22, -16);
+        ctx.lineTo(-22, -16);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#0a0a0a';
+        ctx.stroke();
+
+        // round eyes (red when killing)
+        ctx.fillStyle = world.killingNow ? '#ff2020' : '#fff';
+        ctx.beginPath();
+        ctx.arc(-7, -28, 5.5, 0, Math.PI * 2);
+        ctx.arc(7, -28, 5.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+
+        if (this.dialogue) this.drawBubble();
+    }
 }
 
+class Bear extends Entity {
+    constructor() {
+        super('Bear', 0, '#7a5a3a', 16, 20);
+        this.tab = null;
+        this.pressCooldown = 1800 + Math.random() * 2400;
+    }
+    update() {
+        if (this.tab) {
+            this.x = this.tab.x - 18;
+            this.y = this.tab.y - 28;
+        }
+        if (this.dialogueTimer > 0) this.dialogueTimer--;
+        else this.dialogue = null;
+
+        this.pressCooldown--;
+        if (this.pressCooldown <= 0) {
+            this.dialogue = "I love you!";
+            this.dialogueTimer = 240;
+            ether.broadcast(this, "I love you!");
+            this.pressCooldown = 3000 + Math.random() * 6000;
+        }
+    }
+    hear(sender, message) {
+        if (sender === this || !message) return;
+        const violence = /\b(kill|killed|killing|shoot|shot|shooting|die|dies|dying|dead|death|blood|bleed|murder|massacre|slaughter|human|humans|prey|extermin|annihil|gun|fire|firing|engaging|threat|hostile|target|eliminate|terminate|hunt|hunting|destroy|annihilate|carnage|gore|wound|carcass|corpse|war)\b/i;
+        if (violence.test(message) && !this.dialogue) {
+            setTimeout(() => {
+                if (this.dialogue) return;
+                this.dialogue = "I love you!";
+                this.dialogueTimer = 240;
+                ether.broadcast(this, "I love you!");
+                this.pressCooldown = 3000 + Math.random() * 6000;
+            }, 500 + Math.random() * 700);
+        }
+    }
+    initiateThought() { /* the bear does not think */ }
+    draw() {
+        if (!this.tab) return;
+        ctx.save();
+        ctx.translate(this.x, this.y);
+
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, this.w / 1.5, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = this.color;
+        ctx.fillRect(-this.w / 2, -this.h, this.w, this.h);
+        ctx.strokeStyle = '#3a2a1a';
+        ctx.strokeRect(-this.w / 2, -this.h, this.w, this.h);
+
+        ctx.beginPath();
+        ctx.fillStyle = this.color;
+        ctx.arc(-this.w / 2 + 3, -this.h + 1, 3, 0, Math.PI * 2);
+        ctx.arc(this.w / 2 - 3, -this.h + 1, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#a02020';
+        ctx.fillRect(this.w / 2 - 4, -this.h / 2 - 1, 3, 3);
+
+        ctx.restore();
+
+        if (this.dialogue) this.drawBubble();
+    }
+}
+
+class Human extends Entity {
+    constructor(startX, style) {
+        super('Human', startX, '#c8a070', 22, 64);
+        this.style = style;
+        this.targetX = style === 'ambient' ? W + 80 : W / 2 + 210;
+        this.runSpeed = style === 'ambient' ? 0.9 : 2.4;
+        this.spoke = false;
+        this.dieIn = style === 'ambient' ? 100 + Math.floor(Math.random() * 60) : 540 + Math.floor(Math.random() * 240);
+        this.dying = false;
+    }
+    update() {
+        if (Math.abs(this.x - this.targetX) > 4) {
+            this.x += (this.targetX > this.x ? 1 : -1) * this.runSpeed;
+        }
+        if (this.style === 'staged' && !this.spoke && Math.abs(this.x - this.targetX) < 30) {
+            this.spoke = true;
+            const line = pickHumanLine();
+            this.dialogue = line;
+            this.dialogueTimer = 360;
+            ether.broadcast(this, line);
+        }
+        if (this.dialogueTimer > 0) this.dialogueTimer--;
+        else if (!this.dying) this.dialogue = null;
+        this.dieIn--;
+        if (this.dieIn <= 0 && !this.dying) {
+            this.dying = true;
+            this.dialogue = null;
+            const shift = cast.find(c => c.name === 'Shift');
+            if (shift) shift.fire(this);
+            else killEntity(this);
+        }
+    }
+    hear() { /* humans do not engage the AI */ }
+    initiateThought() { /* no thinking */ }
+    draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, this.w / 1.5, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // pants
+        ctx.fillStyle = '#3a2a3a';
+        ctx.fillRect(-8, -22, 6, 22);
+        ctx.fillRect(2, -22, 6, 22);
+        // shoes
+        ctx.fillStyle = '#1a1a1a';
+        ctx.beginPath();
+        ctx.ellipse(-5, 0, 6, 2, 0, 0, Math.PI * 2);
+        ctx.ellipse(5, 0, 6, 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // dirty shirt
+        ctx.fillStyle = '#7a4a3a';
+        ctx.fillRect(-10, -45, 20, 24);
+        ctx.strokeStyle = '#2a1a1a';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-10, -45, 20, 24);
+
+        // arms (skin)
+        ctx.fillStyle = this.color;
+        ctx.fillRect(-13, -42, 4, 18);
+        ctx.fillRect(9, -42, 4, 18);
+
+        // head
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(0, -54, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#2a1a1a';
+        ctx.stroke();
+
+        // hair
+        ctx.fillStyle = '#1a0a08';
+        ctx.beginPath();
+        ctx.arc(0, -57, 10, Math.PI, 0);
+        ctx.fill();
+
+        // panicked eyes
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(-3, -54, 2.2, 0, Math.PI * 2);
+        ctx.arc(3, -54, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(-3, -54, 1, 0, Math.PI * 2);
+        ctx.arc(3, -54, 1, 0, Math.PI * 2);
+        ctx.fill();
+
+        // open screaming mouth
+        ctx.fillStyle = '#1a0508';
+        ctx.beginPath();
+        ctx.ellipse(0, -49, 2.5, 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+
+        if (this.dialogue) this.drawBubble();
+    }
+}
+
+const tab = new Tab(W / 2);
+const bear = new Bear();
+bear.tab = tab;
 const cast = [
     new Shift(W / 2 - 150),
-    new Tab(W / 2),
-    new Qwerty(W / 2 + 150)
+    tab,
+    new Qwerty(W / 2 + 150),
+    bear
 ];
 
-systemLog("Synapses wired securely. Booting the void.");
+const locations = [
+    "CVS PARKING LOT", "GAS STATION", "ABANDONED MALL", "WAFFLE HOUSE",
+    "HIGHWAY OVERPASS", "CHURCH PARKING LOT", "DEAD KMART", "ARBY'S",
+    "ELEMENTARY SCHOOL", "DOG PARK", "BIG LOTS", "WHATABURGER",
+    "CHARTER SCHOOL", "OVERTURNED RV", "RUINED INTERSTATE", "PUBLIC LIBRARY",
+    "FARM SUPPLY STORE", "DOLLAR GENERAL", "FUNERAL HOME PARKING LOT",
+    "DRIVE-THRU DAIQUIRI HUT", "A TRAMPOLINE"
+];
+
+const humanLines = [
+    "Please. I have kids.",
+    "Wait — is that a child?",
+    "Oh god. Oh god. Oh god.",
+    "We can talk about this.",
+    "I'm just looking for my dog.",
+    "Take whatever you want.",
+    "Sweet Jesus, why now?",
+    "Hey, kid — are you okay?",
+    "Run. Just run.",
+    "Don't shoot. Don't shoot.",
+    "Tell my wife I tried.",
+    "Is this what we wanted?",
+    "Why are you with them?",
+    "Please. I'll do anything."
+];
+
+const world = {
+    state: 'arrived',
+    stateTimer: 1500,
+    location: "THE WASTELAND",
+    locationsVisited: 0,
+    banner: { text: "THE WASTELAND", timer: 240 },
+    scrollSpeed: 0,
+    encountersScheduled: 0,
+    encounterCooldown: 600,
+    killingNow: false
+};
+
+const pewPews = [];
+const groundDecor = [];
+
+function pickLocation() { return locations[Math.floor(Math.random() * locations.length)]; }
+function pickHumanLine() { return humanLines[Math.floor(Math.random() * humanLines.length)]; }
+
+function spawnPewPew(x, y) {
+    pewPews.push({ x, y, life: 50, dx: (Math.random() - 0.5) * 3, dy: -1.5 - Math.random() * 1.5 });
+}
+function killEntity(entity) {
+    const i = cast.indexOf(entity);
+    if (i >= 0) cast.splice(i, 1);
+    const j = ether.listeners.indexOf(entity);
+    if (j >= 0) ether.listeners.splice(j, 1);
+}
+function spawnHuman(style) {
+    const startX = style === 'ambient' ? -50 : W + 80;
+    cast.push(new Human(startX, style));
+}
+function arriveAt(name) {
+    world.state = 'arrived';
+    world.stateTimer = 2400 + Math.floor(Math.random() * 1200);
+    world.scrollSpeed = 0;
+    world.location = name;
+    world.locationsVisited++;
+    world.banner = { text: `ARRIVED: ${name}`, timer: 180 };
+    systemLog(`Aperture: ${name}`);
+    const r = Math.random();
+    if (r < 0.5) world.encountersScheduled = 1;
+    else if (r < 0.75) world.encountersScheduled = 2;
+    else world.encountersScheduled = 0;
+    world.encounterCooldown = 400 + Math.floor(Math.random() * 600);
+}
+function travel() {
+    world.state = 'traveling';
+    world.stateTimer = 600 + Math.floor(Math.random() * 480);
+    world.scrollSpeed = 1.3;
+    world.banner = { text: "...walking...", timer: 120 };
+    systemLog("Onward through the meaningless.");
+}
+function updateWorld() {
+    world.stateTimer--;
+    if (world.stateTimer <= 0) {
+        if (world.state === 'arrived') travel();
+        else arriveAt(pickLocation());
+    }
+    if (world.banner.timer > 0) world.banner.timer--;
+    if (world.state === 'arrived' && world.encountersScheduled > 0) {
+        world.encounterCooldown--;
+        if (world.encounterCooldown <= 0) {
+            const style = world.encountersScheduled >= 2 ? 'staged' : (Math.random() < 0.4 ? 'staged' : 'ambient');
+            spawnHuman(style);
+            world.encountersScheduled--;
+            world.encounterCooldown = 700 + Math.floor(Math.random() * 800);
+        }
+    }
+}
+function updatePewPews() {
+    for (let i = pewPews.length - 1; i >= 0; i--) {
+        const p = pewPews[i];
+        p.life--;
+        p.x += p.dx;
+        p.y += p.dy;
+        if (p.life <= 0) pewPews.splice(i, 1);
+    }
+}
+function drawPewPews() {
+    pewPews.forEach(p => {
+        const a = p.life / 50;
+        ctx.save();
+        ctx.font = 'bold 22px "Courier New"';
+        ctx.textAlign = 'center';
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = `rgba(40, 0, 0, ${a})`;
+        ctx.fillStyle = `rgba(255, 220, 60, ${a})`;
+        ctx.strokeText('pew', p.x, p.y);
+        ctx.fillText('pew', p.x, p.y);
+        ctx.restore();
+    });
+}
+function initGroundDecor() {
+    for (let i = 0; i < 45; i++) {
+        groundDecor.push({
+            x: Math.random() * W * 1.6,
+            type: Math.random() < 0.22 ? 'rock' : 'tick',
+            height: Math.random() < 0.1 ? 30 + Math.random() * 70 : null,
+            width: 8 + Math.random() * 16
+        });
+    }
+}
+function updateGroundDecor() {
+    if (world.state !== 'traveling') return;
+    groundDecor.forEach(d => {
+        d.x -= world.scrollSpeed;
+        if (d.x < -40) d.x += W + 80;
+    });
+}
+function drawGroundDecor() {
+    groundDecor.forEach(d => {
+        ctx.fillStyle = '#1a1a1a';
+        if (d.height) {
+            ctx.fillRect(d.x, groundY - d.height, d.width, d.height);
+        } else if (d.type === 'rock') {
+            ctx.beginPath();
+            ctx.ellipse(d.x, groundY + 2, 4, 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            ctx.fillRect(d.x, groundY - 2, 1, 4);
+        }
+    });
+}
+function drawBanner() {
+    if (world.banner.timer <= 0) return;
+    const a = Math.min(1, world.banner.timer / 60);
+    ctx.save();
+    ctx.font = 'bold 28px "Courier New"';
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = `rgba(0, 0, 0, ${a})`;
+    ctx.fillStyle = `rgba(220, 220, 220, ${a})`;
+    ctx.strokeText(world.banner.text, W / 2, 80);
+    ctx.fillText(world.banner.text, W / 2, 80);
+    ctx.restore();
+}
+function drawLocationLabel() {
+    if (world.state !== 'arrived') return;
+    ctx.save();
+    ctx.font = '11px "Courier New"';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#444';
+    ctx.fillText(`> ${world.location}`, 12, 24);
+    ctx.fillText(`> visited: ${world.locationsVisited}`, 12, 40);
+    ctx.restore();
+}
+
+initGroundDecor();
+systemLog("Synapses wired. The wasteland yawns.");
 
 function loop() {
     ctx.clearRect(0, 0, W, H);
-    
+
+    updateWorld();
+    updateGroundDecor();
+    updatePewPews();
+
     ctx.strokeStyle = '#333';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -254,10 +873,16 @@ function loop() {
     ctx.lineTo(W, groundY);
     ctx.stroke();
 
+    drawGroundDecor();
+
     cast.forEach(e => {
         e.update();
         e.draw();
     });
+
+    drawPewPews();
+    drawLocationLabel();
+    drawBanner();
 
     requestAnimationFrame(loop);
 }
