@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /run/media/az/0722-7C65/hahapewpew/.claude)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(npm install *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(gh api *)",
+      "Bash(gh run *)",
+      "Bash(curl -s -o /dev/null -w \"root: %{http_code}\\\\n\" https://www.hahapewpew.com/)",
+      "Bash(curl -s -o /dev/null -w \"/public/: %{http_code}\\\\n\" https://www.hahapewpew.com/public/)",
+      "Bash(curl -s https://www.hahapewpew.com/)",
+      "Bash(git fetch *)",
+      "Bash(git pull *)",
+      "Bash(curl -s -o /dev/null -w \"https://hahapewpew.com → %{http_code} \\(%{redirect_url}\\)\\\\n\" -L https://hahapewpew.com/)",
+      "Bash(curl -s -o /dev/null -w \"https://www.hahapewpew.com → %{http_code}\\\\n\" https://www.hahapewpew.com/)",
+      "Bash(dig +short hahapewpew.com A)",
+      "Bash(dig +short hahapewpew.com CNAME)",
+      "Bash(dig +short www.hahapewpew.com CNAME)",
+      "Bash(dig +short hahapewpew.com NS)",
+      "Bash(curl -sI https://www.hahapewpew.com/)"
+    ]
+  }
+}
