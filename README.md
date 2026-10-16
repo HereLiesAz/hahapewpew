@@ -62,3 +62,11 @@ The additive `public/visual.js` renderer uses the owner's supplied original Tab,
 `public/visual.css` styles the scene controls and transcript. The existing `public/bubbles.js` runs last so Tab's handwriting, Shift's terminal boxes and Qwerty's ink-burst shouting retain their established styles. There are no comic-panel transitions, synthetic voices, browser inference or `brain.js` dependency.
 
 `tests/visual.test.mjs` checks painted render hooks and actor preservation. `npm test` runs both visual and keyless Workers AI endpoint tests. Live Workers AI inference and production browser rendering still require runtime verification.
+
+## Living-world fishbowl iteration
+
+The viewer observes a continuously running wasteland, not comic panels. The existing world loop, human encounters, Cloudflare-hosted keyless AI, speech bubble identities, pause behavior, and safety limits remain.
+
+The visual layer now adds location-specific silhouettes: a crater, singing fish, embracing statue, mirror, machine graveyard, family billboard, and existing roadside landmarks. Characters travel as a loose group and return to their original idle behavior at stops. Dialogue prompts include the current location. The original drawings animate as a lightweight two-part head/body puppet, not a full articulated arm-and-leg rig. Qwerty's ink speech uses space beside him rather than covering Tab.
+
+The visual regression tests exercise the cast, travel, location rendering, context, and dialogue layout. Live Cloudflare inference and production rendering still need verification.

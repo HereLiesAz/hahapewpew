@@ -152,7 +152,7 @@
     ctx.ellipse(0, 2 + bounce, width * .35, 5, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.rotate(Math.sin(stride * .014 + actor.x * .014) * .012);
-    ctx.drawImage(image, -width * .5, -height, width, height);
+    drawPaintedPuppet(actor, image, width, height, movement);
     if (actor.name !== 'Tab' && world.killingNow) {
       // The original drawings also turn the robots' eyes red when firing.
       ctx.globalCompositeOperation = 'source-atop';
@@ -359,5 +359,172 @@
     }
     ctx.restore();
   };
+
+  // Fishbowl pass: the cast keeps walking, and places have things to see.
+  // This is an addition to the existing world, never a new scene or panel.
+  const sceneLocations = [
+    'THE BOTTOMLESS CRATER', 'THE SINGING FISH', 'THE HUGGING STATUE',
+    'THE UNBROKEN MIRROR', 'WAR MACHINE GRAVEYARD', 'FAMILY BILLBOARD'
+  ];
+  sceneLocations.forEach(name => {
+    if (!locations.includes(name)) locations.push(name);
+  });
+
+  const originalUpdate = Entity.prototype.update;
+  const travelOffsets = Object.freeze({ Shift: -108, Tab: 0, Qwerty: 114 });
+  Entity.prototype.update = function updateWithCompanions() {
+    originalUpdate.call(this);
+    if (!Object.prototype.hasOwnProperty.call(travelOffsets, this.name)) return;
+    if (world.state !== 'traveling') return;
+    // Three individuals, one direction. The girl stays between the machines.
+    const center = W * .5 + Math.sin(world.locationsVisited * 1.37) * Math.min(20, W * .04);
+    const narrow = Math.min(1, W / 660);
+    const destination = center + travelOffsets[this.name] * narrow;
+    const step = Math.min(1, dt * .022);
+    this.x += (destination - this.x) * step;
+    this.vx *= Math.pow(.8, dt);
+  };
+
+  const originalAskTheVoid = askTheVoid;
+  askTheVoid = function askInThePresent(name, prompt) {
+    const nearby = world.location ? `Location: ${world.location}. ` : '';
+    // Preserve request limits and the original AI budget/backoff policy.
+    return originalAskTheVoid(name, (nearby + prompt).slice(0, 500));
+  };
+
+  const propColor = '#312f2b';
+  const propEdge = '#978a72';
+  const propLight = '#c8ba9d';
+  let propFrame = 0;
+
+  function landmarkKind(name) {
+    if (/CRATER|MINE|TRAMPOLINE/i.test(name)) return 'crater';
+    if (/MIRROR/i.test(name)) return 'mirror';
+    if (/STATUE|FUNERAL/i.test(name)) return 'statue';
+    if (/FISH|LIBRARY/i.test(name)) return 'fish';
+    if (/WAR MACHINE|INTERSTATE|OVERPASS|RV/i.test(name)) return 'machine';
+    if (/BILLBOARD|SCHOOL|MALL|KMART/i.test(name)) return 'billboard';
+    if (/GAS STATION|DAIQUIRI|WAFFLE|ARBY|WHAT|DOLLAR|BIG LOTS|CVS/i.test(name)) return 'station';
+    return 'sign';
+  }
+
+  function drawLandmark() {
+    const type = landmarkKind(world.location || '');
+    const isTravel = world.state === 'traveling';
+    const s = Math.max(.58, Math.min(1.25, W / 1000));
+    const anchorX = W * .74 + (isTravel ? -((parallax * .45) % (W + 400)) : 0);
+    const anchorY = groundY + 5;
+    ctx.save();
+    ctx.globalAlpha = isTravel ? .28 : .88;
+    ctx.translate(anchorX, anchorY);
+    ctx.scale(s, s);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = propEdge;
+    ctx.fillStyle = propColor;
+    ctx.lineWidth = 3;
+
+    if (type === 'crater') {
+      ctx.fillStyle = '#100f10';
+      ctx.beginPath(); ctx.ellipse(5, 0, 137, 27, -.06, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#a99b80'; ctx.beginPath(); ctx.ellipse(5, 0, 150, 35, -.06, Math.PI, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = '#4a4741'; ctx.beginPath(); ctx.ellipse(8, 5, 89, 12, -.06, 0, Math.PI * 2); ctx.stroke();
+    } else if (type === 'mirror') {
+      ctx.strokeStyle = '#1b1c1c'; ctx.lineWidth = 8;
+      ctx.strokeRect(-34, -158, 68, 143);
+      ctx.fillStyle = '#74716b'; ctx.fillRect(-30, -154, 60, 135);
+      ctx.fillStyle = '#99998c'; ctx.fillRect(-25, -149, 21, 123);
+      ctx.strokeStyle = '#3b3936'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-18, -142); ctx.lineTo(10, -96); ctx.lineTo(-2, -62); ctx.lineTo(20, -30); ctx.stroke();
+      ctx.strokeStyle = '#463e35'; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.moveTo(-28, -14); ctx.lineTo(-47, 0); ctx.moveTo(29, -14); ctx.lineTo(50, 0); ctx.stroke();
+    } else if (type === 'statue') {
+      ctx.fillStyle = '#47443c'; ctx.fillRect(-67, -14, 140, 15);
+      ctx.fillStyle = '#777267'; ctx.fillRect(-49, -23, 100, 10);
+      ctx.lineWidth = 22; ctx.strokeStyle = '#706c62';
+      ctx.beginPath(); ctx.moveTo(-21, -24); ctx.lineTo(-30, -99); ctx.lineTo(-8, -126);
+      ctx.moveTo(21, -24); ctx.lineTo(30, -100); ctx.lineTo(9, -128); ctx.stroke();
+      ctx.lineWidth = 14;
+      ctx.beginPath(); ctx.moveTo(-27, -102); ctx.quadraticCurveTo(0, -67, 24, -101);
+      ctx.moveTo(26, -107); ctx.quadraticCurveTo(0, -73, -28, -104); ctx.stroke();
+      ctx.fillStyle = '#8b8578';
+      ctx.beginPath(); ctx.arc(-10, -146, 17, 0, Math.PI * 2); ctx.arc(13, -148, 17, 0, Math.PI * 2); ctx.fill();
+    } else if (type === 'fish') {
+      ctx.fillStyle = '#443c32'; ctx.fillRect(-90, -124, 180, 90);
+      ctx.strokeStyle = propEdge; ctx.lineWidth = 4; ctx.strokeRect(-90, -124, 180, 90);
+      ctx.fillStyle = '#7a7c66';
+      ctx.beginPath(); ctx.ellipse(-3, -79, 48, 19, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(36, -79); ctx.lineTo(74, -103); ctx.lineTo(74, -55); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#171715'; ctx.beginPath(); ctx.arc(-33, -82, 3.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#bfb9a9'; ctx.beginPath(); ctx.arc(73, -46, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = propColor; ctx.fillRect(-65, -34, 8, 35); ctx.fillRect(57, -34, 8, 35);
+    } else if (type === 'machine') {
+      ctx.fillStyle = '#343434'; ctx.fillRect(-105, -69, 198, 67);
+      ctx.fillStyle = '#59574e'; ctx.fillRect(-50, -131, 110, 65);
+      ctx.strokeStyle = '#282828'; ctx.lineWidth = 17;
+      ctx.beginPath(); ctx.moveTo(30, -125); ctx.lineTo(137, -151); ctx.stroke();
+      ctx.fillStyle = '#1a1919';
+      [-69, 60].forEach(x => { ctx.beginPath(); ctx.arc(x, -4, 24, 0, Math.PI * 2); ctx.fill(); });
+      ctx.strokeStyle = propEdge; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-102, -65); ctx.lineTo(-23, -25); ctx.lineTo(82, -61); ctx.stroke();
+    } else if (type === 'billboard') {
+      ctx.fillStyle = '#3f3931'; ctx.fillRect(-108, -177, 208, 102);
+      ctx.strokeStyle = '#958b7b'; ctx.lineWidth = 4; ctx.strokeRect(-108, -177, 208, 102);
+      ctx.fillStyle = '#787365';
+      [-43, 0, 43].forEach((x, i) => {
+        ctx.beginPath(); ctx.arc(x, -140 + (i % 2) * 8, 15, 0, Math.PI * 2); ctx.fill();
+        ctx.fillRect(x - 14, -123 + (i % 2) * 8, 28, 35);
+      });
+      ctx.fillStyle = propColor; ctx.fillRect(-65, -75, 10, 75); ctx.fillRect(50, -75, 10, 75);
+    } else if (type === 'station') {
+      ctx.fillStyle = '#4d473c'; ctx.fillRect(-125, -140, 250, 12);
+      ctx.fillRect(-98, -128, 10, 128); ctx.fillRect(82, -128, 10, 128);
+      ctx.fillStyle = '#766c5c'; ctx.fillRect(-47, -79, 40, 75); ctx.fillRect(23, -79, 40, 75);
+      ctx.strokeStyle = '#24201e'; ctx.lineWidth = 3; ctx.strokeRect(-47, -79, 40, 75);
+      ctx.beginPath(); ctx.moveTo(-7, -65); ctx.bezierCurveTo(17, -70, 7, -19, 23, -14); ctx.stroke();
+    } else {
+      ctx.fillStyle = '#4d4941'; ctx.fillRect(-55, -105, 108, 55);
+      ctx.fillStyle = '#292725'; ctx.fillRect(-4, -50, 7, 51);
+      ctx.strokeStyle = propEdge; ctx.lineWidth = 3; ctx.strokeRect(-55, -105, 108, 55);
+    }
+    ctx.restore();
+  }
+
+  const originalPaintedGround = drawGroundDecor;
+  drawGroundDecor = function drawLivingWasteland() {
+    originalPaintedGround();
+    drawLandmark();
+  };
+
+  // Puppet-lite: independently pivot the original painted head and torso.
+  // The source pixels stay intact; no replacement character artwork is made.
+  const headSplits = Object.freeze({ Tab: .29, Shift: .56, Qwerty: .635 });
+  function drawPaintedPuppet(actor, image, width, height, walking) {
+    const headFraction = headSplits[actor.name];
+    const seam = Math.round(image.height * headFraction);
+    const bodyScreenY = -height + height * headFraction;
+    const headMotion = actor.name === 'Qwerty' && actor.dialogue
+      ? Math.sin(stride * .22) * .034
+      : Math.sin(stride * .018 + actor.x * .009) * .014;
+    const gait = walking ? Math.sin(stride * .13 + actor.x * .01) * .02 : 0;
+    ctx.save();
+    ctx.rotate(gait);
+    // Draw the body first, preserving the full character silhouette.
+    ctx.drawImage(image, 0, seam - 2, image.width, image.height - seam + 2,
+      -width / 2, bodyScreenY - height * 2 / image.height, width,
+      height * (image.height - seam + 2) / image.height);
+    ctx.save();
+    ctx.translate(0, bodyScreenY);
+    ctx.rotate(headMotion);
+    ctx.drawImage(image, 0, 0, image.width, seam + 2, -width / 2,
+      -height * headFraction, width, height * (seam + 2) / image.height);
+    ctx.restore();
+    ctx.restore();
+  }
+
+  // Preserve the original illustrated sprites, expressions, and firing effect.
+  // drawActor calls this hook only after its image is ready.
+
+
   // Never introduce a comic-panel insert: the world remains one continuous fishbowl.
 })();
