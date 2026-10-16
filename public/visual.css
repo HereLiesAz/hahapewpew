@@ -1,0 +1,21 @@
+/* A continuous painted fishbowl. The world never cuts to comic panels. */
+body { background: #11100f; color: #e5dacc; }
+canvas#wasteland { filter: saturate(.92) contrast(1.055); }
+#pause {
+  color: #f6e6cb; background: rgba(19, 17, 16, .86);
+  border: 1px solid #b4a48b; box-shadow: 3px 3px 0 #0c0b0b;
+  padding: 9px 16px; letter-spacing: .12em; text-transform: uppercase;
+  z-index: 4;
+}
+#console {
+  left: 16px; bottom: 16px; padding: 10px 13px; max-height: 140px;
+  width: min(430px, calc(100vw - 60px));
+  background: linear-gradient(90deg, rgba(0,0,0,.84), rgba(0,0,0,.48));
+  border-left: 2px solid #b5a284;
+  color: #dfd5c0; font-size: 12px; line-height: 1.5;
+  text-shadow: 1px 1px #000; pointer-events: none; z-index: 3;
+}
+@media (max-width: 600px) {
+  #console { font-size: 10px; left: 8px; bottom: 8px; max-height: 95px; }
+  #pause { right: 8px; top: 8px; font-size: 11px; }
+}

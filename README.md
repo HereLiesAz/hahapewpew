@@ -54,3 +54,11 @@ The dialogue is mirrored to an aria-live log. The Pause button or P key stops th
 `version.properties` is canonical and read by external workflows. `package.json` carries the matching three-segment npm version; do not hand-edit the first two version segments.
 
 Boost Software License 1.0.
+
+## Original-art living fishbowl
+
+The additive `public/visual.js` renderer uses the owner's supplied original Tab, Shift, Qwerty, ruined skyline and street artwork in `public/assets/art/`. Characters sway and bob as sprites, with layered drifting ash and parallax scenery. Their movement, encounters and game simulation remain unchanged; the sprite layer is not yet an articulated puppet rig.
+
+`public/visual.css` styles the scene controls and transcript. The existing `public/bubbles.js` runs last so Tab's handwriting, Shift's terminal boxes and Qwerty's ink-burst shouting retain their established styles. There are no comic-panel transitions, synthetic voices, browser inference or `brain.js` dependency.
+
+`tests/visual.test.mjs` checks painted render hooks and actor preservation. `npm test` runs both visual and keyless Workers AI endpoint tests. Live Workers AI inference and production browser rendering still require runtime verification.
