@@ -1,5 +1,6 @@
 import * as THREE from './vendor/three.module.js';
 import { CHUNK_LENGTH, rng, landmarkForChunk, dialogueFrames, streetAt, districtKeys } from './world-logic.js';
+import { createCharacters, articulateWalk } from './character-models.js';
 
 // Everything in the scene is actual geometry. No flat sprites or pasted-on characters.
 const canvas = document.querySelector('#world');
@@ -84,118 +85,7 @@ function edge(parent, object, color='#25221f', opacity=1){
 function pivot(parent,x,y,z){const g=new THREE.Group();g.position.set(x,y,z);parent.add(g);return g}
 function slab(parent, material,x,y,z,w,h,d,angle=0){let m=block(parent,material,x,y,z,w,h,d);m.rotation.z=angle;return m}
 
-function createTab(){
-  const root=new THREE.Group();root.name='Tab';scene.add(root);
-  const torso=pivot(root,0,1.07,0);
-  const dress=mesh(torso,new THREE.CylinderGeometry(.22,.54,1.0,7,1),palette.cloth,0,.05,0,1,1,.84);
-  edge(torso,dress,'#2e2b28');
-  block(torso,palette.clothShade,0,.46,.02,.46,.1,.31);
-  const neck=block(torso,palette.skin,0,.54,0,.18,.27,.19);
-  const head=pivot(torso,0,1.01,0);
-  const box=block(head,palette.cardboard,0,.02,0,.83,.83,.82);edge(head,box,'#4e3727');
-  block(head,palette.cardboardSide,-.44,.09,0,.018,.75,.82);
-  block(head,palette.cardboardEdge,-.005,.43,.01,.85,.025,.84);
-  // Cardboard flaps give the box actual depth, rather than a flat mask.
-  const flapL=block(head,palette.cardboard,.0,-.39,.42,.98,.10,.28);flapL.rotation.x=-.36;
-  const flapR=block(head,palette.cardboard,0,-.39,-.42,.98,.08,.24);flapR.rotation.x=.23;
-  for(const x of [-.19,.19]){
-    ball(head,palette.black,x,.14,.424,.083,.085,.015);
-    ball(head,palette.white,x-.026,.17,.445,.019,.021,.007);
-  }
-  for(const s of [-1,1]){
-    const brow=slab(head,palette.black,s*.19,.29,.444,.29,.034,.033,s*.32);
-  }
-  block(head,palette.white,0,-.17,.44,.49,.19,.023);
-  for(let i=-2;i<=2;i++)block(head,palette.black,i*.086,-.17,.459,.018,.19,.014);
-  block(head,palette.black,0,-.17,.468,.5,.012,.013);
-  // Printed arrow on the left face.
-  const arrow=block(head,palette.cardboardEdge,-.455,.06,-.03,.009,.28,.035);
-  block(head,palette.cardboardEdge,-.457,-.09,-.03,.012,.09,.2);
-  const arms=[],legs=[];
-  for(const s of [-1,1]){
-    const arm=pivot(torso,s*.31,.42,0);
-    limb(arm,palette.skin,[0,0,0],[s*.12,-.49,.045],.115,.083);
-    ball(arm,palette.skin,s*.12,-.52,.045,.102,.10,.09);arms.push(arm);
-    const leg=pivot(root,s*.21,.78,0);
-    limb(leg,palette.skin,[0,0,0],[s*.017,-.64,0],.115,.085);
-    const shoe=ball(leg,palette.black,s*.025,-.69,.12,.17,.065,.27);legs.push(leg);
-  }
-  const teddy=pivot(arms[1],.2,-.58,.16);
-  ball(teddy,palette.bear,0,-.17,0,.18,.22,.13);
-  ball(teddy,palette.bear,0,.10,0,.17,.18,.15);
-  for(const s of [-1,1])ball(teddy,palette.bear,s*.13,.23,0,.079,.08,.077);
-  ball(teddy,palette.bearFace,0,.07,.145,.10,.064,.025);
-  ball(teddy,palette.black,0,.075,.169,.029,.021,.016);
-  return {root,head,torso,arms,legs,teddy,anchor:2.85};
-}
-function createShift(){
-  const root=new THREE.Group();root.name='Shift';scene.add(root);
-  const torso=pivot(root,0,.46,0);
-  let body=block(torso,palette.robot,0,0,0,.52,.7,.38);edge(torso,body,'#252526');
-  block(torso,palette.graphite,0,.01,.201,.31,.35,.026);
-  block(torso,palette.robotLight,0,.01,.218,.18,.25,.02);
-  const neck=block(torso,palette.black,0,.39,0,.25,.25,.25);
-  const head=pivot(torso,0,.57,0);
-  const dome=mesh(head,new THREE.SphereGeometry(.73,32,16,0,Math.PI*2,0,Math.PI/2),palette.robot,0,0,0,1,1,.94);
-  const ring=mesh(head,new THREE.CylinderGeometry(.73,.73,.11,32),palette.black,0,-.045,0,1,1,.94);
-  const brow=block(head,palette.graphite,0,.20,.617,1.06,.29,.12);
-  for(const s of [-1,1]){
-    const eye=block(head,palette.white,s*.32,.205,.69,.38,.14,.031);
-    eye.rotation.z=s*.10;
-  }
-  const arms=[],legs=[];
-  for(const s of [-1,1]){
-    const arm=pivot(torso,s*.36,.26,0);
-    limb(arm,palette.black,[0,0,0],[s*.14,-.45,.01],.075,.065);
-    ball(arm,palette.black,s*.14,-.49,.015,.11,.11,.1);arms.push(arm);
-    const leg=pivot(root,s*.16,.25,0);
-    limb(leg,palette.black,[0,0,0],[s*.03,-.23,0],.065,.06);
-    ball(leg,palette.black,s*.05,-.24,.11,.14,.055,.20);legs.push(leg);
-  }
-  const gun=pivot(torso,.34,.30,.1);
-  block(gun,palette.blackMetal,.37,0,0,.68,.23,.27);
-  block(gun,palette.rust,.70,0,0,.28,.32,.32);
-  const barrel=pivot(gun,.78,0,0);
-  for(let i=0;i<6;i++){
-    const a=i*Math.PI/3;
-    const c=mesh(barrel,new THREE.CylinderGeometry(.042,.042,.96,7),palette.graphite,.44,Math.sin(a)*.10,Math.cos(a)*.10);
-    c.rotation.z=-Math.PI/2;
-  }
-  gun.visible=false;
-  return {root,head,torso,arms,legs,gun,barrel,anchor:1.89};
-}
-function trapezoidGeometry(){
-  const shape=new THREE.Shape();
-  shape.moveTo(-.94,-.50);shape.lineTo(.94,-.50);shape.lineTo(1.11,.54);shape.lineTo(-1.11,.54);shape.closePath();
-  const geo=new THREE.ExtrudeGeometry(shape,{depth:.70,bevelEnabled:true,bevelThickness:.05,bevelSize:.06,bevelSegments:2,steps:1});
-  geo.translate(0,0,-.35);return geo;
-}
-function createQwerty(){
-  const root=new THREE.Group();root.name='Qwerty';scene.add(root);
-  const torso=pivot(root,0,.43,0);
-  const body=block(torso,palette.graphite,0,.02,0,.43,.65,.36);edge(torso,body,'#151515');
-  block(torso,palette.black,0,0,.193,.20,.27,.022);
-  const neck=block(torso,palette.black,0,.42,0,.21,.31,.2);
-  const head=pivot(torso,0,.95,0);
-  const huge=mesh(head,trapezoidGeometry(),palette.graphite);
-  edge(head,huge,'#080808');
-  for(const s of [-1,1]){
-    const rim=ball(head,palette.black,s*.40,-.10,.42,.23,.25,.042);
-    const eye=ball(head,palette.white,s*.40,-.10,.468,.173,.19,.021);
-  }
-  const arms=[],legs=[];
-  for(const s of [-1,1]){
-    const arm=pivot(torso,s*.30,.23,0);
-    limb(arm,palette.black,[0,0,0],[s*.25,-.40,.02],.075,.06);
-    ball(arm,palette.black,s*.25,-.44,.02,.095,.10,.10);arms.push(arm);
-    const leg=pivot(root,s*.15,.27,0);
-    limb(leg,palette.black,[0,0,0],[s*.045,-.26,.02],.070,.06);
-    ball(leg,palette.black,s*.06,-.26,.14,.13,.05,.19);legs.push(leg);
-  }
-  return {root,head,torso,arms,legs,anchor:2.17};
-}
-crew.Tab=createTab();crew.Shift=createShift();crew.Qwerty=createQwerty();
-for(const [name,c] of Object.entries(crew))c.name=name;
+Object.assign(crew,createCharacters(scene));
 
 // Shared procedural surface maps: seeded once, not regenerated on every chunk.
 // These are physical material textures, not flat background paintings.
@@ -453,15 +343,6 @@ function fireAt(h){
   }
   showSpeech('Shift','> ENGAGING.',4);
 }
-function actorWalk(rig,phase,speed,effort=1){
-  const stride=Math.sin(phase*speed)*.60*effort;
-  rig.legs[0].rotation.x=stride;rig.legs[1].rotation.x=-stride;
-  rig.arms[0].rotation.x=-stride*.6;rig.arms[1].rotation.x=stride*.6;
-  rig.torso.rotation.z=Math.sin(phase*speed*.5)*.022*effort;
-  rig.head.rotation.z=Math.sin(phase*.54+rig.anchor)*.052;
-  rig.head.rotation.y=Math.sin(phase*.43+rig.anchor)*.15;
-  rig.root.position.y=.045+Math.abs(Math.sin(phase*speed))* .058*effort;
-}
 function updateActors(dt){
   crewX+=dt*1.22;
   for(const [name,rig] of Object.entries(crew)){
@@ -474,12 +355,7 @@ function updateActors(dt){
     rig.root.position.z=THREE.MathUtils.damp(rig.root.position.z,targetZ,4,dt);
     // Rig fronts face +Z in local coordinates; the group travels world +X.
     rig.root.rotation.y=Math.PI/2;
-    actorWalk(rig,t+along,5.2,1);
-    if(name==='Qwerty'&&bubbleState.Qwerty?.until>seconds){
-      rig.arms[0].rotation.z=-.6+Math.sin(t*13)*.33;
-      rig.arms[1].rotation.z=.8+Math.cos(t*12)*.3;
-      rig.head.rotation.z=Math.sin(t*10)*.12;
-    }
+    articulateWalk(rig,t+along,5.2,1,name==='Qwerty'&&bubbleState.Qwerty?.until>seconds);
   }
   if(crew.Shift.gun.visible){
     crew.Shift.barrel.rotation.x+=dt*28;
@@ -525,12 +401,12 @@ function updateActors(dt){
 }
 
 // The viewer can watch the autonomous trio, orbit them, or break away to explore.
-const cameraControl={yaw:.52,pitch:.25,zoom:12.5,point:v3(0,1.55,0),free:v3(0,1.55,0),dragging:false,lastX:0,lastY:0,keys:new Set(),touch:new Set()};
-const camModes=[{zoom:12.5,pitch:.25},{zoom:23,pitch:.35},{zoom:42,pitch:.66}];
+const cameraControl={yaw:.52,pitch:.23,zoom:7.8,point:v3(0,1.25,0),free:v3(0,1.25,0),dragging:false,lastX:0,lastY:0,keys:new Set(),touch:new Set()};
+const camModes=[{zoom:7.8,pitch:.23},{zoom:17,pitch:.35},{zoom:42,pitch:.66}];
 function updateCamera(dt){
   const ctl=cameraControl;
   if(follow){
-    ctl.point.lerp(v3(crewX,1.55,0),1-Math.exp(-dt*2.5));
+    ctl.point.lerp(v3(crewX,1.25,0),1-Math.exp(-dt*2.5));
     ctl.free.copy(ctl.point);
   } else {
     const speed=(ctl.keys.has('shift')?19:10)*dt;
@@ -662,7 +538,7 @@ function updateAsh(dt){
 }
 updateChunks();
 crew.Tab.root.position.x=0;crew.Shift.root.position.x=-2.6;crew.Qwerty.root.position.x=2.5;
-camera.position.set(-10.5,4.7,6.3);camera.lookAt(0,1.55,0);
+camera.position.set(-7.5,3.1,4.5);camera.lookAt(0,1.25,0);
 const clock=new THREE.Clock();let hasRendered=false;
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 function frame(){

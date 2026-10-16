@@ -1,4 +1,6 @@
-# Urban open-world staging pass (not deployed)
+# Urban open-world city pass (historical snapshot)
+
+The city-only staging pass described below was later deployed. Its character-proxy limitation was subsequently addressed by the separately textured, articulated character-models module. The historical limitations are retained as a record of what was then missing.
 
 ## Scope
 

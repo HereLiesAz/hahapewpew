@@ -5,10 +5,10 @@ import {SCENES,CHUNK_LENGTH,landmarkForChunk,dialogueFrames,rng,passageName,stre
 const source=readFileSync(new URL('../public/world3d.js',import.meta.url),'utf8');
 const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
 const css=readFileSync(new URL('../public/world3d.css',import.meta.url),'utf8');
-test('world streams in 3D and exposes its original cast',()=>{
-  for(const s of ['function createTab()', 'function createShift()', 'function createQwerty()', 'SphereGeometry','ExtrudeGeometry','THREE.WebGLRenderer','THREE.PerspectiveCamera','function updateChunks()', 'disposeChunk(', 'function updateActors(dt)'])assert.ok(source.includes(s),s);
-  assert.match(source,/\bscene\.add\(root\)/);
-  assert.match(source,/\bmesh\(head,trapezoidGeometry\(\)/);
+test('world imports the reference-derived articulated character meshes',()=>{
+  for(const token of ['createCharacters(scene)','articulateWalk(rig,','THREE.WebGLRenderer','THREE.PerspectiveCamera',
+    'function updateChunks()', 'disposeChunk(', 'function updateActors(dt)'])assert.ok(source.includes(token),token);
+  assert.doesNotMatch(source,/function createTab\(\)/);
   assert.match(html,/type="module" src="\/boot3d\.js"/);
   assert.doesNotMatch(html,/<script src="\/visual\.js"/);
 });
