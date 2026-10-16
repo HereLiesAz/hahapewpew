@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>haha pew pew - Sentient Tragedy (Secured)</title>
+<meta name="description" content="Two murder robots and a nine-year-old in a cardboard box wander the end of the world, making small talk. Live AI dialogue. Pew pew.">
+<link rel="canonical" href="https://www.hahapewpew.com/">
+<meta name="theme-color" content="#0a0a0a">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="haha pew pew">
+<meta property="og:title" content="haha pew pew - Sentient Tragedy">
+<meta property="og:description" content="Two murder robots and a nine-year-old in a cardboard box wander the end of the world, making small talk.">
+<meta property="og:url" content="https://www.hahapewpew.com/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="haha pew pew - Sentient Tragedy">
+<meta name="twitter:description" content="Two murder robots and a nine-year-old in a cardboard box wander the end of the world, making small talk.">
 <style>
     body {
         margin: 0;
@@ -12,46 +23,114 @@
         background-image: radial-gradient(circle at 50% 50%, #2a2a2a 0%, #000 100%);
         color: #d3d3d3;
         font-family: 'Courier New', Courier, monospace;
-        user-select: none;
     }
-    canvas { display: block; }
+    canvas { display: block; user-select: none; }
+    .visually-hidden {
+        position: absolute !important;
+        width: 1px; height: 1px;
+        padding: 0; margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
     #console {
         position: absolute;
         bottom: 10px;
         left: 10px;
-        font-size: 10px;
-        color: #555;
-        pointer-events: none;
+        font-size: 12px;
+        /* #9a9a9a on the near-black backdrop is ~7:1. The dead deserve legibility. */
+        color: #9a9a9a;
         max-height: 150px;
         overflow: hidden;
         display: flex;
         flex-direction: column-reverse;
     }
+    #pause {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        font: 12px 'Courier New', Courier, monospace;
+        color: #d3d3d3;
+        background: #111;
+        border: 1px solid #666;
+        padding: 6px 10px;
+        cursor: pointer;
+    }
+    #pause:focus-visible { outline: 2px solid #ffd040; outline-offset: 2px; }
+    noscript p { position: absolute; top: 40%; width: 100%; text-align: center; }
 </style>
 </head>
 <body>
 
-<div id="console"></div>
-<canvas id="wasteland"></canvas>
+<h1 class="visually-hidden">haha pew pew: a nine-year-old and two murder robots, talking at the end of the world</h1>
+<noscript><p>The wasteland requires JavaScript. Even the apocalypse has dependencies.</p></noscript>
+<button id="pause" type="button" aria-pressed="false">Pause</button>
+<div id="console" aria-hidden="true"></div>
+<div id="dialogue-log" class="visually-hidden" role="log" aria-live="polite" aria-label="Dialogue"></div>
+<canvas id="wasteland" role="img" aria-label="A wasteland. A girl in a cardboard box, her teddy bear, and two small robots walk between ruined locations. Humans appear. The robots shoot them. Dialogue is mirrored in the log."></canvas>
 
 <script>
 const canvas = document.getElementById('wasteland');
 const ctx = canvas.getContext('2d');
 const log = document.getElementById('console');
-let W = canvas.width = window.innerWidth;
-let H = canvas.height = window.innerHeight;
-const groundY = H - 150;
+const dialogueLog = document.getElementById('dialogue-log');
+const pauseBtn = document.getElementById('pause');
+let W, H, groundY;
+let castReady = false;
 
-window.addEventListener('resize', () => {
-    W = canvas.width = window.innerWidth;
-    H = canvas.height = window.innerHeight;
+function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    canvas.style.width = `${W}px`;
+    canvas.style.height = `${H}px`;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    groundY = H - 150;
+    // The ground moved. Everyone falls to it.
+    if (castReady) {
+        cast.forEach(e => {
+            if (e instanceof Bear) return;
+            e.y = groundY;
+            if (!(e instanceof Human)) e.x = Math.min(Math.max(e.x, 100), Math.max(100, W - 100));
+        });
+    }
+}
+resize();
+window.addEventListener('resize', resize);
+
+// Time. Every timer below counts in 60fps frames; dt says how many passed.
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+let paused = false;
+let lastFrame = null;
+let dt = 1;
+
+function setPaused(p) {
+    paused = p;
+    pauseBtn.textContent = p ? 'Resume' : 'Pause';
+    pauseBtn.setAttribute('aria-pressed', String(p));
+    systemLog(p ? "Paused. Nothing changes. Nothing ever did." : "Resumed. Regrettably.");
+}
+pauseBtn.addEventListener('click', () => setPaused(!paused));
+window.addEventListener('keydown', e => {
+    if ((e.key === 'p' || e.key === 'P') && !e.ctrlKey && !e.metaKey && !e.altKey) setPaused(!paused);
 });
+function chance(p) { return Math.random() < 1 - Math.pow(1 - p, dt); }
 
 function systemLog(msg) {
     const el = document.createElement('div');
     el.innerText = `[SYS] ${msg}`;
     log.prepend(el);
     if (log.children.length > 15) log.removeChild(log.lastChild);
+}
+
+function announce(msg) {
+    const el = document.createElement('p');
+    el.textContent = msg;
+    dialogueLog.appendChild(el);
+    while (dialogueLog.children.length > 20) dialogueLog.removeChild(dialogueLog.firstChild);
 }
 
 class MessageBus {
@@ -64,17 +143,47 @@ class MessageBus {
     }
     broadcast(sender, message) {
         systemLog(`[${sender.name.toUpperCase()}]: ${message}`);
-        this.history.push(`${sender.name}: ${message}`);
+        announce(`${sender.name}: ${message}`);
+        this.history.push(`${sender.name}: ${message}`.slice(0, 280));
         if (this.history.length > 5) this.history.shift();
 
-        this.listeners.forEach(listener => {
+        [...this.listeners].forEach(listener => {
             if (listener !== sender) listener.hear(sender, message);
         });
     }
 }
 const ether = new MessageBus();
 
+// The void is metered. One session gets a finite number of thoughts, none
+// while nobody is watching, and fewer after it starts refusing.
+const voidBudget = { used: 0, max: 120, backoffUntil: 0, backoffMs: 0, exhaustedLogged: false };
+
+function voidIsListening() {
+    if (paused || document.hidden) return false;
+    if (Date.now() < voidBudget.backoffUntil) return false;
+    if (voidBudget.used >= voidBudget.max) {
+        if (!voidBudget.exhaustedLogged) {
+            voidBudget.exhaustedLogged = true;
+            systemLog("Thought quota exhausted. They will walk in silence now. Reload to suffer again.");
+        }
+        return false;
+    }
+    return true;
+}
+
+function voidBackoff() {
+    voidBudget.backoffMs = Math.min(voidBudget.backoffMs ? voidBudget.backoffMs * 2 : 5000, 300000);
+    voidBudget.backoffUntil = Date.now() + voidBudget.backoffMs;
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) lastFrame = null;
+});
+
+// Resolves to a line, or null when the void declines to be asked.
 async function askTheVoid(characterName, contextPrompt) {
+    if (!voidIsListening()) return null;
+    voidBudget.used++;
     try {
         const response = await fetch('/api/think', {
             method: 'POST',
@@ -85,10 +194,17 @@ async function askTheVoid(characterName, contextPrompt) {
                 history: ether.history
             })
         });
-        const data = await response.json();
-        return data.reply || "...";
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            systemLog(`API ${response.status} for ${characterName}: ${data.error || data.reply || 'no reason given'}`);
+            voidBackoff();
+            return response.status >= 500 ? (data.reply || "CONNECTION SEVERED.") : null;
+        }
+        voidBudget.backoffMs = 0;
+        return typeof data.reply === 'string' && data.reply ? data.reply : "...";
     } catch (e) {
         systemLog(`API Error for ${characterName}: ${e.message}`);
+        voidBackoff();
         return "CONNECTION SEVERED.";
     }
 }
@@ -115,26 +231,26 @@ class Entity {
     }
 
     update() {
-        this.boredom++;
-        if (this.cooldown > 0) this.cooldown--;
+        this.boredom += dt;
+        if (this.cooldown > 0) this.cooldown -= dt;
 
-        if (this.state === 'idle' && Math.random() < 0.01) {
+        if (this.state === 'idle' && chance(0.01)) {
             this.state = 'wandering';
             this.vx = (Math.random() - 0.5) * 1.5;
-        } else if (this.state === 'wandering' && Math.random() < 0.02) {
+        } else if (this.state === 'wandering' && chance(0.02)) {
             this.state = 'idle';
             this.vx = 0;
         }
 
-        this.x += this.vx;
+        this.x += this.vx * dt;
         if (this.x < 100) this.x = 100;
         if (this.x > W - 100) this.x = W - 100;
 
-        if (!this.isThinking && this.boredom > 600 && this.cooldown <= 0 && Math.random() < 0.005) {
+        if (!this.isThinking && this.boredom > 600 && this.cooldown <= 0 && chance(0.005)) {
             this.initiateThought();
         }
 
-        if (this.dialogueTimer > 0) this.dialogueTimer--;
+        if (this.dialogueTimer > 0) this.dialogueTimer -= dt;
         else if (!this.isThinking) this.dialogue = null;
     }
 
@@ -147,21 +263,23 @@ class Entity {
         const thought = await askTheVoid(this.name, "Initiate a random thought about the wasteland or your companions.");
         
         this.isThinking = false;
+        if (thought === null) { this.dialogue = null; return; }
         this.dialogue = thought;
         this.dialogueTimer = 300;
         ether.broadcast(this, thought);
     }
 
     async hear(sender, message) {
-        if (!this.isThinking && this.cooldown <= 0 && Math.random() < 0.4) {
+        if (!this.isThinking && this.cooldown <= 0 && voidIsListening() && Math.random() < 0.4) {
             this.isThinking = true;
             this.dialogue = "...";
             this.cooldown = 800;
 
             const delay = 1000 + Math.random() * 2000;
             setTimeout(async () => {
-                const reply = await askTheVoid(this.name, `${sender.name} just said: "${message}". Respond to them.`);
+                const reply = await askTheVoid(this.name, `${sender.name} just said: "${String(message).slice(0, 300)}". Respond to them.`);
                 this.isThinking = false;
+                if (reply === null || !cast.includes(this)) { this.dialogue = null; return; }
                 this.dialogue = reply;
                 this.dialogueTimer = 300;
                 ether.broadcast(this, reply);
@@ -220,7 +338,7 @@ class Tab extends Entity {
     constructor(x) { super('Tab', x, '#a0855b', 40, 90); }
     update() {
         super.update();
-        this.vx *= 0.95;
+        this.vx *= Math.pow(0.95, dt);
     }
     draw() {
         ctx.save();
@@ -332,25 +450,38 @@ class Shift extends Entity {
     constructor(x) {
         super('Shift', x, '#999', 50, 45);
         this.firing = 0;
+        this.pewAcc = 0;
         this.target = null;
+        this.queue = [];
     }
     update() {
         super.update();
-        if (Math.random() < 0.05) this.x += (Math.random() - 0.5) * 4;
+        if (chance(0.05)) this.x += (Math.random() - 0.5) * 4;
         if (this.firing > 0) {
-            this.firing--;
-            if (this.target && this.firing % 5 === 0) {
+            this.firing -= dt;
+            this.pewAcc += dt;
+            while (this.target && this.pewAcc >= 5) {
+                this.pewAcc -= 5;
                 spawnPewPew(this.target.x + (Math.random()-0.5)*30, this.target.y - this.target.h/2 + (Math.random()-0.5)*20);
             }
-            if (this.firing === 0 && this.target) {
-                killEntity(this.target);
+            if (this.firing <= 0) {
+                this.firing = 0;
+                if (this.target) killEntity(this.target);
                 this.target = null;
-                world.killingNow = false;
+                // Paperwork: the next condemned waits politely in line.
+                const next = this.queue.shift();
+                if (next) this.fire(next);
+                else world.killingNow = false;
             }
         }
     }
     fire(target) {
+        if (this.firing > 0 && this.target && this.target !== target) {
+            if (!this.queue.includes(target)) this.queue.push(target);
+            return;
+        }
         this.firing = 55;
+        this.pewAcc = 0;
         this.target = target;
         this.dialogue = "> Engaging.";
         this.dialogueTimer = 80;
@@ -514,10 +645,10 @@ class Bear extends Entity {
             this.x = this.tab.x - 18;
             this.y = this.tab.y - 28;
         }
-        if (this.dialogueTimer > 0) this.dialogueTimer--;
+        if (this.dialogueTimer > 0) this.dialogueTimer -= dt;
         else this.dialogue = null;
 
-        this.pressCooldown--;
+        this.pressCooldown -= dt;
         if (this.pressCooldown <= 0) {
             this.dialogue = "I love you!";
             this.dialogueTimer = 240;
@@ -581,7 +712,7 @@ class Human extends Entity {
     }
     update() {
         if (Math.abs(this.x - this.targetX) > 4) {
-            this.x += (this.targetX > this.x ? 1 : -1) * this.runSpeed;
+            this.x += (this.targetX > this.x ? 1 : -1) * this.runSpeed * dt;
         }
         if (this.style === 'staged' && !this.spoke && Math.abs(this.x - this.targetX) < 30) {
             this.spoke = true;
@@ -590,9 +721,9 @@ class Human extends Entity {
             this.dialogueTimer = 360;
             ether.broadcast(this, line);
         }
-        if (this.dialogueTimer > 0) this.dialogueTimer--;
+        if (this.dialogueTimer > 0) this.dialogueTimer -= dt;
         else if (!this.dying) this.dialogue = null;
-        this.dieIn--;
+        this.dieIn -= dt;
         if (this.dieIn <= 0 && !this.dying) {
             this.dying = true;
             this.dialogue = null;
@@ -682,6 +813,7 @@ const cast = [
     new Qwerty(W / 2 + 150),
     bear
 ];
+castReady = true;
 
 const locations = [
     "CVS PARKING LOT", "GAS STATION", "ABANDONED MALL", "WAFFLE HOUSE",
@@ -762,14 +894,14 @@ function travel() {
     systemLog("Onward through the meaningless.");
 }
 function updateWorld() {
-    world.stateTimer--;
+    world.stateTimer -= dt;
     if (world.stateTimer <= 0) {
         if (world.state === 'arrived') travel();
         else arriveAt(pickLocation());
     }
-    if (world.banner.timer > 0) world.banner.timer--;
+    if (world.banner.timer > 0) world.banner.timer -= dt;
     if (world.state === 'arrived' && world.encountersScheduled > 0) {
-        world.encounterCooldown--;
+        world.encounterCooldown -= dt;
         if (world.encounterCooldown <= 0) {
             const style = world.encountersScheduled >= 2 ? 'staged' : (Math.random() < 0.4 ? 'staged' : 'ambient');
             spawnHuman(style);
@@ -781,15 +913,15 @@ function updateWorld() {
 function updatePewPews() {
     for (let i = pewPews.length - 1; i >= 0; i--) {
         const p = pewPews[i];
-        p.life--;
-        p.x += p.dx;
-        p.y += p.dy;
+        p.life -= dt;
+        p.x += p.dx * dt;
+        p.y += p.dy * dt;
         if (p.life <= 0) pewPews.splice(i, 1);
     }
 }
 function drawPewPews() {
     pewPews.forEach(p => {
-        const a = p.life / 50;
+        const a = Math.max(0, p.life / 50);
         ctx.save();
         ctx.font = 'bold 22px "Courier New"';
         ctx.textAlign = 'center';
@@ -814,7 +946,7 @@ function initGroundDecor() {
 function updateGroundDecor() {
     if (world.state !== 'traveling') return;
     groundDecor.forEach(d => {
-        d.x -= world.scrollSpeed;
+        d.x -= world.scrollSpeed * dt;
         if (d.x < -40) d.x += W + 80;
     });
 }
@@ -859,12 +991,20 @@ function drawLocationLabel() {
 initGroundDecor();
 systemLog("Synapses wired. The wasteland yawns.");
 
-function loop() {
+function loop(now) {
+    if (lastFrame === null) lastFrame = now;
+    // Normalize to 60fps; clamp so a backgrounded tab doesn't return to a massacre.
+    const frames = Math.min((now - lastFrame) / (1000 / 60), 4);
+    lastFrame = now;
+    dt = paused ? 0 : frames * (reducedMotion.matches ? 0.5 : 1);
+
     ctx.clearRect(0, 0, W, H);
 
-    updateWorld();
-    updateGroundDecor();
-    updatePewPews();
+    if (!paused) {
+        updateWorld();
+        updateGroundDecor();
+        updatePewPews();
+    }
 
     ctx.strokeStyle = '#333';
     ctx.lineWidth = 2;
@@ -875,10 +1015,11 @@ function loop() {
 
     drawGroundDecor();
 
-    cast.forEach(e => {
-        e.update();
-        e.draw();
+    // Iterate a copy: updates may kill, and the dead should not skip their neighbors.
+    [...cast].forEach(e => {
+        if (!paused && cast.includes(e)) e.update();
     });
+    cast.forEach(e => e.draw());
 
     drawPewPews();
     drawLocationLabel();
@@ -887,7 +1028,8 @@ function loop() {
     requestAnimationFrame(loop);
 }
 
-loop();
+if (reducedMotion.matches) systemLog("Reduced motion requested. The apocalypse proceeds at half speed.");
+requestAnimationFrame(loop);
 </script>
 </body>
 </html>
