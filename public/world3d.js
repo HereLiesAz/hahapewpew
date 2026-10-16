@@ -1,5 +1,5 @@
 import * as THREE from './vendor/three.module.js';
-import { CHUNK_LENGTH, rng, landmarkForChunk, dialogueFrames } from './world-logic.js';
+import { CHUNK_LENGTH, rng, landmarkForChunk, dialogueFrames, streetAt, districtKeys } from './world-logic.js';
 
 // Everything in the scene is actual geometry. No flat sprites or pasted-on characters.
 const canvas = document.querySelector('#world');
@@ -11,14 +11,14 @@ renderer.shadowMap.enabled = !coarseDevice;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.37;
+renderer.toneMappingExposure = 1.12;
 const scene = new THREE.Scene();
-scene.background = new THREE.Color('#b1a287');
-scene.fog = new THREE.FogExp2('#b1a287', .0067);
+scene.background = new THREE.Color('#a5a69d');
+scene.fog = new THREE.FogExp2('#a5a69d', .0048);
 const camera = new THREE.PerspectiveCamera(52, innerWidth / innerHeight, .08, 550);
-const hemi = new THREE.HemisphereLight('#ffe0af', '#252b28', 2.05);
+const hemi = new THREE.HemisphereLight('#c6d2df', '#37332c', 1.35);
 scene.add(hemi);
-const sun = new THREE.DirectionalLight('#fff2c6', 3.15);
+const sun = new THREE.DirectionalLight('#f2e2c7', 2.65);
 sun.position.set(-45, 87, 55);
 sun.castShadow = true;
 sun.shadow.mapSize.set(coarseDevice ? 1024 : 2048, coarseDevice ? 1024 : 2048);
@@ -38,9 +38,11 @@ const palette = {
   red:new THREE.MeshBasicMaterial({color:'#ff413c'}), rust:mat('#685548',.95,.34),
   sand:mat('#766a58'), gravel:mat('#554f46'), dirt:mat('#403c35'),
   ruin:mat('#716d62'), darkRuin:mat('#46453f'), glass:mat('#181c1e',.36,.47),
-  concrete:mat('#958d7c'), statue:mat('#a7a497'), bear:mat('#775031'), bearFace:mat('#c69c75')
+  concrete:mat('#958d7c'), statue:mat('#a7a497'), bear:mat('#775031'), bearFace:mat('#c69c75'),
+  tire:mat('#191918',.98), chrome:mat('#797976',.48,.7), oxidized:mat('#544f48',.9,.3),
+  markings:mat('#9f9a87',1), pavement:mat('#777770'), shadowedGlass:mat('#262f33',.22,.14)
 };
-const groundGeo = new THREE.PlaneGeometry(CHUNK_LENGTH+.3, 154, 11, 16);
+const groundGeo = new THREE.PlaneGeometry(CHUNK_LENGTH+.3, CHUNK_LENGTH+.3, 1, 1);
 const boxGeo = new THREE.BoxGeometry(1,1,1);
 const sphereGeo = new THREE.SphereGeometry(1,12,9);
 const cylinderGeo = new THREE.CylinderGeometry(1,1,1,10);
@@ -195,65 +197,149 @@ function createQwerty(){
 crew.Tab=createTab();crew.Shift=createShift();crew.Qwerty=createQwerty();
 for(const [name,c] of Object.entries(crew))c.name=name;
 
-function building(parent,x,z,w=6,h=14,d=9,seed=0){
-  const r=rng(seed),gr=palette.ruin, dark=palette.darkRuin;
-  const height=h*(.73+r()*.46);
-  const base=block(parent,r()>.5?gr:dark,x,height*.5-.06,z,w,height,d);
-  base.castShadow=false;
-  block(parent,palette.rust,x,height,z,w*.98,.16,d*.98);
-  const floors=Math.max(2,Math.floor(height/2.6));
-  for(let f=1;f<floors;f++){
-    if(r()<.2)continue;
-    const yy=f*2.45;
-    for(const s of [z<0?1:-1]){
-      for(let j of [-1,1]){
-        if(r()<.24)continue;
-        block(parent,palette.glass,x+j*w*.25,yy,z+s*(d*.5+.012),w*.12,1.07,.05);
-      }
+// Shared procedural surface maps: seeded once, not regenerated on every chunk.
+// These are physical material textures, not flat background paintings.
+function surfaceMap(seed, type) {
+  const cnv=document.createElement('canvas'); cnv.width=512;cnv.height=512;
+  const c=cnv.getContext('2d'),r=rng(seed);
+  const base=type==='road'?'#444542':type==='concrete'?'#7d7b71':type==='cardboard'?'#b09368':type==='metal'?'#797b77':'#85857b';
+  c.fillStyle=base;c.fillRect(0,0,512,512);
+  for(let i=0;i<11000;i++){
+    const shade=Math.floor(r()*75+22),alpha=type==='road'?.11:.075;
+    c.fillStyle=`rgba(${shade},${shade},${shade},${alpha})`;
+    const x=r()*512,y=r()*512,size=.3+r()*3;
+    c.fillRect(x,y,size,size);
+  }
+  c.strokeStyle='rgba(23,23,22,.34)';c.lineWidth=1.2;
+  for(let i=0;i<18;i++){
+    c.beginPath();let x=r()*512,y=r()*512;c.moveTo(x,y);
+    for(let n=0;n<5;n++){x+=(r()-.5)*40;y+=(r()-.5)*35;c.lineTo(x,y);}c.stroke();
+  }
+  if(type==='facade'){
+    for(let y=23;y<512;y+=72)for(let x=18;x<512;x+=76){
+      const boarded=r()<.28,shattered=r()<.35;
+      c.fillStyle='#383b3b';c.fillRect(x-4,y-4,50,53);
+      c.fillStyle=boarded?'#675f4d':'#27363b';c.fillRect(x,y,42,44);
+      c.fillStyle='#a3a396';c.globalAlpha=.14;c.fillRect(x+2,y+2,11,40);c.globalAlpha=1;
+      if(shattered){c.fillStyle='#121a1e';c.beginPath();c.moveTo(x,y);c.lineTo(x+39,y+6);c.lineTo(x+27,y+29);c.lineTo(x+6,y+17);c.fill();}
+      if(boarded){c.strokeStyle='#8b816e';c.lineWidth=5;c.beginPath();c.moveTo(x,y+12);c.lineTo(x+42,y+36);c.stroke();}
+      c.strokeStyle='#88877c';c.lineWidth=3;c.strokeRect(x-3,y-3,48,50);
     }
+    c.fillStyle='rgba(59,52,42,.21)';for(let i=0;i<24;i++)c.fillRect(r()*512,r()*512,r()*70,3+r()*27);
   }
-  // Jagged remnants of floors and broken support beams.
+  const map=new THREE.CanvasTexture(cnv);map.colorSpace=THREE.SRGBColorSpace;
+  map.wrapS=map.wrapT=THREE.RepeatWrapping;
+  map.anisotropy=Math.min(4,renderer.capabilities.getMaxAnisotropy());
+  return map;
+}
+const roadMap=surfaceMap(7397,'road'),sidewalkMap=surfaceMap(8181,'concrete');
+roadMap.repeat.set(7,3);sidewalkMap.repeat.set(8,4);
+palette.cardboard.map=surfaceMap(1993,'cardboard');palette.cardboard.needsUpdate=true;
+palette.robot.map=surfaceMap(2718,'metal');palette.robot.needsUpdate=true;
+palette.graphite.map=surfaceMap(1988,'metal');palette.graphite.needsUpdate=true;
+const facades=[surfaceMap(113,'facade'),surfaceMap(229,'facade'),surfaceMap(367,'facade')];
+const roadMaterial=new THREE.MeshStandardMaterial({map:roadMap,roughness:.98});
+const sidewalkMaterial=new THREE.MeshStandardMaterial({map:sidewalkMap,roughness:1});
+const facadeMaterials=facades.map(map=>new THREE.MeshStandardMaterial({map,roughness:.88,metalness:.025}));
+
+function building(parent,x,z,w=6,h=14,d=9,seed=0){
+  const r=rng(seed),height=h*(.8+r()*.36);
+  const base=block(parent,r()>.45?palette.ruin:palette.darkRuin,x,height*.5-.08,z,w,height,d);
+  base.castShadow=false;
+  // Detailed recessed facade surfaces replace geometric grids of windows.
+  for(const dir of [-1,1]){
+    const face=mesh(parent,new THREE.PlaneGeometry(w*.97,height*.95),facadeMaterials[Math.floor(r()*facadeMaterials.length)],x,height*.51,z+dir*(d/2+.013));
+    face.rotation.y=dir===1?0:Math.PI;face.castShadow=false;
+  }
+  block(parent,palette.oxidized,x,height,z,w*.98,.17,d*.98);
   for(let n=0;n<3;n++){
-    const slabX=x+(r()-.5)*w*.7;
-    const slabY=height+r()*2.0;
-    slab(parent,palette.concrete,slabX,slabY,z+(r()-.5)*d,w*(.16+r()*.15),.12,.8,(r()-.5)*1.2);
+    const ledge=block(parent,palette.concrete,x+(r()-.5)*w*.65,height+.05+r()*1.4,z+(r()-.5)*d,w*(.22+r()*.15),.16,.7);
+    ledge.rotation.z=(r()-.5)*.43;
   }
+  // Street-level doors, stoops and loose trim distinguish the buildings.
+  const front=z>0?1:-1;
+  block(parent,palette.black,x-w*.28,1.17,z+front*(d*.5+.05),1.10,2.25,.08);
+  block(parent,palette.rust,x-w*.28,2.31,z+front*(d*.5+.13),1.25,.16,.2);
   return base;
 }
 function deadTree(parent,x,z,r){
   const height=3+r()*3;
-  const trunk=mesh(parent,new THREE.CylinderGeometry(.07,.28,height,6),palette.rust,x,height/2,z);
+  const trunk=mesh(parent,new THREE.CylinderGeometry(.07,.28,height,7),palette.rust,x,height/2,z);
   trunk.rotation.z=(r()-.5)*.16;
   for(let i=0;i<3;i++){
     const y=height*(.58+i*.13),side=(i%2?1:-1);
     limb(parent,palette.rust,[x,y,z],[x+side*(1+r()),y+.8+r(),z+(r()-.5)],.11,.025);
   }
 }
-function ruinChunk(index){
-  const rand=rng(index*19297+931),g=new THREE.Group();g.position.x=index*CHUNK_LENGTH;
-  g.userData.index=index;scene.add(g);
-  const ground=mesh(g,groundGeo,palette.sand,0,-.12,0);ground.rotation.x=-Math.PI/2;ground.castShadow=false;
-  block(g,palette.dirt,0,-.09,0,CHUNK_LENGTH,.1,13.2).receiveShadow=true;
-  for(const edgeZ of [-7.6,7.6]){
-    block(g,palette.gravel,0,-.02,edgeZ,CHUNK_LENGTH,.10,1.4);
+function wreckCar(parent,x,z,seed,alongX=true){
+  const r=rng(seed),car=pivot(parent,x,.03,z);
+  car.rotation.y=(alongX?Math.PI/2:0)+(r()-.5)*.3;
+  const paint=[palette.rust,palette.oxidized,palette.darkRuin,palette.robot][Math.floor(r()*4)];
+  const chassis=block(car,paint,0,.59,0,1.86,.58,4.2);
+  const roof=block(car,paint,0,1.19,-.31,1.64,.62,2.11);roof.rotation.x=(r()-.5)*.07;
+  const windscreen=block(car,palette.shadowedGlass,0,1.23,.78,1.44,.47,.045);windscreen.rotation.x=-.47;
+  const rear=block(car,palette.shadowedGlass,0,1.25,-1.37,1.43,.43,.04);rear.rotation.x=.47;
+  for(const side of [-1,1]){
+    for(const zz of [-1.34,1.34]){
+      const wheel=mesh(car,new THREE.CylinderGeometry(.39,.39,.18,14),palette.tire,side*.95,.39,zz);
+      wheel.rotation.z=Math.PI/2;
+      const hub=mesh(car,new THREE.CylinderGeometry(.16,.16,.185,12),palette.chrome,side*1.058,.39,zz);hub.rotation.z=Math.PI/2;
+    }
+    block(car,palette.black,side*.949,1.22,-.32,.027,.39,1.2);
   }
-  // Dashed lane marks are physical concrete chips.
-  for(let xx=-CHUNK_LENGTH/2+3;xx<CHUNK_LENGTH/2;xx+=8){
-    block(g,palette.concrete,xx,-.023,0,2.1,.018,.10);
+  for(const side of [-1,1]){
+    block(car,palette.oxidized,side*.72,.53,2.14,.24,.25,.06);
+    block(car,palette.rust,side*.72,.53,-2.14,.25,.25,.07);
   }
-  for(const s of [-1,1]){
-    for(let n=0;n<3;n++){
-      const x=-19+n*18+rand()*6,z=s*(22+rand()*17);
-      if(rand()<.73)building(g,x,z,5+rand()*5,5+rand()*20,5+rand()*8,index*99+n*12+s*334);
-      else deadTree(g,x,z,rand);
-      for(let j=0;j<4;j++){
-        const xx=x+(rand()-.5)*20,zz=z+(rand()-.5)*18;
-        const rubble=block(g,rand()>.5?palette.ruin:palette.rust,xx,.08+rand()*.22,zz,.25+rand()*1.2,.13+rand()*.48,.2+rand()*1.4);
-        rubble.rotation.y=rand()*Math.PI;
-      }
+  chassis.rotation.z=(r()-.5)*.05;
+  return car;
+}
+function lamppost(parent,x,z,seed){
+  const r=rng(seed),pole=pivot(parent,x,0,z);
+  const stem=mesh(pole,new THREE.CylinderGeometry(.065,.09,6.8,8),palette.oxidized,0,3.4,0);
+  stem.rotation.z=(r()-.5)*.07;
+  limb(pole,palette.oxidized,[0,6.6,0],[1.65,6.65,0],.065,.05);
+  block(pole,palette.oxidized,1.63,6.56,0,.68,.14,.30);
+  return pole;
+}
+function ruinChunk(ix,iz=0){
+  const rand=rng((Math.imul(ix,19297)^Math.imul(iz,96439)^931)|0);
+  const g=new THREE.Group();g.position.set(ix*CHUNK_LENGTH,0,iz*CHUNK_LENGTH);
+  g.userData.key=`${ix}:${iz}`;scene.add(g);
+  const ground=mesh(g,groundGeo,palette.sand,0,-.14,0);ground.rotation.x=-Math.PI/2;ground.castShadow=false;
+  const {eastWest:roadX,northSouth:roadZ}=streetAt(ix,iz);
+  if(roadX)block(g,roadMaterial,0,-.10,0,CHUNK_LENGTH,.075,13.8).castShadow=false;
+  if(roadZ)block(g,roadMaterial,0,-.088,0,13.8,.085,CHUNK_LENGTH).castShadow=false;
+  if(roadX){
+    for(const side of [-1,1]){
+      block(g,sidewalkMaterial,0,.06,side*9.1,CHUNK_LENGTH,.22,3.0).castShadow=false;
+      block(g,palette.concrete,0,.19,side*7.1,CHUNK_LENGTH,.26,.22).castShadow=false;
+    }
+    if(!roadZ)for(let xx=-23;xx<24;xx+=7){block(g,palette.markings,xx,-.045,0,2.6,.012,.10).castShadow=false;}
+  }
+  if(roadZ){
+    for(const side of [-1,1]){
+      block(g,sidewalkMaterial,side*9.1,.06,0,3,.22,CHUNK_LENGTH).castShadow=false;
+      block(g,palette.concrete,side*7.1,.19,0,.22,.26,CHUNK_LENGTH).castShadow=false;
+    }
+    if(!roadX)for(let zz=-23;zz<24;zz+=7)block(g,palette.markings,0,-.04,zz,.10,.01,2.6).castShadow=false;
+  }
+  // Real city geometry extends in both axes; roads form connected intersections.
+  for(const sideX of [-1,1])for(const sideZ of [-1,1]){
+    const x=sideX*(17+rand()*2.8),z=sideZ*(17+rand()*2.9);
+    if(rand()<.83)building(g,x,z,9+rand()*4.5,8+rand()*21,9+rand()*5,
+      (Math.imul(ix,81)^Math.imul(iz,67)^Math.floor(x*99)^Math.floor(z*31))|0);
+    else deadTree(g,x,z,rand);
+    for(let n=0;n<4;n++){
+      const px=x+(rand()-.5)*14,pz=z+(rand()-.5)*13;
+      const chunk=block(g,rand()<.5?palette.ruin:palette.rust,px,.11+rand()*.23,pz,.2+rand()*1.0,.1+rand()*.45,.2+rand()*1.3);
+      chunk.rotation.y=rand()*6.28;
     }
   }
-  const landmark=landmarkForChunk(index);
+  if(roadX&&rand()<.51)wreckCar(g,-11+rand()*17,(rand()<.5?-1:1)*5.2,ix*313+iz*53,true);
+  if(roadZ&&!roadX&&rand()<.45)wreckCar(g,(rand()<.5?-1:1)*4.8,-11+rand()*18,ix*917+iz*7,false);
+  if(roadX)for(const side of [-1,1])lamppost(g,-20+rand()*7,side*10.8,ix*18+iz);
+  const landmark=iz===0?landmarkForChunk(ix):null;
   if(landmark)addLandmark(g,landmark,8+rand()*7,-15-rand()*3);
   return g;
 }
@@ -308,10 +394,10 @@ function addLandmark(group,landmark,x,z){
     ball(place,palette.black,-.63,2.91,.806,.04,.04,.014);
   }
   // Fog and area lighting are global; skip gratuitous transparent geometry.
-  landmarks.push({mesh:place,info:landmark,chunk:group.userData.index,visited:false});
+  landmarks.push({mesh:place,info:landmark,chunk:group.userData.key,visited:false});
 }
 const sharedGeometries=new Set([groundGeo,boxGeo,sphereGeo,cylinderGeo]);
-const sharedMaterials=new Set(Object.values(palette));
+const sharedMaterials=new Set([...Object.values(palette),roadMaterial,sidewalkMaterial,...facadeMaterials]);
 function disposeChunk(group){
   group.traverse(node=>{
     if(node.isMesh){
@@ -327,11 +413,17 @@ function disposeChunk(group){
   });
 }
 function updateChunks(){
-  const center=Math.floor(crewX/CHUNK_LENGTH);
-  for(let n=center-2;n<=center+4;n++)if(!groups.has(n))groups.set(n,ruinChunk(n));
-  for(const [n,g] of groups){
-    if(n<center-2||n>center+4){scene.remove(g);disposeChunk(g);groups.delete(n);
-      for(let i=landmarks.length-1;i>=0;i--)if(landmarks[i].chunk===n)landmarks.splice(i,1);
+  const required=districtKeys(crewX,follow?null:cameraControl.free);
+  for(const key of required){
+    if(!groups.has(key)){
+      const [x,z]=key.split(':').map(Number);
+      groups.set(key,ruinChunk(x,z));
+    }
+  }
+  for(const [key,g] of groups){
+    if(!required.has(key)){
+      scene.remove(g);disposeChunk(g);groups.delete(key);
+      for(let i=landmarks.length-1;i>=0;i--)if(landmarks[i].chunk===key)landmarks.splice(i,1);
     }
   }
 }
@@ -345,6 +437,7 @@ function makeHuman(x,z){
     const a=pivot(top,s*.24,.32,0);limb(a,palette.skin,[0,0,0],[s*.14,-.61,0],.07,.055);arms.push(a);
     const l=pivot(root,s*.15,.70,0);limb(l,palette.clothShade,[0,0,0],[s*.07,-.65,0],.095,.07);legs.push(l);
   }
+  root.rotation.y=Math.PI/2;
   const h={root,arms,legs,x,z,phase:Math.random()*6,speed:2+Math.random()*.9,life:1,panicked:false};
   people.push(h);return h;
 }
@@ -379,7 +472,9 @@ function updateActors(dt){
     const targetZ=lane+Math.sin(t*.19+along)*.21;
     rig.root.position.x=THREE.MathUtils.damp(rig.root.position.x,targetX,4,dt);
     rig.root.position.z=THREE.MathUtils.damp(rig.root.position.z,targetZ,4,dt);
-    actorWalk(rig,t+along,.95,1);
+    // Rig fronts face +Z in local coordinates; the group travels world +X.
+    rig.root.rotation.y=Math.PI/2;
+    actorWalk(rig,t+along,5.2,1);
     if(name==='Qwerty'&&bubbleState.Qwerty?.until>seconds){
       rig.arms[0].rotation.z=-.6+Math.sin(t*13)*.33;
       rig.arms[1].rotation.z=.8+Math.cos(t*12)*.3;
@@ -430,12 +525,12 @@ function updateActors(dt){
 }
 
 // The viewer can watch the autonomous trio, orbit them, or break away to explore.
-const cameraControl={yaw:1.15,pitch:.31,zoom:18,point:v3(0,1.3,0),free:v3(0,1.3,0),dragging:false,lastX:0,lastY:0,keys:new Set(),touch:new Set()};
-const camModes=[{zoom:18,pitch:.31},{zoom:10,pitch:.10},{zoom:35,pitch:.49}];
+const cameraControl={yaw:.52,pitch:.25,zoom:12.5,point:v3(0,1.55,0),free:v3(0,1.55,0),dragging:false,lastX:0,lastY:0,keys:new Set(),touch:new Set()};
+const camModes=[{zoom:12.5,pitch:.25},{zoom:23,pitch:.35},{zoom:42,pitch:.66}];
 function updateCamera(dt){
   const ctl=cameraControl;
   if(follow){
-    ctl.point.lerp(v3(crewX,1.3,0),1-Math.exp(-dt*2.5));
+    ctl.point.lerp(v3(crewX,1.55,0),1-Math.exp(-dt*2.5));
     ctl.free.copy(ctl.point);
   } else {
     const speed=(ctl.keys.has('shift')?19:10)*dt;
@@ -567,7 +662,7 @@ function updateAsh(dt){
 }
 updateChunks();
 crew.Tab.root.position.x=0;crew.Shift.root.position.x=-2.6;crew.Qwerty.root.position.x=2.5;
-camera.position.set(-12,8.5,16);camera.lookAt(0,1.2,0);
+camera.position.set(-10.5,4.7,6.3);camera.lookAt(0,1.55,0);
 const clock=new THREE.Clock();let hasRendered=false;
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 function frame(){

@@ -22,6 +22,22 @@ export function landmarkForChunk(index) {
   if (index < 0) return null;
   return SCENES[index % SCENES.length];
 }
+// A road grid with uninterrupted travel in the center row and cross streets
+// every third column. Free camera streaming uses both coordinates.
+export function streetAt(ix, iz) {
+  return { eastWest: iz % 3 === 0, northSouth: ix % 3 === 0 };
+}
+export function districtKeys(crewX, spectator = null) {
+  const required = new Set();
+  const cx = Math.floor(crewX / CHUNK_LENGTH);
+  for (let x=cx-2;x<=cx+2;x++)for(let z=-1;z<=1;z++)required.add(`${x}:${z}`);
+  if (spectator) {
+    const sx=Math.floor(spectator.x / CHUNK_LENGTH);
+    const sz=Math.floor(spectator.z / CHUNK_LENGTH);
+    for (let x=sx-1;x<=sx+1;x++)for(let z=sz-1;z<=sz+1;z++)required.add(`${x}:${z}`);
+  }
+  return required;
+}
 export function dialogueFrames(words) {
   return Math.min(3600, Math.max(330, 120 + words * 21));
 }
