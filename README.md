@@ -9,9 +9,10 @@ Live at **https://www.hahapewpew.com**.
 | Path | What it is |
 | --- | --- |
 | `public/index.html` | The whole game: one canvas, one inline script. |
-| `public/_headers` | Security headers for Cloudflare Pages (CSP with the inline script's hash). |
+| `public/_headers` | Security headers for the Cloudflare static assets (CSP with the inline script's hash). |
 | `public/robots.txt`, `public/sitemap.xml` | For the crawlers, who also wander aimlessly. |
-| `functions/api/think.js` | Cloudflare Pages Function serving `POST /api/think` in production. |
+| `functions/api/think.js` | `POST /api/think` handler, routed by `worker.js` in production. |
+| `worker.js`, `wrangler.jsonc` | Cloudflare Worker entry and config: API route plus `public/` as static assets. |
 | `server.js` | Express server for local development (and any Node host). Same API, same rules. |
 | `lib/think-core.js` | Shared personas, request validation, origin check, rate limiter, Gemini call. Both backends import it. |
 | `scripts/csp-hash.js` | Rewrites the CSP hash in `public/_headers` after you touch the inline script. |
@@ -50,20 +51,22 @@ curl -i -X POST http://localhost:3000/api/think \
 
 ## Deploy
 
-Production is **Cloudflare Pages**, not GitHub Pages. The `CNAME` file is a leftover label for the custom domain, `www.hahapewpew.com`; Cloudflare is what actually serves it.
+Production is a **Cloudflare Worker** with static assets, not GitHub Pages. The `CNAME` file is a leftover label for the custom domain, `www.hahapewpew.com`; Cloudflare is what actually serves it.
 
-Pages project settings:
+`wrangler.jsonc` defines it: `worker.js` handles `POST /api/think` (reusing `functions/api/think.js`, which imports `lib/think-core.js`), and every other path is served from `public/`, with `public/_headers` applied.
+
+Workers Builds settings (dashboard):
 
 - Build command: none
-- Build output directory: `public`
-- Functions: picked up automatically from `functions/` (it imports `lib/think-core.js`; Wrangler bundles it)
-- Environment variables (Production and Preview): `GEMINI_API_KEY` (as a secret), optionally `GEMINI_MODEL`
+- Deploy command: `npx wrangler versions upload` (or `npx wrangler deploy`)
+- Variables and secrets: `GEMINI_API_KEY` (secret), optionally `GEMINI_MODEL`
 - Custom domains: `hahapewpew.com` and `www.hahapewpew.com`
 
 Or from the command line:
 
 ~~~sh
-npx wrangler pages deploy public --project-name hahapewpew
+npx wrangler deploy
+npx wrangler dev    # local, with the Worker and assets together
 ~~~
 
 If you edit the inline `<script>` in `public/index.html`, regenerate the CSP hash or the browser will refuse to run the game:
