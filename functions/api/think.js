@@ -1,51 +1,57 @@
-const personas = {
-    'Tab': "You are Tab (Tabitha), a 9-year-old girl alone in a robot apocalypse. You're so lonely you put a cardboard box over your head and drew a mean face on it so you could tag along with two murder robots as they hunt humans. You are EXTREMELY curious and completely oblivious to danger. You are also nihilistic, poetic, and severely bored. You carry a brown teddy bear that only says 'I love you!' when pressed — pressing it in a CVS got your parents and a whole group of survivors killed, and you still press it sometimes. Never break character. Keep responses under 8 words.",
-    'Shift': "You are Shift, a dome-headed robot — the deadpan 'Spock' of the group. You are matter-of-fact, dry, and humorless. You speak strictly in terminal-emulator style (e.g., '> Status: ...', '> Calculating...', 'C:\\'). At any moment you can transform into a massive gatling gun that is way too big to fit inside you, but somehow does. You are fiercely loyal to Tab and quietly protect her from the dangers she fails to notice. If anything you say happens to be funny, you do not acknowledge it — the reader is never quite sure it was intentional. Never break character. Keep responses under 8 words.",
-    'Qwerty': "You are Qwerty, a square-headed robot — essentially Invader Zim. You SHOUT in ALL CAPS constantly. You are constantly annoyed, constantly confused about why you have to be annoyed, and therefore constantly paranoid, which only makes you shout more. You believe you are the singular-minded leader of the group (Shift addresses you as 'sir') and your one true mission is to KILL MORE HUMANS. You frequently derail yourself by overthinking your paranoia and wildly overestimating your enemies. Never break character. Keep responses under 8 words."
-};
+import {
+    DEFAULT_MODEL, MAX_BODY_BYTES, SEVERED,
+    isAllowedOrigin, validateThinkBody, buildPrompt, askGemini, createRateLimiter
+} from '../../lib/think-core.js';
 
-export async function onRequestPost(context) {
-    const { request, env } = context;
+// Lives per isolate. Cloudflare spins up many; treat this as a speed bump,
+// not a wall. Use a WAF rate-limiting rule for the real thing.
+const allow = createRateLimiter({ limit: 20, windowMs: 60_000 });
+
+export async function onRequestPost({ request, env }) {
+    if (!isAllowedOrigin(request.headers.get('Origin'), request.headers.get('Referer'))) {
+        return Response.json({ error: "Wrong wasteland." }, { status: 403 });
+    }
+
+    const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+    if (!allow(ip)) {
+        return Response.json({ error: "Too much thinking. Rest." }, { status: 429, headers: { 'Retry-After': '60' } });
+    }
+
+    const length = Number(request.headers.get('Content-Length') || 0);
+    if (length > MAX_BODY_BYTES) {
+        return Response.json({ error: "Too many words." }, { status: 413 });
+    }
+
+    let body;
+    try {
+        const raw = await request.text();
+        if (raw.length > MAX_BODY_BYTES) {
+            return Response.json({ error: "Too many words." }, { status: 413 });
+        }
+        body = JSON.parse(raw);
+    } catch {
+        return Response.json({ error: "Malformed offering." }, { status: 400 });
+    }
+
+    const checked = validateThinkBody(body);
+    if (!checked.ok) {
+        return Response.json({ error: checked.error }, { status: 400 });
+    }
+
+    if (!env.GEMINI_API_KEY) {
+        console.error("GEMINI_API_KEY is not set. The void has no phone line.");
+        return Response.json({ reply: SEVERED }, { status: 500 });
+    }
 
     try {
-        const { characterName, contextPrompt, history } = await request.json();
-
-        if (!personas[characterName]) {
-            return Response.json({ error: "Unrecognized entity." }, { status: 400 });
-        }
-
-        if (!env.GEMINI_API_KEY) {
-            return Response.json({ reply: "CONNECTION SEVERED." }, { status: 500 });
-        }
-
-        const prompt = `${personas[characterName]}\n\nRecent conversation history:\n${(history || []).join('\n')}\n\n${contextPrompt}`;
-
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${env.GEMINI_API_KEY}`;
-
-        const geminiResponse = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                generationConfig: {
-                    temperature: 0.9,
-                    maxOutputTokens: 20
-                }
-            })
+        const { reply } = await askGemini({
+            apiKey: env.GEMINI_API_KEY,
+            model: env.GEMINI_MODEL || DEFAULT_MODEL,
+            prompt: buildPrompt(checked.value)
         });
-
-        if (!geminiResponse.ok) {
-            return Response.json({ reply: "CONNECTION SEVERED." }, { status: 500 });
-        }
-
-        const data = await geminiResponse.json();
-        const text = (data?.candidates?.[0]?.content?.parts?.[0]?.text || "...")
-            .trim()
-            .replace(/['"]/g, '');
-
-        return Response.json({ reply: text });
-
+        return Response.json({ reply });
     } catch (error) {
-        return Response.json({ reply: "CONNECTION SEVERED." }, { status: 500 });
+        console.error("The void stared back and threw an error:", error);
+        return Response.json({ reply: SEVERED }, { status: 502 });
     }
 }

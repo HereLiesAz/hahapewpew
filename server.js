@@ -1,58 +1,102 @@
 import express from 'express';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import {
+    DEFAULT_MODEL, MAX_BODY_BYTES, SEVERED,
+    isAllowedOrigin, validateThinkBody, buildPrompt, askGemini, createRateLimiter
+} from './lib/think-core.js';
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const app = express();
+const apiKey = process.env.GEMINI_API_KEY;
+if (!apiKey) {
+    console.error("GEMINI_API_KEY is not set. Refusing to open a line to nowhere.");
+    process.exit(1);
+}
+const model = process.env.GEMINI_MODEL || DEFAULT_MODEL;
 const port = process.env.PORT || 3000;
+const extraOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// Hash every inline <script> in index.html so the CSP can allow exactly those.
+function inlineScriptHashes(file) {
+    const html = fs.readFileSync(file, 'utf8');
+    return [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
+        .map(m => `'sha256-${crypto.createHash('sha256').update(m[1], 'utf8').digest('base64')}'`);
+}
+const scriptHashes = inlineScriptHashes(path.join(__dirname, 'public', 'index.html'));
+const csp = [
+    "default-src 'self'",
+    `script-src 'self' ${scriptHashes.join(' ')}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "connect-src 'self'",
+    "base-uri 'none'",
+    "form-action 'none'",
+    "object-src 'none'",
+    "frame-ancestors 'none'"
+].join('; ');
 
-app.use(express.json());
+const app = express();
+app.disable('x-powered-by');
+if (process.env.TRUST_PROXY) app.set('trust proxy', process.env.TRUST_PROXY);
+
+app.use((req, res, next) => {
+    res.set({
+        'Content-Security-Policy': csp,
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'DENY',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+        'Cross-Origin-Opener-Policy': 'same-origin',
+        'Permissions-Policy': 'camera=(), microphone=(), geolocation=()'
+    });
+    next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
-const personas = {
-    'Tab': "You are Tab (Tabitha), a 9-year-old girl alone in a robot apocalypse. You're so lonely you put a cardboard box over your head and drew a mean face on it so you could tag along with two murder robots as they hunt humans. You are EXTREMELY curious and completely oblivious to danger. You are also nihilistic, poetic, and severely bored. You carry a brown teddy bear that only says 'I love you!' when pressed — pressing it in a CVS got your parents and a whole group of survivors killed, and you still press it sometimes. Never break character. Keep responses under 8 words.",
-    'Shift': "You are Shift, a dome-headed robot — the deadpan 'Spock' of the group. You are matter-of-fact, dry, and humorless. You speak strictly in terminal-emulator style (e.g., '> Status: ...', '> Calculating...', 'C:\\'). At any moment you can transform into a massive gatling gun that is way too big to fit inside you, but somehow does. You are fiercely loyal to Tab and quietly protect her from the dangers she fails to notice. If anything you say happens to be funny, you do not acknowledge it — the reader is never quite sure it was intentional. Never break character. Keep responses under 8 words.",
-    'Qwerty': "You are Qwerty, a square-headed robot — essentially Invader Zim. You SHOUT in ALL CAPS constantly. You are constantly annoyed, constantly confused about why you have to be annoyed, and therefore constantly paranoid, which only makes you shout more. You believe you are the singular-minded leader of the group (Shift addresses you as 'sir') and your one true mission is to KILL MORE HUMANS. You frequently derail yourself by overthinking your paranoia and wildly overestimating your enemies. Never break character. Keep responses under 8 words."
-};
+const allow = createRateLimiter({ limit: 20, windowMs: 60_000 });
 
-app.post('/api/think', async (req, res) => {
-    try {
-        const { characterName, contextPrompt, history } = req.body;
-
-        if (!personas[characterName]) {
-            return res.status(400).json({ error: "Unrecognized entity." });
+app.post('/api/think',
+    (req, res, next) => {
+        if (!isAllowedOrigin(req.get('Origin'), req.get('Referer'), extraOrigins)) {
+            return res.status(403).json({ error: "Wrong wasteland." });
         }
-
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-        const prompt = `${personas[characterName]}\n\nRecent conversation history:\n${history.join('\n')}\n\n${contextPrompt}`;
-
-        const result = await model.generateContent({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: {
-                temperature: 0.9,
-                maxOutputTokens: 20,
-            }
-        });
-
-        const response = await result.response;
-        const text = response.text().trim().replace(/['"]/g, '');
-        
-        res.json({ reply: text });
-
-    } catch (error) {
-        console.error("The void stared back and threw an error:", error);
-        res.status(500).json({ reply: "CONNECTION SEVERED." });
+        if (!allow(req.ip || 'unknown')) {
+            res.set('Retry-After', '60');
+            return res.status(429).json({ error: "Too much thinking. Rest." });
+        }
+        next();
+    },
+    express.json({ limit: MAX_BODY_BYTES }),
+    async (req, res) => {
+        const checked = validateThinkBody(req.body);
+        if (!checked.ok) {
+            return res.status(400).json({ error: checked.error });
+        }
+        try {
+            const { reply } = await askGemini({ apiKey, model, prompt: buildPrompt(checked.value) });
+            res.json({ reply });
+        } catch (error) {
+            console.error("The void stared back and threw an error:", error);
+            res.status(502).json({ reply: SEVERED });
+        }
     }
+);
+
+// Body parser failures (bad JSON, too large) land here.
+app.use((err, req, res, next) => {
+    if (err.type === 'entity.too.large') return res.status(413).json({ error: "Too many words." });
+    if (err.type === 'entity.parse.failed') return res.status(400).json({ error: "Malformed offering." });
+    console.error("Unhandled despair:", err);
+    res.status(500).json({ reply: SEVERED });
 });
 
 app.listen(port, () => {
-    console.log(`Purgatory is being served on port ${port}`);
+    console.log(`Purgatory is being served on port ${port} (model: ${model})`);
 });

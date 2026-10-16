@@ -1,15 +1,19 @@
 {
   "name": "haha-pew-pew-backend",
-  "version": "1.0.0",
-  "description": "A secure containment unit for digital nihilism.",
+  "version": "0.0.0",
+  "description": "A containment unit for digital nihilism. Origin-checked, rate-limited, still hopeless.",
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "check": "node --check server.js && node --check lib/think-core.js && node --check functions/api/think.js && node --check scripts/csp-hash.js",
+    "csp:hash": "node scripts/csp-hash.js"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.7.1",
     "dotenv": "^16.4.5",
     "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
