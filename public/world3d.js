@@ -1,6 +1,7 @@
 import * as THREE from './vendor/three.module.js';
 import { CHUNK_LENGTH, rng, landmarkForChunk, dialogueFrames, streetAt, districtKeys, newOrleansDistrict } from './world-logic.js';
 import { createCharacters, articulateWalk } from './character-models.js';
+import { dialoguePages, visibleDialoguePage } from './dialogue-pages.js';
 import { buildNeighborhoodBuilding, dressDistrict, isNolaSharedResource } from './nola-world.js';
 
 // Everything in the scene is actual geometry. No flat sprites or pasted-on characters.
@@ -409,8 +410,8 @@ function updateActors(dt){
 }
 
 // The viewer can watch the autonomous trio, orbit them, or break away to explore.
-const cameraControl={yaw:.52,pitch:.23,zoom:7.8,point:v3(0,1.25,0),free:v3(0,1.25,0),dragging:false,lastX:0,lastY:0,keys:new Set(),touch:new Set()};
-const camModes=[{zoom:7.8,pitch:.23},{zoom:17,pitch:.35},{zoom:42,pitch:.66}];
+const cameraControl={yaw:.52,pitch:.20,zoom:6.25,point:v3(0,1.25,0),free:v3(0,1.25,0),dragging:false,lastX:0,lastY:0,keys:new Set(),touch:new Set()};
+const camModes=[{zoom:6.25,pitch:.20},{zoom:17,pitch:.35},{zoom:42,pitch:.66}];
 function updateCamera(dt){
   const ctl=cameraControl;
   if(follow){
@@ -463,8 +464,10 @@ function showSpeech(name,message,minimum=0){
   const clean=String(message).trim().slice(0,1800);
   const words=clean.split(/\s+/).length;
   const frames=dialogueFrames(words);
-  bubbleState[name]={text:clean,until:seconds+Math.max(minimum,frames/60),started:seconds};
-  bubbleNodes[name].textContent=name==='Qwerty'?clean.toUpperCase():clean;
+  const duration=Math.max(minimum,frames/60);
+  const pages=dialoguePages(name==='Qwerty'?clean.toUpperCase():clean,name==='Qwerty'?145:115);
+  bubbleState[name]={text:clean,pages,page:-1,until:seconds+duration,started:seconds};
+  bubbleNodes[name].textContent=pages[0]||'';
   bubbleNodes[name].hidden=false;
   logMessage(name,clean);
   history.push(`${name}: ${clean}`.slice(0,300));while(history.length>8)history.shift();
@@ -475,6 +478,10 @@ function updateSpeech(){
   for(const name of ordered){
     const state=bubbleState[name],el=bubbleNodes[name];
     if(!state||seconds>state.until){el.hidden=true;continue;}
+    const index=visibleDialoguePage(state.pages,seconds-state.started,state.until-state.started);
+    if(state.page!==index){
+      state.page=index;el.textContent=state.pages[index]+(state.pages.length>1?`  [${index+1}/${state.pages.length}]`:'');
+    }
     const rig=crew[name],at=rig.root.getWorldPosition(v3()).add(v3(0,rig.anchor+.35,0));
     at.project(camera);
     if(at.z>1||at.z< -1){el.hidden=true;continue;}
@@ -488,7 +495,9 @@ function updateSpeech(){
     if(name==='Shift')x=Math.max(margin,x-bubbleWidth*.2);
     // Bubbles avoid covering one another without moving the 3D characters.
     const bh=el.getBoundingClientRect().height||90;
+    y=THREE.MathUtils.clamp(y,bh+14,height-96);
     for(const old of rects){if(Math.abs(old.x-x)<(old.w+bubbleWidth)*.48&&y>old.y-old.h-14&&y-bh<old.y+14)y=Math.max(bh+14,old.y-old.h-17);}
+    y=THREE.MathUtils.clamp(y,bh+14,height-96);
     el.style.left=`${x}px`;el.style.top=`${y}px`;
     rects.push({x,y,w:bubbleWidth,h:bh});
   }
