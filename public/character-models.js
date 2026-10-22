@@ -245,6 +245,30 @@ function robotLeg(root,side,height=.32){
   panel(foot,M.steel,0,.008,.15,.13,.025,.18);
   return {hip,knee,foot};
 }
+// Fixed, UV-mapped two-dimensional eye graphics conform to the actual dome.
+// No raised eye volumes, pupils, blinking controls or independently moving eyes.
+function shiftDomeDecal(head,material,cx,cy,width,height,angle=0,offset=.006){
+  const nx=12,ny=4,positions=[],uvs=[],indices=[];
+  for(let y=0;y<=ny;y++)for(let x=0;x<=nx;x++){
+    const u=x/nx-.5,v=y/ny-.5;
+    const dx=u*width,dy=v*height;
+    const X=cx+Math.cos(angle)*dx-Math.sin(angle)*dy;
+    const Y=cy+Math.sin(angle)*dx+Math.cos(angle)*dy;
+    const R=.72;
+    const Z=.92*Math.sqrt(Math.max(.0001,R*R-X*X-Y*Y))+offset;
+    positions.push(X,Y,Z);uvs.push(x/nx,y/ny);
+  }
+  for(let y=0;y<ny;y++)for(let x=0;x<nx;x++){
+    const a=y*(nx+1)+x,b=a+nx+1;indices.push(a,b,a+1,a+1,b,b+1);
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+  geo.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
+  geo.setIndex(indices);geo.computeVertexNormals();
+  return add(head,geo,material);
+}
+const shiftInk=new THREE.MeshBasicMaterial({color:'#0c1010',toneMapped:false,side:THREE.DoubleSide});
+const shiftLight=new THREE.MeshBasicMaterial({color:'#ffffff',toneMapped:false,side:THREE.DoubleSide});
 function buildShift(scene){
   const root=group(scene);root.name='Shift';root.scale.setScalar(.46);
   const legs=[robotLeg(root,-1,.33),robotLeg(root,1,.33)];
@@ -260,13 +284,12 @@ function buildShift(scene){
   dome.scale.z=.92;
   const rim=add(head,new THREE.TorusGeometry(.712,.034,12,64),M.iron,0,.003,0);
   rim.rotation.x=Math.PI/2;rim.scale.y=.92;
-  const brow=panel(head,M.iron,0,.13,.618,1.21,.25,.12);
-  // Deep-set horizontal light-slits, behind a black glass visor.
+  // Shift's eyes are stationary 2-D white graphics on the curved metal dome.
+  // The shallow dark border is also a surface graphic, not a socket or lid.
   for(const side of [-1,1]){
-    const socket=panel(head,M.glass,side*.32,.13,.691,.50,.20,.032);
-    const light=panel(head,M.eye,side*.32,.12,.711,.36,.090,.016);
-    light.rotation.z=side*.065;
-    for(const sx of [-1,1])bolt(head,side*.32+sx*.242,.13,.711);
+    const angle=-side*.065;
+    shiftDomeDecal(head,shiftInk,side*.315,.145,.454,.205,angle,.009);
+    shiftDomeDecal(head,shiftLight,side*.315,.145,.370,.128,angle,.015);
   }
   for(let i=0;i<14;i++){
     const theta=i*Math.PI*2/14;
