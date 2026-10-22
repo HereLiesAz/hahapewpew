@@ -25,7 +25,7 @@ class Material {constructor(props){Object.assign(this,props);}}
 class Tex {constructor(){this.wrapS=0;this.wrapT=0;}}
 const THREE={
   TextureLoader:class {load(s){assert.match(s,/^\/assets\/characters\/[\w-]+\.webp$/);return new Tex();}},
-  MeshPhysicalMaterial:Material,MeshStandardMaterial:Material,
+  MeshPhysicalMaterial:Material,MeshStandardMaterial:Material,MeshBasicMaterial:Material,
   SphereGeometry:Geo,BoxGeometry:Geo,CylinderGeometry:Geo,ExtrudeGeometry:Geo,TorusGeometry:Geo,TubeGeometry:Geo,BufferGeometry:Geo,
   Mesh:class extends Obj{constructor(g,m){super();this.geometry=g;this.material=m;}},Group:Obj,
   Vector3:Vec, Float32BufferAttribute:class {constructor(data,n){this.array=data;this.itemSize=n;}},
