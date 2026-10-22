@@ -126,10 +126,12 @@ async function installQwertyAsset() {
     walk.play();talk.play();eyelids.play();
     talk.setEffectiveWeight(0);eyelids.setEffectiveWeight(0);
     rig.asset={model:gltf.scene,mixer,walk,talk,eyelids,eyeMaterials:eyes,loaded:true};
+    canvas.dataset.qwertyModel='glb';
   } catch(error) {
     console.warn('Qwerty GLB unavailable; retaining legacy mesh:',error);
   }
 }
+canvas.dataset.qwertyModel='legacy';
 installQwertyAsset();
 
 // Shared procedural surface maps: seeded once, not regenerated on every chunk.

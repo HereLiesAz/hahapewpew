@@ -24,5 +24,6 @@ test('emissive white 2D graphic is distinct from facial lids and kill color is r
   assert.match(src,/Qwerty\/Eyes_2D_Emission/);
   assert.match(src,/eyeColor=killMode\?'#ff1616':'#ffffff'/);
   assert.match(src,/legacy\.forEach\(node=>node\.visible=false\)/);
+  assert.match(src,/canvas\.dataset\.qwertyModel='glb'/);
   assert.match(src,/a\.eyelids\.setEffectiveWeight/);
 });
