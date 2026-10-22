@@ -104,15 +104,14 @@ async function installQwertyAsset() {
       for(const material of materials)if(material.name==='Qwerty/Eyes_2D_Emission')eyes.push(material);
     });
     const skull=gltf.scene.getObjectByName('skull_upper');
-    const lidL=gltf.scene.getObjectByName('eyelid.L');
-    const lidR=gltf.scene.getObjectByName('eyelid.R');
+    const lidL=gltf.scene.getObjectByName('eyelidL');
+    const lidR=gltf.scene.getObjectByName('eyelidR');
     const clip=n=>gltf.animations.find(a=>a.name===n);
     if(!skinMeshes.length||!eyes.length||!skull||!lidL||!lidR||
        !clip('Qwerty_Walk')||!clip('Qwerty_Talk_Flap')||
        !clip('Qwerty_Suspicious_Lids'))throw new Error('Incomplete Qwerty armature or 2D eye materials');
     // Preserve the world-space actor root, camera anchor and current simulation.
     const legacy=[...rig.root.children];
-    const eyeMaterials=eyes.map(m=>m.clone());
     for(let i=0;i<eyes.length;i++) {
       const mat=eyes[i];
       mat.color.set('#ffffff');mat.emissive.set('#ffffff');
