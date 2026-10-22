@@ -21,7 +21,9 @@ test('emissive white 2D graphic is distinct from facial lids and kill color is r
   assert.equal(gltf.materials[i].pbrMetallicRoughness.baseColorTexture,undefined);
   const src=readFileSync(new URL('../public/world3d.js',import.meta.url),'utf8');
   assert.match(src,/new GLTFLoader\(\)\.loadAsync/);
-  assert.match(src,/Qwerty\/Eyes_2D_Emission/);
+  const toon=readFileSync(new URL('../public/cel-robots.js',import.meta.url),'utf8');
+  assert.match(toon,/Eyes_2D_Emission/);
+  assert.match(src,/celShadeRobot\(gltf.scene,'Qwerty'\)/);
   assert.match(src,/eyeColor=killMode\?'#ff1616':'#ffffff'/);
   assert.match(src,/legacy\.forEach\(node=>node\.visible=false\)/);
   assert.match(src,/canvas\.dataset\.qwertyModel='glb'/);
