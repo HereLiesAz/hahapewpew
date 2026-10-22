@@ -1,6 +1,7 @@
 import * as THREE from './vendor/three.module.js';
 import { CHUNK_LENGTH, rng, landmarkForChunk, dialogueFrames, streetAt, districtKeys } from './world-logic.js';
 import { createCharacters, articulateWalk } from './character-models.js';
+import { loadSculptedCharacters } from './sculpt-loader.js';
 
 // Everything in the scene is actual geometry. No flat sprites or pasted-on characters.
 const canvas = document.querySelector('#world');
@@ -86,6 +87,7 @@ function pivot(parent,x,y,z){const g=new THREE.Group();g.position.set(x,y,z);par
 function slab(parent, material,x,y,z,w,h,d,angle=0){let m=block(parent,material,x,y,z,w,h,d);m.rotation.z=angle;return m}
 
 Object.assign(crew,createCharacters(scene));
+loadSculptedCharacters(crew).catch(error => console.warn('GLB character assets unavailable; keeping previous models',error));
 
 // Shared procedural surface maps: seeded once, not regenerated on every chunk.
 // These are physical material textures, not flat background paintings.
