@@ -13,7 +13,7 @@
 
 ## 1 — Qwerty: accurate model, rig, and talk mechanism
 
-- [ ] **Q1.1 Reference contract:** Document the owner's *specific* front silhouette, eye placement, stationary bottom plate, cylindrical torso, near-zero neck, short limbs, oversized clamps/feet, flat eyes/lids, and prohibited additions. **Done when:** a signed-off-from-source visual checklist exists in `docs/characters/qwerty-fidelity.md` (source-derived, not assumed user approval).
+- [x] **Q1.1 Reference contract:** Document the owner's *specific* front silhouette, eye placement, stationary bottom plate, cylindrical torso, near-zero neck, short limbs, oversized clamps/feet, flat eyes/lids, and prohibited additions. **Done when:** a signed-off-from-source visual checklist exists in `docs/characters/qwerty-fidelity.md` (source-derived, not assumed user approval).
 - [ ] **Q1.2 Outer-head geometry:** Rebuild the GLB trapezoid as one continuous bevel-free-or-minimally-beveled upper housing, with correct top/bottom width, depth and lower eye plane. **Done when:** orthographic front and profile render overlays match the reference silhouette, including no mouth/jaw.
 - [ ] **Q1.3 Base and hinge:** Keep only the *bottom surface* attached to the short neck; locate a rear hinge so the entire upper trapezoid lifts without splitting the front. **Done when:** closed, half-open and open renders show the exact separation and no visible jaw or lip.
 - [ ] **Q1.4 Body and extremities:** Build cylindrical body, negligible neck, proportionally short arms/legs, large hand clamps and oversized feet. **Done when:** front/side full-body reference overlays and floor contact check pass.
