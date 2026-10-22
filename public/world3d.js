@@ -1,6 +1,7 @@
 import * as THREE from './vendor/three.module.js';
 import { CHUNK_LENGTH, rng, landmarkForChunk, dialogueFrames, streetAt, districtKeys, newOrleansDistrict } from './world-logic.js';
 import { createCharacters, articulateWalk } from './character-models.js';
+import { GLTFLoader } from './vendor/GLTFLoader.js';
 import { dialoguePages, visibleDialoguePage } from './dialogue-pages.js';
 import { buildNeighborhoodBuilding, dressDistrict, isNolaSharedResource } from './nola-world.js';
 
@@ -88,6 +89,49 @@ function pivot(parent,x,y,z){const g=new THREE.Group();g.position.set(x,y,z);par
 function slab(parent, material,x,y,z,w,h,d,angle=0){let m=block(parent,material,x,y,z,w,h,d);m.rotation.z=angle;return m}
 
 Object.assign(crew,createCharacters(scene));
+
+// Qwerty's production-format asset is loaded asynchronously. Preserve the
+// former mesh as a fallback until the UV-textured, skinned GLB is verified.
+async function installQwertyAsset() {
+  const rig=crew.Qwerty;
+  try {
+    const gltf=await new GLTFLoader().loadAsync('/assets/characters/Qwerty_Rigged.glb');
+    const skinMeshes=[];
+    const eyes=[];
+    gltf.scene.traverse(node => {
+      if(node.isSkinnedMesh)skinMeshes.push(node);
+      const materials=Array.isArray(node.material)?node.material:node.material?[node.material]:[];
+      for(const material of materials)if(material.name==='Qwerty/Eyes_2D_Emission')eyes.push(material);
+    });
+    const skull=gltf.scene.getObjectByName('skull_upper');
+    const lidL=gltf.scene.getObjectByName('eyelid.L');
+    const lidR=gltf.scene.getObjectByName('eyelid.R');
+    const clip=n=>gltf.animations.find(a=>a.name===n);
+    if(!skinMeshes.length||!eyes.length||!skull||!lidL||!lidR||
+       !clip('Qwerty_Walk')||!clip('Qwerty_Talk_Flap')||
+       !clip('Qwerty_Suspicious_Lids'))throw new Error('Incomplete Qwerty armature or 2D eye materials');
+    // Preserve the world-space actor root, camera anchor and current simulation.
+    const legacy=[...rig.root.children];
+    const eyeMaterials=eyes.map(m=>m.clone());
+    for(let i=0;i<eyes.length;i++) {
+      const mat=eyes[i];
+      mat.color.set('#ffffff');mat.emissive.set('#ffffff');
+      mat.toneMapped=false;mat.needsUpdate=true;
+    }
+    rig.root.add(gltf.scene);
+    legacy.forEach(node=>node.visible=false);
+    const mixer=new THREE.AnimationMixer(gltf.scene);
+    const walk=mixer.clipAction(clip('Qwerty_Walk'));
+    const talk=mixer.clipAction(clip('Qwerty_Talk_Flap'));
+    const eyelids=mixer.clipAction(clip('Qwerty_Suspicious_Lids'));
+    walk.play();talk.play();eyelids.play();
+    talk.setEffectiveWeight(0);eyelids.setEffectiveWeight(0);
+    rig.asset={model:gltf.scene,mixer,walk,talk,eyelids,eyeMaterials:eyes,loaded:true};
+  } catch(error) {
+    console.warn('Qwerty GLB unavailable; retaining legacy mesh:',error);
+  }
+}
+installQwertyAsset();
 
 // Shared procedural surface maps: seeded once, not regenerated on every chunk.
 // These are physical material textures, not flat background paintings.
@@ -363,7 +407,25 @@ function updateActors(dt){
     rig.root.position.z=THREE.MathUtils.damp(rig.root.position.z,targetZ,4,dt);
     // Rig fronts face +Z in local coordinates; the group travels world +X.
     rig.root.rotation.y=Math.PI/2;
-    articulateWalk(rig,t+along,5.2,1,name==='Qwerty'&&bubbleState.Qwerty?.until>seconds);
+    const qwertySpeaking=name==='Qwerty'&&bubbleState.Qwerty?.until>seconds;
+    articulateWalk(rig,t+along,5.2,1,qwertySpeaking);
+    if(name==='Qwerty'&&rig.asset?.loaded) {
+      const a=rig.asset;
+      a.walk.setEffectiveWeight(1);
+      a.talk.setEffectiveWeight(qwertySpeaking?1:0);
+      // 2-D eyelids are expressive masks, not rotating eyeballs.
+      const expression=/(FOOL|WRONG|ERROR|IDIOT|INSULT|ABSURD)/i.test(bubbleState.Qwerty?.text||'');
+      a.eyelids.setEffectiveWeight(qwertySpeaking&&expression?1:0);
+      a.mixer.update(dt);
+      const killMode=crew.Shift.gun.visible||temporary.some(p=>p.kind==='pew');
+      const eyeColor=killMode?'#ff1616':'#ffffff';
+      if(a.eyeColor!==eyeColor) {
+        for(const eye of a.eyeMaterials) {
+          eye.color.set(eyeColor);eye.emissive.set(eyeColor);
+        }
+        a.eyeColor=eyeColor;
+      }
+    }
   }
   if(crew.Shift.gun.visible){
     crew.Shift.barrel.rotation.x+=dt*28;

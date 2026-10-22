@@ -1,0 +1,28 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const data=readFileSync(new URL('../public/assets/characters/Qwerty_Rigged.glb',import.meta.url));
+const size=data.readUInt32LE(8),jlen=data.readUInt32LE(12);
+const gltf=JSON.parse(data.subarray(20,20+jlen).toString('utf8'));
+test('Qwerty binary glTF is self-contained and skeletal, with UVs and skin weights',()=>{
+  assert.equal(data.subarray(0,4).toString(),'glTF');
+  assert.equal(size,data.length);
+  assert.equal(gltf.skins[0].joints.length,19);
+  assert.ok(gltf.meshes[0].primitives.every(p=>p.attributes.TEXCOORD_0!==undefined&&p.attributes.JOINTS_0!==undefined&&p.attributes.WEIGHTS_0!==undefined));
+  assert.deepEqual(new Set(gltf.animations.map(x=>x.name)),new Set(['Qwerty_Talk_Flap','Qwerty_Walk','Qwerty_Idle','Qwerty_Suspicious_Lids']));
+  assert.ok(gltf.nodes.some(n=>n.name==='eyelid.L'));
+  assert.ok(gltf.nodes.some(n=>n.name==='eyelid.R'));
+  assert.ok(gltf.nodes.some(n=>n.name==='skull_upper'));
+});
+test('emissive white 2D graphic is distinct from facial lids and kill color is runtime-controlled',()=>{
+  const i=gltf.materials.findIndex(m=>m.name==='Qwerty/Eyes_2D_Emission');
+  assert.ok(i>=0);
+  assert.deepEqual(gltf.materials[i].emissiveFactor,[1,1,1]);
+  assert.equal(gltf.materials[i].pbrMetallicRoughness.baseColorTexture,undefined);
+  const src=readFileSync(new URL('../public/world3d.js',import.meta.url),'utf8');
+  assert.match(src,/new GLTFLoader\(\)\.loadAsync/);
+  assert.match(src,/Qwerty\/Eyes_2D_Emission/);
+  assert.match(src,/eyeColor=killMode\?'#ff1616':'#ffffff'/);
+  assert.match(src,/legacy\.forEach\(node=>node\.visible=false\)/);
+  assert.match(src,/a\.eyelids\.setEffectiveWeight/);
+});
