@@ -10,9 +10,13 @@ test('Qwerty binary glTF is self-contained and skeletal, with UVs and skin weigh
   assert.equal(gltf.skins[0].joints.length,19);
   assert.ok(gltf.meshes[0].primitives.every(p=>p.attributes.TEXCOORD_0!==undefined&&p.attributes.JOINTS_0!==undefined&&p.attributes.WEIGHTS_0!==undefined));
   assert.deepEqual(new Set(gltf.animations.map(x=>x.name)),new Set(['Qwerty_Talk_Flap','Qwerty_Walk','Qwerty_Idle','Qwerty_Suspicious_Lids']));
-  assert.ok(gltf.nodes.some(n=>n.name==='eyelid.L'));
-  assert.ok(gltf.nodes.some(n=>n.name==='eyelid.R'));
+  assert.ok(gltf.nodes.some(n=>n.name==='eyelidL'));
+  assert.ok(gltf.nodes.some(n=>n.name==='eyelidR'));
   assert.ok(gltf.nodes.some(n=>n.name==='skull_upper'));
+  assert.ok(gltf.nodes.some(n=>n.name==='base_plate'));
+  assert.ok(!gltf.nodes.some(n=>n.name==='jaw_lower'));
+  const base=gltf.nodes.find(n=>n.name==='base_plate');
+  assert.ok(base.children.includes(gltf.nodes.findIndex(n=>n.name==='skull_upper')));
 });
 test('emissive white 2D graphic is distinct from facial lids and kill color is runtime-controlled',()=>{
   const i=gltf.materials.findIndex(m=>m.name==='Qwerty/Eyes_2D_Emission');
