@@ -2,6 +2,7 @@ import * as THREE from './vendor/three.module.js';
 import { CHUNK_LENGTH, rng, landmarkForChunk, dialogueFrames, streetAt, districtKeys, newOrleansDistrict } from './world-logic.js';
 import { createCharacters, articulateWalk } from './character-models.js';
 import { GLTFLoader } from './vendor/GLTFLoader.js';
+import { celShadeRobot } from './cel-robots.js';
 import { dialoguePages, visibleDialoguePage } from './dialogue-pages.js';
 import { buildNeighborhoodBuilding, dressDistrict, isNolaSharedResource } from './nola-world.js';
 
@@ -89,6 +90,9 @@ function pivot(parent,x,y,z){const g=new THREE.Group();g.position.set(x,y,z);par
 function slab(parent, material,x,y,z,w,h,d,angle=0){let m=block(parent,material,x,y,z,w,h,d);m.rotation.z=angle;return m}
 
 Object.assign(crew,createCharacters(scene));
+// Match the flat ink illustration, not PBR weathered metal or glossy toy plastic.
+celShadeRobot(crew.Shift.root,'Shift');
+celShadeRobot(crew.Qwerty.root,'Qwerty');
 
 // Qwerty's production-format asset is loaded asynchronously. Preserve the
 // former mesh as a fallback until the UV-textured, skinned GLB is verified.
@@ -96,12 +100,12 @@ async function installQwertyAsset() {
   const rig=crew.Qwerty;
   try {
     const gltf=await new GLTFLoader().loadAsync('/assets/characters/Qwerty_Rigged.glb');
+    // Preserve white emissive flat eyes while applying stepped lighting to the shell.
+    const {eyes}=celShadeRobot(gltf.scene,'Qwerty');
     const skinMeshes=[];
-    const eyes=[];
     gltf.scene.traverse(node => {
       if(node.isSkinnedMesh)skinMeshes.push(node);
-      const materials=Array.isArray(node.material)?node.material:node.material?[node.material]:[];
-      for(const material of materials)if(material.name==='Qwerty/Eyes_2D_Emission')eyes.push(material);
+      // The eye materials were collected by celShadeRobot above.
     });
     const skull=gltf.scene.getObjectByName('skull_upper');
     const lidL=gltf.scene.getObjectByName('eyelidL');
@@ -114,7 +118,7 @@ async function installQwertyAsset() {
     const legacy=[...rig.root.children];
     for(let i=0;i<eyes.length;i++) {
       const mat=eyes[i];
-      mat.color.set('#ffffff');mat.emissive.set('#ffffff');
+      mat.color.set('#ffffff');
       mat.toneMapped=false;mat.needsUpdate=true;
     }
     rig.root.add(gltf.scene);
@@ -422,7 +426,7 @@ function updateActors(dt){
       const eyeColor=killMode?'#ff1616':'#ffffff';
       if(a.eyeColor!==eyeColor) {
         for(const eye of a.eyeMaterials) {
-          eye.color.set(eyeColor);eye.emissive.set(eyeColor);
+          eye.color.set(eyeColor);
         }
         a.eyeColor=eyeColor;
       }
