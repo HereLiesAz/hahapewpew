@@ -1,7 +1,7 @@
 import * as THREE from './vendor/three.module.js';
-import { CHUNK_LENGTH, rng, landmarkForChunk, dialogueFrames, streetAt, districtKeys } from './world-logic.js';
+import { CHUNK_LENGTH, rng, landmarkForChunk, dialogueFrames, streetAt, districtKeys, newOrleansDistrict } from './world-logic.js';
 import { createCharacters, articulateWalk } from './character-models.js';
-import { loadSculptedCharacters } from './sculpt-loader.js';
+import { buildNeighborhoodBuilding, dressDistrict, isNolaSharedResource } from './nola-world.js';
 
 // Everything in the scene is actual geometry. No flat sprites or pasted-on characters.
 const canvas = document.querySelector('#world');
@@ -87,7 +87,6 @@ function pivot(parent,x,y,z){const g=new THREE.Group();g.position.set(x,y,z);par
 function slab(parent, material,x,y,z,w,h,d,angle=0){let m=block(parent,material,x,y,z,w,h,d);m.rotation.z=angle;return m}
 
 Object.assign(crew,createCharacters(scene));
-loadSculptedCharacters(crew).catch(error => console.warn('GLB character assets unavailable; keeping previous models',error));
 
 // Shared procedural surface maps: seeded once, not regenerated on every chunk.
 // These are physical material textures, not flat background paintings.
@@ -216,11 +215,16 @@ function ruinChunk(ix,iz=0){
     }
     if(!roadX)for(let zz=-23;zz<24;zz+=7)block(g,palette.markings,0,-.04,zz,.10,.01,2.6).castShadow=false;
   }
+  const zone=newOrleansDistrict(ix,iz);
+  // Neighbourhood architecture replaces generic towers outside the CBD.
   // Real city geometry extends in both axes; roads form connected intersections.
   for(const sideX of [-1,1])for(const sideZ of [-1,1]){
     const x=sideX*(17+rand()*2.8),z=sideZ*(17+rand()*2.9);
-    if(rand()<.83)building(g,x,z,9+rand()*4.5,8+rand()*21,9+rand()*5,
-      (Math.imul(ix,81)^Math.imul(iz,67)^Math.floor(x*99)^Math.floor(z*31))|0);
+    if(rand()<.88){
+      const w=9+rand()*4.5,d=9+rand()*5,seed=(Math.imul(ix,81)^Math.imul(iz,67)^Math.floor(x*99)^Math.floor(z*31))|0;
+      if(!buildNeighborhoodBuilding(g,{x,z,w,d,seed,architecture:zone.architecture}))
+        building(g,x,z,w,8+rand()*21,d,seed);
+    }
     else deadTree(g,x,z,rand);
     for(let n=0;n<4;n++){
       const px=x+(rand()-.5)*14,pz=z+(rand()-.5)*13;
@@ -231,6 +235,7 @@ function ruinChunk(ix,iz=0){
   if(roadX&&rand()<.51)wreckCar(g,-11+rand()*17,(rand()<.5?-1:1)*5.2,ix*313+iz*53,true);
   if(roadZ&&!roadX&&rand()<.45)wreckCar(g,(rand()<.5?-1:1)*4.8,-11+rand()*18,ix*917+iz*7,false);
   if(roadX)for(const side of [-1,1])lamppost(g,-20+rand()*7,side*10.8,ix*18+iz);
+  dressDistrict(g,{ix,iz,architecture:zone.architecture,roadX,roadZ});
   const landmark=iz===0?landmarkForChunk(ix):null;
   if(landmark)addLandmark(g,landmark,8+rand()*7,-15-rand()*3);
   return g;
@@ -293,10 +298,10 @@ const sharedMaterials=new Set([...Object.values(palette),roadMaterial,sidewalkMa
 function disposeChunk(group){
   group.traverse(node=>{
     if(node.isMesh){
-      if(node.geometry&&!sharedGeometries.has(node.geometry))node.geometry.dispose();
+      if(node.geometry&&!sharedGeometries.has(node.geometry)&&!isNolaSharedResource(node.geometry))node.geometry.dispose();
       const materials=Array.isArray(node.material)?node.material:[node.material];
       for(const material of materials){
-        if(material&&!sharedMaterials.has(material)){
+        if(material&&!sharedMaterials.has(material)&&!isNolaSharedResource(material)){
           if(material.map)material.map.dispose();
           material.dispose();
         }
@@ -367,7 +372,8 @@ function updateActors(dt){
   for(const site of landmarks){
     if(site.visited||Math.abs(site.mesh.getWorldPosition(v3()).x-crewX)>10)continue;
     site.visited=true;currentLandmark=site.info;visitSerial++;
-    statusNode.textContent=site.info.name;
+    const zone=newOrleansDistrict(Math.floor(crewX/CHUNK_LENGTH),0);
+    statusNode.textContent=`${zone.name} · ${site.info.name}`;
     logMessage('WORLD',site.info.detail);
     if(people.length===0&&site.info.kind!=='statue'){
       const x=crewX+12;

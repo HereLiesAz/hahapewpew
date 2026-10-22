@@ -45,3 +45,26 @@ export function passageName(x) {
   const scene = landmarkForChunk(Math.floor(x / CHUNK_LENGTH));
   return scene ? scene.name : 'THE WASTELAND';
 }
+
+// Stylized street-scale geography, not literal GIS data: regions change with
+// both east/west progression and distance from the central walking corridor.
+// Coordinates are world chunks, not real-world latitude/longitude.
+export const NEW_ORLEANS_DISTRICTS=Object.freeze([
+  {id:'quarter',name:'FRENCH QUARTER',architecture:'creole',start:0,end:5},
+  {id:'cbd',name:'CANAL STREET / CBD',architecture:'downtown',start:6,end:10},
+  {id:'garden',name:'GARDEN DISTRICT',architecture:'shotgun',start:11,end:16},
+  {id:'midcity',name:'MID-CITY / TREME',architecture:'shotgun',start:17,end:23},
+  {id:'bywater',name:'BYWATER / MARIGNY',architecture:'creole',start:24,end:30},
+  {id:'industrial',name:'INDUSTRIAL RIVERFRONT',architecture:'industrial',start:31,end:40},
+  {id:'flood',name:'THE FLOODED OUTSKIRTS',architecture:'flood',start:41,end:Infinity}
+]);
+export function newOrleansDistrict(ix,iz=0){
+  if(ix<0)return {id:'levee',name:'THE LEVEE ROAD',architecture:'flood'};
+  if(Math.abs(iz)>=6)return {id:'flood',name:'THE FLOODED OUTSKIRTS',architecture:'flood'};
+  const district=NEW_ORLEANS_DISTRICTS.find(d=>ix>=d.start&&ix<=d.end)||NEW_ORLEANS_DISTRICTS.at(-1);
+  if(Math.abs(iz)>=3){
+    if(ix>=6&&ix<24)return {id:'midcity',name:'BACK STREETS OF MID-CITY',architecture:'shotgun'};
+    if(ix>=24)return {id:'industrial',name:'THE RIVER WARDS',architecture:'industrial'};
+  }
+  return district;
+}

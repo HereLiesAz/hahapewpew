@@ -58,3 +58,23 @@ test('three model graphs construct without throwing',()=>{
   assert.ok(cast.Shift.barrel.children.length>=6);
   assert.ok(cast.Qwerty.head.children.length>=10);
 });
+
+test('Qwerty head splits physically and upper trapezoid flaps only during speech',()=>{
+  const scene=new Scene();
+  const q=sandbox.result.createCharacters(scene).Qwerty;
+  assert.ok(q.speechLid,'Qwerty must have its own upper-shell hinge');
+  assert.equal(q.speechLid.parent,undefined); // mock has no .parent tracking
+  assert.equal(q.speechLid.position.y,-.095);
+  assert.ok(q.speechLid.children.length >= 2,'upper shell must carry face details');
+  const initial=q.speechLid.rotation.x;
+  const movement=[];
+  for(let time=.0;time<2;time+=.06){
+    sandbox.result.articulateWalk(q,time,5.2,1,true);
+    movement.push(q.speechLid.rotation.x);
+  }
+  assert.ok(Math.min(...movement)<-.13,'upper shell opens visibly while speaking');
+  assert.ok(Math.max(...movement)-Math.min(...movement)>.13,'mouth must flap rather than stay open');
+  for(let time=2;time<5;time+=.05)sandbox.result.articulateWalk(q,time,5.2,1,false);
+  assert.ok(Math.abs(q.speechLid.rotation.x)<.001,'head returns fully closed after speech ends');
+  assert.equal(initial,0);
+});

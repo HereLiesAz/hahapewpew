@@ -292,11 +292,20 @@ function buildShift(scene){
   return {root,torso,head,arms:arms.map(a=>a.shoulder),legs:legs.map(l=>l.hip),
     elbows:arms.map(a=>a.elbow),knees:legs.map(l=>l.knee),gun,barrel,anchor:.91,groundScale:.46};
 }
-function trapGeometry(){
-  // A hollow-looking, beveled housing, broader above than below, matching the art.
+// The boxy Canadian-style talking mechanism has two **separate** mesh shells.
+// Both shell pieces have actual UVs from ExtrudeGeometry, not a texture mask.
+function trapGeometry(bottom=-.47,top=.46){
+  const xAt=y=>.64+((y+.47)/.93)*.21;
   const shape=new THREE.Shape();
-  shape.moveTo(-.64,-.47);shape.lineTo(.64,-.47);shape.lineTo(.85,.46);shape.lineTo(-.85,.46);shape.closePath();
-  const geo=new THREE.ExtrudeGeometry(shape,{depth:.46,bevelEnabled:true,bevelThickness:.035,bevelSize:.035,bevelSegments:3,steps:1,curveSegments:12});
+  shape.moveTo(-xAt(bottom),bottom);
+  shape.lineTo(xAt(bottom),bottom);
+  shape.lineTo(xAt(top),top);
+  shape.lineTo(-xAt(top),top);
+  shape.closePath();
+  const geo=new THREE.ExtrudeGeometry(shape,{
+    depth:.46,bevelEnabled:true,bevelThickness:.02,
+    bevelSize:.015,bevelSegments:3,steps:1,curveSegments:12
+  });
   geo.translate(0,0,-.23);geo.computeVertexNormals();return geo;
 }
 function buildQwerty(scene){
@@ -313,29 +322,40 @@ function buildQwerty(scene){
   tube(neck,M.iron,[0,0,0],[0,.22,0],.12,.14,24);
   for(let i=0;i<3;i++)add(neck,new THREE.TorusGeometry(.14+i*.012,.023,10,28),M.steel,0,.04+i*.07,0).rotation.x=Math.PI/2;
   const head=group(torso,0,.80,0);
-  const shell=add(head,trapGeometry(),M.iron);
-  // Thick physically inset eye housings and lit lenses, not marshmallow eyes.
+  // Lower jaw stays attached to the neck. The top is hinged along the BACK edge
+  // of the horizontal cut, and carries both eyes and its riveted metal housing.
+  const splitY=-.095,backZ=-.23;
+  add(head,trapGeometry(-.47,splitY),M.iron);
+  panel(head,M.dark,0,splitY+.012,.205,1.38,.07,.064);
+  const lid=group(head,0,splitY,backZ);
+  const topShell=trapGeometry(splitY,.46);
+  topShell.translate(0,-splitY,-backZ);
+  add(lid,topShell,M.iron);
+  // Aligned local origin for the accessories, but they travel with the lid.
+  const face=group(lid,0,-splitY,-backZ);
   for(const s of [-1,1]){
-    const socket=add(head,new THREE.CylinderGeometry(.205,.205,.045,48),M.dark,s*.33,-.10,.285);
+    const socket=add(face,new THREE.CylinderGeometry(.205,.205,.045,48),M.dark,s*.33,.065,.285);
     socket.rotation.x=Math.PI/2;
-    const glass=add(head,new THREE.CylinderGeometry(.175,.175,.045,48),M.glass,s*.33,-.10,.31);glass.rotation.x=Math.PI/2;
-    const white=add(head,new THREE.CylinderGeometry(.139,.139,.018,48),M.eye,s*.33,-.10,.345);white.rotation.x=Math.PI/2;
-    const small=orb(head,M.cotton,s*.31,.0,.359,.05,.045,.009);small.material=M.glass;
+    const glass=add(face,new THREE.CylinderGeometry(.175,.175,.045,48),M.glass,s*.33,.065,.31);
+    glass.rotation.x=Math.PI/2;
+    const white=add(face,new THREE.CylinderGeometry(.139,.139,.018,48),M.eye,s*.33,.065,.345);
+    white.rotation.x=Math.PI/2;
+    orb(face,M.glass,s*.31,.16,.359,.05,.045,.009);
+    seam(face,[[s*.67,-.09,.26],[s*.78,.12,.26],[s*.84,.40,.26]],.011,M.oxide);
+    bolt(face,s*.77,.35,.30);
+    panel(face,M.steel,s*.80,.23,0,.04,.18,.21);
   }
-  // Seams, service rivets, chipped edge wear.
-  for(const s of [-1,1]){
-    seam(head,[[s*.67,-.40,.26],[s*.78,.0,.26],[s*.84,.40,.26]],.011,M.oxide);
-    bolt(head,s*.67,-.40,.30);bolt(head,s*.77,.35,.30);
-    const ear=panel(head,M.steel,s*.80,.23,0,.04,.18,.21);
+  // Edge detailing is split with the physical seam: no decorations float
+  // across Qwerty's face when the lid opens.
+  for(let i=0;i<6;i++){
+    const x=-.58+i*.235;
+    orb(face,M.oxide,x,.36,.278,.014,.014,.009);
+    orb(head,M.oxide,x,-.36,.278,.014,.014,.009);
   }
-  for(const y of [-.36,.36]){
-    for(let i=0;i<6;i++){
-      const x=-.58+i*.235;
-      const rivet=orb(head,M.oxide,x,y,.278,.014,.014,.009);
-    }
-  }
+  const hinge=add(head,new THREE.CylinderGeometry(.033,.033,1.29,16),M.oxide,0,splitY,backZ-.016);
+  hinge.rotation.z=Math.PI/2;
   return {root,torso,head,arms:arms.map(a=>a.shoulder),legs:legs.map(l=>l.hip),
-    elbows:arms.map(a=>a.elbow),knees:legs.map(l=>l.knee),anchor:1.09,groundScale:.54};
+    elbows:arms.map(a=>a.elbow),knees:legs.map(l=>l.knee),speechLid:lid,anchor:1.09,groundScale:.54};
 }
 export function createCharacters(scene) {
   const actors={Tab:buildTab(scene),Shift:buildShift(scene),Qwerty:buildQwerty(scene)};
@@ -357,6 +377,16 @@ export function articulateWalk(rig, t, speed, effort, talking = false){
   rig.head.rotation.z=Math.sin(t*.54+rig.anchor)*.045;
   rig.head.rotation.y=Math.sin(t*.43+rig.anchor)*.11;
   rig.root.position.y=.025+Math.abs(Math.sin(phase))*.034*effort;
+  if(rig.name==='Qwerty' && rig.speechLid){
+    // Intentionally cartoonishly hard-cut cadence: South Park Canadian flaps,
+    // but executed by a physical hinge on the realistic trapezoidal casing.
+    // Only animate while THIS character's actual dialogue bubble is showing.
+    const beats=Math.sin(t*17.5)+.39*Math.sin(t*11.2)+.19*Math.sin(t*29.3);
+    const openness=talking?Math.min(1,Math.max(0,beats*.63+.46)):0;
+    const target=-openness*.53;
+    rig.speechLid.rotation.x += (target-rig.speechLid.rotation.x)*.42;
+    rig.speechLid.position.y=-.095+openness*.035;
+  }
   if(talking && rig.name==='Qwerty'){
     rig.arms[0].rotation.z=-.48+Math.sin(t*8)*.34;
     rig.arms[1].rotation.z=.60+Math.cos(t*11)*.37;

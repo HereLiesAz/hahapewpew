@@ -12,7 +12,7 @@ test('the game builds character rigs, not toy stand-ins',()=>{
   assert.match(scene,/articulateWalk\(rig,t\+along,5\.2,1,/);
 });
 test('character silhouette and physical detail match original art',()=>{
-  for(const snippet of ['function carton(parent)','function humanLeg(root,side)','function humanArm(torso,side)','function buildShift(scene)','function buildQwerty(scene)','function teddy(hand)','function skirt(parent)','function trapGeometry()'])
+  for(const snippet of ['function carton(parent)','function humanLeg(root,side)','function humanArm(torso,side)','function buildShift(scene)','function buildQwerty(scene)','function teddy(hand)','function skirt(parent)','function trapGeometry(bottom=-.47,top=.46)'])
     assert.ok(models.includes(snippet),snippet);
   assert.match(models,/createCharacters\(scene\)/);
   assert.match(models,/new THREE\.MeshPhysicalMaterial/);
