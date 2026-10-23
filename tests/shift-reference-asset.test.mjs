@@ -32,7 +32,7 @@ test('Shift model loads as cel-shaded actor with usable gun attachment',()=>{
  const source=readFileSync(new URL('../public/world3d.js',import.meta.url),'utf8');
  const cel=readFileSync(new URL('../public/cel-robots.js',import.meta.url),'utf8');
  assert.match(source,/installShiftAsset\(\)/);
- assert.match(source,/getObjectByName\('arm.R'\)/);
+ assert.match(source,/getObjectByName\('armR'\)/);
  assert.match(source,/rig\.asset\.mixer\.update\(dt\)/);
  assert.match(cel,/Shift: \{ Dome_Graphite:/);
 });

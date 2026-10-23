@@ -147,7 +147,7 @@ async function installShiftAsset() {
     const {eyes}=celShadeRobot(gltf.scene,'Shift');
     const skinMeshes=[];
     gltf.scene.traverse(node=>{if(node.isSkinnedMesh)skinMeshes.push(node);});
-    const bone=gltf.scene.getObjectByName('arm.R');
+    const bone=gltf.scene.getObjectByName('armR');
     const clip=name=>gltf.animations.find(action=>action.name===name);
     if(!skinMeshes.length||eyes.length!==1||!bone||
        !clip('Shift_Walk')||!clip('Shift_Talk')||!clip('Shift_Idle'))
