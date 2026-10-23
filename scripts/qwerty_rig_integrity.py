@@ -69,7 +69,13 @@ def repair(source,dest):
     for index,(off,mat) in enumerate(rows(m,b,m['skins'][0]['inverseBindMatrices'])):
         if joints[index] in descendants:
             for axis in range(3):
-                struct.pack_into('<f',b,off+(12+axis)*4,-rest[joints[index]][axis])
+                location=off+(12+axis)*4
+                expected=-rest[joints[index]][axis]
+                old_value=struct.unpack_from('<f',b,location)[0]
+                # Preserve the original sign bit of exact zero. Signed zero
+                # affects GLB hashes, not the resulting transform.
+                if expected==0 and old_value==0: continue
+                struct.pack_into('<f',b,location,expected)
     updated=0
     for p in m['meshes'][0]['primitives']:
         a=p['attributes'];pos=rows(m,b,a['POSITION'])

@@ -37,6 +37,13 @@ class QwertyRigIntegrity(unittest.TestCase):
                     old=c[k]+before[node][k]+ibma[j][12+k]
                     new=n[k]+after[node][k]+ibmb[j][12+k]
                     self.assertAlmostEqual(old,new,places=5)
+    def test_generator_produces_byte_identical_glb(self):
+        import tempfile
+        from qwerty_rig_integrity import repair
+        with tempfile.TemporaryDirectory() as directory:
+            rebuilt=Path(directory)/'Q16.glb'
+            repair(OLD,rebuilt)
+            self.assertEqual(rebuilt.read_bytes(),NEW.read_bytes())
     def test_eye_rims_animation_uvs_and_materials_preserved(self):
         self.assertEqual(self.a['animations'],self.b['animations'])
         self.assertEqual(self.a['materials'],self.b['materials'])
