@@ -177,6 +177,38 @@ async function installShiftAsset() {
 }
 canvas.dataset.shiftModel='legacy';
 installShiftAsset();
+ 
+// Tab is a separate reference-driven UV-mapped GLB. Keep the existing Tab as
+// fallback until the rig, embedded face art, shipping label and clips load.
+async function installTabAsset() {
+  const rig=crew.Tab;
+  try {
+    const gltf=await new GLTFLoader().loadAsync('/assets/characters/Tab_Reference.glb');
+    const clips=Object.fromEntries(gltf.animations.map(a=>[a.name,a]));
+    let meshes=0;
+    gltf.scene.traverse(node=>{if(node.isSkinnedMesh)meshes++;});
+    if(!meshes || !gltf.scene.getObjectByName('head') ||
+       !gltf.scene.getObjectByName('bear') ||
+       !clips.Tab_Walk || !clips.Tab_Idle || !clips.Tab_Bear_Swing)
+      throw new Error('Incomplete Tab reference rig or animation clips');
+    const legacy=[...rig.root.children];
+    rig.root.add(gltf.scene);
+    for(const node of legacy)node.visible=false;
+    const mixer=new THREE.AnimationMixer(gltf.scene);
+    const walk=mixer.clipAction(clips.Tab_Walk);
+    const idle=mixer.clipAction(clips.Tab_Idle);
+    const bear=mixer.clipAction(clips.Tab_Bear_Swing);
+    walk.play();idle.play();idle.setEffectiveWeight(.24);bear.play();
+    rig.asset={model:gltf.scene,mixer,walk,idle,bear,loaded:true};
+    rig.anchor=1.74;
+    canvas.dataset.tabModel='glb';
+  } catch(error) {
+    console.warn('Tab GLB unavailable; retaining legacy character:',error);
+  }
+}
+canvas.dataset.tabModel='legacy';
+installTabAsset();
+
 
 
 // Shared procedural surface maps: seeded once, not regenerated on every chunk.
@@ -455,6 +487,10 @@ function updateActors(dt){
     rig.root.rotation.y=Math.PI/2;
     const qwertySpeaking=name==='Qwerty'&&bubbleState.Qwerty?.until>seconds;
     articulateWalk(rig,t+along,5.2,1,qwertySpeaking);
+    if(name==='Tab'&&rig.asset?.loaded) {
+      // Face graphics do not animate or distort. Only body, arms and bear move.
+      rig.asset.mixer.update(dt);
+    }
     if(name==='Shift'&&rig.asset?.loaded) {
       rig.asset.walk.setEffectiveWeight(1);
       rig.asset.talk.setEffectiveWeight(bubbleState.Shift?.until>seconds?0.55:0);
