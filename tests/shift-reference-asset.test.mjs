@@ -36,3 +36,12 @@ test('Shift model loads as cel-shaded actor with usable gun attachment',()=>{
  assert.match(source,/rig\.asset\.mixer\.update\(dt\)/);
  assert.match(cel,/Shift: \{ Dome_Graphite:/);
 });
+
+test('Shift rear dome has continuous gray geometry, not a black shell',()=>{
+ const g=glb();
+ const materialIndex=g.materials.findIndex(m=>m.name==='Shift/Dome_Side');
+ assert.ok(materialIndex>=0,'back and sides require a gray dome material');
+ const rear=g.meshes[0].primitives.find(p=>p.material===materialIndex);
+ assert.ok(rear,'the gray dome must exist as exported geometry, not only a material');
+ assert.ok(g.accessors[rear.attributes.POSITION].count>1000,'the gray material must cover the complete shell');
+});

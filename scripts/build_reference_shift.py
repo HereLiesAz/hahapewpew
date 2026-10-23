@@ -109,7 +109,8 @@ class Builder:
 
 def build_character():
     b=Builder()
-    # A solid shallow dome with a drawn black silhouette and a curved gray face.
+    # Continuous gray shell: the dome stays visibly gray from the rear, sides, and front.
+    # Only the narrow base rim and eye outlines are black; no black rear hemisphere.
     n=60;v=[];uv=[];faces=[]
     for j,(y,rx,rz) in enumerate(DOME):
         for i in range(n+1):
@@ -120,7 +121,7 @@ def build_character():
         for i in range(n):
             a=j*(n+1)+i;c=a+n+1
             faces.extend([(a,c,a+1),(a+1,c,c+1)])
-    b.add('Ink_Outline',v,faces,'head',np.asarray(uv,np.float32))
+    b.add('Dome_Side',v,faces,'head',np.asarray(uv,np.float32))
     half=36;v=[];uv=[];faces=[]
     for j,(y,rx,rz) in enumerate(DOME):
         for i in range(half+1):
