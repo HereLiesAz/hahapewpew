@@ -24,7 +24,7 @@
 
 ## 2 — Shift: accurate dome robot
 
-- [ ] **S2.1 Reference contract:** Measure the dome-to-body ratio, small torso/limb and foot positions against the original drawing. **Done when:** labeled reference tracing and prohibited redesign details are documented.
+- [x] **S2.1 Reference contract:** Measure the dome-to-body ratio, small torso/limb and foot positions against the original drawing. **Done when:** labeled reference tracing and prohibited redesign details are documented.
 - [ ] **S2.2 Dome silhouette:** Create a true rounded dome with correct rim and depth, not a sphere perched on a toy block. **Done when:** front/side orthographic silhouettes pass.
 - [ ] **S2.3 Immovable graphic eyes:** Attach two flat white 2D eye surfaces to the dome curvature at the correct angles; no eyeballs, eyelids or tracking. **Done when:** eye shape/location remain fixed in head coordinates through movement.
 - [ ] **S2.4 Torso, arms, legs and feet:** Rebuild compact proportions and leg joints from the reference. **Done when:** full-body compare and foot contact checks pass.
