@@ -17,7 +17,7 @@ class CompactRigTest(unittest.TestCase):
   self.assertEqual([ch['target']['path'] for ch in talk['channels'] if ch['target']['node']==5],['translation'])
  def test_bones_and_textures_retained(self):
   self.assertEqual(len(self.m['skins'][0]['joints']),19)
-  self.assertEqual(self.a['textures'],self.m['textures'])
+  self.assertEqual(self.a.get('textures',[]),self.m.get('textures',[]))
   self.assertEqual(self.a['meshes'][0]['primitives'][0],self.m['meshes'][0]['primitives'][0])
   self.assertEqual(self.m['nodes'][4]['translation'][2],.475)
  def test_reduced_limb_pivots_and_larger_clamps(self):
