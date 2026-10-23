@@ -13,7 +13,9 @@ const colors = {
   Qwerty: { Face_Matte:'#626166', Side_Dark:'#333237',
     Outline:'#141418', Body_Graphite:'#49494d', Panel_Gray:'#87868a',
     Limb_Black:'#202024', Eyelid_2D:'#1c1b1e' },
-  Shift: { nickel:'#a6a6aa', charcoal:'#65656a', rubber:'#26272a',
+  Shift: { Dome_Graphite:'#777777', Ink_Outline:'#090909',
+    Body_Graphite:'#515154', Control_Light:'#92918f', Limb_Black:'#090909',
+    nickel:'#a6a6aa', charcoal:'#65656a', rubber:'#26272a',
     glass:'#282a2c', dark:'#242528', oxide:'#635555', cotton:'#727176' }
 };
 function isEye(m) {

@@ -138,6 +138,47 @@ async function installQwertyAsset() {
 canvas.dataset.qwertyModel='legacy';
 installQwertyAsset();
 
+// Reference-matched Shift is a separate skinned GLB, with static eye decals.
+// Retain the previously built actor only when the external asset fails validation.
+async function installShiftAsset() {
+  const rig=crew.Shift;
+  try {
+    const gltf=await new GLTFLoader().loadAsync('/assets/characters/Shift_Rigged.glb');
+    const {eyes}=celShadeRobot(gltf.scene,'Shift');
+    const skinMeshes=[];
+    gltf.scene.traverse(node=>{if(node.isSkinnedMesh)skinMeshes.push(node);});
+    const bone=gltf.scene.getObjectByName('arm.R');
+    const clip=name=>gltf.animations.find(action=>action.name===name);
+    if(!skinMeshes.length||eyes.length!==1||!bone||
+       !clip('Shift_Walk')||!clip('Shift_Talk')||!clip('Shift_Idle'))
+      throw new Error('Incomplete reference-matched Shift GLB');
+    const legacy=[...rig.root.children];
+    const gun=rig.gun;
+    // The hidden gun remains functional after the legacy torso is retired.
+    if(gun) {
+      gun.removeFromParent();
+      bone.add(gun);
+      gun.position.set(.15,-.11,.16);
+      gun.rotation.set(0,0,-.08);
+      gun.scale.setScalar(.35);
+      gun.visible=false;
+    }
+    rig.root.add(gltf.scene);
+    legacy.forEach(node=>{node.visible=false;});
+    const mixer=new THREE.AnimationMixer(gltf.scene);
+    const walk=mixer.clipAction(clip('Shift_Walk'));
+    const talk=mixer.clipAction(clip('Shift_Talk'));
+    walk.play();talk.play();talk.setEffectiveWeight(0);
+    rig.asset={model:gltf.scene,mixer,walk,talk,loaded:true};
+    canvas.dataset.shiftModel='glb';
+  } catch(error) {
+    console.warn('Shift GLB unavailable; retaining legacy mesh:',error);
+  }
+}
+canvas.dataset.shiftModel='legacy';
+installShiftAsset();
+
+
 // Shared procedural surface maps: seeded once, not regenerated on every chunk.
 // These are physical material textures, not flat background paintings.
 function surfaceMap(seed, type) {
@@ -414,6 +455,11 @@ function updateActors(dt){
     rig.root.rotation.y=Math.PI/2;
     const qwertySpeaking=name==='Qwerty'&&bubbleState.Qwerty?.until>seconds;
     articulateWalk(rig,t+along,5.2,1,qwertySpeaking);
+    if(name==='Shift'&&rig.asset?.loaded) {
+      rig.asset.walk.setEffectiveWeight(1);
+      rig.asset.talk.setEffectiveWeight(bubbleState.Shift?.until>seconds?0.55:0);
+      rig.asset.mixer.update(dt);
+    }
     if(name==='Qwerty'&&rig.asset?.loaded) {
       const a=rig.asset;
       a.walk.setEffectiveWeight(1);

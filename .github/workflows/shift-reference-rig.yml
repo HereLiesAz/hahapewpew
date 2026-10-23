@@ -1,0 +1,44 @@
+name: Reference-matched Shift GLB
+on:
+  push:
+    branches: [feature/shift-reference-rig]
+    paths:
+      - scripts/build_reference_shift.py
+      - .github/workflows/shift-reference-rig.yml
+      - tests/shift-reference-asset.test.mjs
+      - public/world3d.js
+      - public/cel-robots.js
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build reference-constrained glTF asset
+        run: |
+          python -m pip install --disable-pip-version-check numpy
+          python scripts/build_reference_shift.py --out public/assets/characters/Shift_Rigged.glb
+      - name: Validate game and new skeleton
+        run: |
+          npm ci
+          npm run check
+      - name: Commit reproducible GLB after validation
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/assets/characters/Shift_Rigged.glb
+          if ! git diff --cached --quiet; then
+            git commit -m 'Export reference-matched rigged Shift GLB'
+            git push origin HEAD:feature/shift-reference-rig
+          fi
