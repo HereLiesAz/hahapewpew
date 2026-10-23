@@ -51,8 +51,8 @@ class QwertyRigIntegrity(unittest.TestCase):
             differences=[i for i,(x,y) in enumerate(zip(reg_bin,self.bb)) if x!=y]
             for i in differences:
                 self.assertEqual(i%4,3)
-                self.assertEqual(reg_bin[i-3:i],b'\\0'*3)
-                self.assertEqual(self.bb[i-3:i],b'\\0'*3)
+                self.assertEqual(reg_bin[i-3:i],bytes(3))
+                self.assertEqual(self.bb[i-3:i],bytes(3))
                 self.assertEqual({reg_bin[i],self.bb[i]},{0,128})
             self.assertLessEqual(len(differences),2)
     def test_eye_rims_animation_uvs_and_materials_preserved(self):
