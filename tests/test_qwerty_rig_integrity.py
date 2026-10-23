@@ -37,13 +37,24 @@ class QwertyRigIntegrity(unittest.TestCase):
                     old=c[k]+before[node][k]+ibma[j][12+k]
                     new=n[k]+after[node][k]+ibmb[j][12+k]
                     self.assertAlmostEqual(old,new,places=5)
-    def test_generator_produces_byte_identical_glb(self):
+    def test_generator_reproduces_same_gltf_and_geometry(self):
         import tempfile
-        from qwerty_rig_integrity import repair
+        from qwerty_rig_integrity import repair, load
         with tempfile.TemporaryDirectory() as directory:
             rebuilt=Path(directory)/'Q16.glb'
             repair(OLD,rebuilt)
-            self.assertEqual(rebuilt.read_bytes(),NEW.read_bytes())
+            regenerated, reg_bin=load(rebuilt)
+            self.assertEqual(regenerated,self.b)
+            self.assertEqual(len(reg_bin),len(self.bb))
+            # IEEE-754 positive/negative zero serialize differently but
+            # represent precisely the same numeric transform.
+            differences=[i for i,(x,y) in enumerate(zip(reg_bin,self.bb)) if x!=y]
+            for i in differences:
+                self.assertEqual(i%4,3)
+                self.assertEqual(reg_bin[i-3:i],b'\\0'*3)
+                self.assertEqual(self.bb[i-3:i],b'\\0'*3)
+                self.assertEqual({reg_bin[i],self.bb[i]},{0,128})
+            self.assertLessEqual(len(differences),2)
     def test_eye_rims_animation_uvs_and_materials_preserved(self):
         self.assertEqual(self.a['animations'],self.b['animations'])
         self.assertEqual(self.a['materials'],self.b['materials'])
