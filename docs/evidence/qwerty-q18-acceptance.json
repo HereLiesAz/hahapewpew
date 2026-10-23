@@ -1,0 +1,35 @@
+{
+  "step": "Q1.8",
+  "env": "Chromium headless WebGL locally served actual game",
+  "viewport": [
+    1280,
+    800
+  ],
+  "qwertyAsset": "glb-q16",
+  "tab": "glb",
+  "shift": "glb",
+  "poseImages": [
+    "front",
+    "side",
+    "threequarter",
+    "talk",
+    "kill",
+    "lids"
+  ],
+  "skullY": {
+    "closed": 0.055,
+    "talking": 0.6100961369955508
+  },
+  "plateY": 0.3,
+  "eyes": {
+    "normal": "#ffffff",
+    "kill": "#ff1616",
+    "material": "MeshBasicMaterial"
+  },
+  "clip": "Qwerty_Walk_ShortStride",
+  "rendererTrianglesObserved": 31678,
+  "fallbackQwertyModel": "legacy",
+  "testsPassed": 45,
+  "visualEvidence": "docs/evidence/qwerty-q18-in-game.jpg",
+  "liveDeploymentVerified": false
+}
