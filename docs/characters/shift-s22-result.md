@@ -71,6 +71,12 @@ The page loads only `workbench/shift/Shift_S22.glb`, applies the actual four-ban
 
 ## In-game S2.2 acceptance route (isolated feature branch)
 
-The `feature/shift-s22-in-game-qa` branch adds a **loopback-only** `shiftQA` query to the actual 3D game loader. Serve the **repository root** with `python3 -m http.server 8765` and open `http://127.0.0.1:8765/?shiftQA=front`; supported variants are `side`, `threequarter`, `back`, and `talk`. Only loopback selects `/workbench/shift/Shift_S22.glb` and sets `#world[data-shift-model="glb-s22"]` on successful load. Any non-loopback host continues requesting `/assets/characters/Shift_Rigged.glb`. The existing failure fallback stays unchanged.
+The `feature/shift-s22-in-game-qa` branch adds a **loopback-only** `shiftQA` query to the actual 3D game loader. Run `python3 scripts/serve_shift_qa.py` from the repository checkout and open `http://127.0.0.1:8765/?shiftQA=front`; supported variants are `side`, `threequarter`, `back`, and `talk`. Only loopback selects `/workbench/shift/Shift_S22.glb` and sets `#world[data-shift-model="glb-s22"]` on successful load. Any non-loopback host continues requesting `/assets/characters/Shift_Rigged.glb`. The existing failure fallback stays unchanged.
 
 `window.__shiftQA` exposes the active game camera, cast, scene and renderer **only during the loopback test**, allowing direct WebGL captures at game scale. The route is acceptance tooling, not evidence that the candidate has passed visual review. The branch is intentionally kept off `main` until cold GLEE review and browser checks finish.
+
+### Local QA server mapping
+
+The game uses absolute asset paths such as `/boot3d.js`, while the candidate lives outside `public/`. The stock `python3 -m http.server --directory public` would make the workbench GLB inaccessible, and serving the repository root directly would make the game assets inaccessible. `scripts/serve_shift_qa.py` solves this with a **127.0.0.1-only** server: `/` and standard asset URLs map to `public/`, only `/workbench/shift/` and `/tests/visual/` expose non-public QA files, and `/public/` resolves vendor imports from the standalone visual test. Traversal escaping those roots is blocked and directory listings are disabled. `tests/test_shift_dome_s22.py` includes path and traversal regressions.
+
+This is local testing infrastructure only. It does not change the deployed Cloudflare Worker or publish the candidate GLB as a production asset.
