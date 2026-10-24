@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import * as THREE from '../public/vendor/three.module.js';
+import {GLTFLoader} from '../public/vendor/GLTFLoader.js';
+import {celShadeRobot} from '../public/cel-robots.js';
 const path=new URL('../public/assets/characters/Shift_Rigged.glb',import.meta.url);
 function glb(){
  const bytes=readFileSync(path);
@@ -44,4 +47,57 @@ test('Shift rear dome has continuous gray geometry, not a black shell',()=>{
  const rear=g.meshes[0].primitives.find(p=>p.material===materialIndex);
  assert.ok(rear,'the gray dome must exist as exported geometry, not only a material');
  assert.ok(g.accessors[rear.attributes.POSITION].count>1000,'the gray material must cover the complete shell');
+});
+
+
+// Unlike a raw JSON assertion, this exercises the actual bundled r180 loader.
+// glTF preserves "arm.R"; GLTFLoader sanitizes it to "armR" to support animation.
+const shiftCandidatePath=new URL('../workbench/shift/Shift_S22.glb',import.meta.url);
+function parsedModel(sourcePath){
+  const bytes=readFileSync(sourcePath);
+  const data=bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength);
+  return new Promise((resolve,reject)=>new GLTFLoader().parse(data,'',resolve,reject));
+}
+
+test('actual r180 GLTFLoader resolves Shift gun bone in both original and S2.2 candidate',async()=>{
+  for(const modelPath of [path,shiftCandidatePath]){
+    const json=readFileSync(modelPath);
+    const jsonLength=json.readUInt32LE(12);
+    const sceneMetadata=JSON.parse(json.toString('utf8',20,20+jsonLength));
+    // Known canonical source name: do not derive the expected loader name from
+    // the same sanitization routine being exercised.
+    assert.ok(sceneMetadata.nodes.some(node=>node.name==='arm.R'));
+    assert.equal(sceneMetadata.skins[0].joints.length,16);
+    const gltf=await parsedModel(modelPath);
+    assert.ok(gltf.scene.getObjectByName('armR')?.isBone,'r180 must sanitize the arm.R node');
+    assert.equal(gltf.scene.getObjectByName('arm.R'),undefined);
+    let skinned=0;
+    gltf.scene.traverse(node=>{if(node.isSkinnedMesh)skinned++;});
+    assert.ok(skinned>0,'Shift must remain a skinned actor');
+    const {eyes}=celShadeRobot(gltf.scene,'Shift');
+    assert.equal(eyes.length,1,'two flat white graphics share one material');
+    assert.equal(eyes[0].type,'MeshBasicMaterial');
+    assert.equal(eyes[0].color.getHexString(),'ffffff');
+    const clips=Object.fromEntries(gltf.animations.map(clip=>[clip.name,clip]));
+    assert.ok(clips.Shift_Walk&&clips.Shift_Idle&&clips.Shift_Talk);
+    const mixer=new THREE.AnimationMixer(gltf.scene);
+    mixer.clipAction(clips.Shift_Walk).play();
+    mixer.clipAction(clips.Shift_Talk).play();
+    mixer.update(.2);
+    assert.ok(gltf.scene.getObjectByName('armR')?.isBone);
+    assert.equal(eyes[0].color.getHexString(),'ffffff');
+  }
+});
+
+test('S2.2 isolated browser acceptance targets the candidate, not production',()=>{
+  const html=readFileSync(new URL('./visual/shift-s22.html',import.meta.url),'utf8');
+  const preview=readFileSync(new URL('./visual/shift-s22-preview.js',import.meta.url),'utf8');
+  assert.match(html,/type="module" src="\.\/shift-s22-preview\.js"/);
+  assert.match(preview,/\.\.\/\.\.\/workbench\/shift\/Shift_S22\.glb/);
+  assert.match(preview,/getObjectByName\('armR'\)/);
+  assert.match(preview,/OrthographicCamera/);
+  assert.match(preview,/document\.body\.dataset\.shiftReady='true'/);
+  const production=readFileSync(new URL('../public/world3d.js',import.meta.url),'utf8');
+  assert.match(production,/loadAsync\('\/assets\/characters\/Shift_Rigged\.glb'\)/);
+  assert.doesNotMatch(production,/Shift_S22/);
 });
