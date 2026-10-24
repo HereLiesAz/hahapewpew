@@ -121,3 +121,27 @@ class ShiftSilhouette(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+class ShiftQAServerPaths(unittest.TestCase):
+    """Route real browser imports without exposing unrelated workbench files."""
+
+    def test_loopback_qa_paths_and_traversal(self):
+        from serve_shift_qa import ShiftQAHandler, ROOT
+        handle = ShiftQAHandler.__new__(ShiftQAHandler)
+        expected = {
+            '/': ROOT / 'public' / 'index.html',
+            '/boot3d.js': ROOT / 'public' / 'boot3d.js',
+            '/assets/characters/Shift_Rigged.glb': ROOT / 'public' / 'assets' / 'characters' / 'Shift_Rigged.glb',
+            '/workbench/shift/Shift_S22.glb': ROOT / 'workbench' / 'shift' / 'Shift_S22.glb',
+            '/tests/visual/shift-s22.html': ROOT / 'tests' / 'visual' / 'shift-s22.html',
+            '/public/vendor/GLTFLoader.js': ROOT / 'public' / 'vendor' / 'GLTFLoader.js',
+        }
+        for request, path in expected.items():
+            self.assertEqual(Path(handle.translate_path(request)), path, request)
+            self.assertTrue(path.is_file(), f'Missing browser asset: {request}')
+        for path in ('/workbench/shift/../../.git/config',
+                     '/tests/visual/../../.git/config',
+                     '/%2e%2e/.git/config'):
+            resolved = Path(handle.translate_path(path))
+            self.assertFalse(resolved.is_file(), path)
+            self.assertTrue(resolved.is_relative_to(ROOT / 'public'), path)
