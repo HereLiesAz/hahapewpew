@@ -99,7 +99,11 @@ test('S2.2 isolated browser acceptance targets the candidate, not production',()
   assert.match(preview,/document\.body\.dataset\.shiftReady='true'/);
   const production=readFileSync(new URL('../public/world3d.js',import.meta.url),'utf8');
   assert.match(production,/loadAsync\('\/assets\/characters\/Shift_Rigged\.glb'\)/);
-  assert.doesNotMatch(production,/Shift_S22/);
+  // S2.2 was merged with a loopback-only QA loader. Its mere presence
+  // is not production installation; the non-QA URL is the real invariant.
+  assert.match(production,/shiftQaMode\\s*\\?/);
+  assert.match(production,/loadAsync\\('\/assets\/characters\/Shift_Rigged\\.glb'\\)/);
+  assert.doesNotMatch(production,/Shift_S23\\.glb/);
 });
 
 test('S2.2 in-game candidate is accessible only from loopback',()=>{
@@ -120,4 +124,46 @@ test('S2.2 in-game candidate is accessible only from loopback',()=>{
   assert.match(source,/: await new GLTFLoader\(\)\.loadAsync\('\/assets\/characters\/Shift_Rigged\.glb'\)/);
   assert.match(source,/canvas\.dataset\.shiftModel=shiftQaMode\?'glb-s22':'glb'/);
   assert.match(source,/if\(shiftQaMode\)window\.__shiftQA=/);
+});
+
+test('S2.3 candidate eye graphics remain fixed on head during Shift_Talk',async()=>{
+  const s23Path=new URL('../workbench/shift/Shift_S23.glb',import.meta.url);
+  const bytes=readFileSync(s23Path);
+  const jsonLength=bytes.readUInt32LE(12);
+  const meta=JSON.parse(bytes.toString('utf8',20,20+jsonLength));
+  const headNode=meta.nodes.findIndex(n=>n.name==='head');
+  const headJoint=meta.skins[0].joints.indexOf(headNode);
+  assert.equal(headJoint,3);
+  assert.ok(!meta.nodes.some(n=>/eyelid|eye|pupil|blink|socket/i.test(n.name||'')));
+  assert.deepEqual(meta.animations.map(a=>a.name),['Shift_Walk','Shift_Idle','Shift_Talk']);
+  assert.equal(meta.asset.extras.shiftEyesS23.modifiedVertices,3456);
+  const gltf=await parsedModel(s23Path);
+  const head=gltf.scene.getObjectByName('head');
+  assert.ok(head?.isBone);
+  let skin;
+  gltf.scene.traverse(node=>{if(node.isSkinnedMesh)skin=node;});
+  assert.ok(skin,'Shift head graphics need the actual skinned mesh');
+  const original=Array.from(skin.geometry.attributes.position.array);
+  const {eyes}=celShadeRobot(gltf.scene,'Shift');
+  assert.equal(eyes.length,1);
+  assert.equal(eyes[0].type,'MeshBasicMaterial');
+  assert.equal(eyes[0].color.getHexString(),'ffffff');
+  const before=head.quaternion.clone();
+  const mixer=new THREE.AnimationMixer(gltf.scene);
+  mixer.clipAction(gltf.animations.find(c=>c.name==='Shift_Talk')).play();
+  mixer.update(.24);
+  assert.ok(head.quaternion.angleTo(before)>.01,'whole head moves when talking');
+  assert.deepEqual(Array.from(skin.geometry.attributes.position.array),original,
+    'eye vertices must not be deformed or independently animated');
+  assert.equal(eyes[0].color.getHexString(),'ffffff');
+});
+
+test('S2.3 visual QA can select new candidate without replacing S2.2',()=>{
+  const viewer=readFileSync(new URL('./visual/shift-s22-preview.js',import.meta.url),'utf8');
+  assert.match(viewer,/params\.get\('model'\)==='s23'/);
+  assert.match(viewer,/Shift_S23\.glb/);
+  assert.match(viewer,/Shift_S22\.glb/);
+  assert.match(viewer,/sourceAsset,skinned/);
+  const live=readFileSync(new URL('../public/world3d.js',import.meta.url),'utf8');
+  assert.doesNotMatch(live,/Shift_S23\.glb/);
 });

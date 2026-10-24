@@ -46,7 +46,10 @@ function resize() {
 addEventListener('resize',resize);
 resize();
 try {
-  const gltf=await new GLTFLoader().loadAsync('../../workbench/shift/Shift_S22.glb');
+  const sourceAsset=params.get('model')==='s23'?'Shift_S23.glb':'Shift_S22.glb';
+ const gltf=await new GLTFLoader().loadAsync(sourceAsset==='Shift_S23.glb'
+   ? '../../workbench/shift/Shift_S23.glb'
+   : '../../workbench/shift/Shift_S22.glb');
   const gunMount=gltf.scene.getObjectByName('armR');
   let skinned=0;
   gltf.scene.traverse(node=>{if(node.isSkinnedMesh)skinned++;});
@@ -74,7 +77,7 @@ try {
   render(performance.now());
   document.body.dataset.shiftReady='true';
   window.__shiftQA={
-    ready:true,view,pose,skinned,arm:gunMount.name,eyeMaterial:eyes[0].type,
+    ready:true,view,pose,sourceAsset,skinned,arm:gunMount.name,eyeMaterial:eyes[0].type,
     animations:gltf.animations.map(clip=>clip.name),
     scene,renderer,camera,model:gltf.scene,mixer
   };
