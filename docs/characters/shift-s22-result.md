@@ -1,6 +1,6 @@
 # S2.2 — Shift dome silhouette: isolated candidate
 
-**Status:** candidate generated and structurally checked; **S2.2 remains open**. No runtime model replaced, no production change, and no owner approval assumed.
+**Status:** S2.2 remains open. Candidate committed to `main` by explicit user request on October 24, 2026 at [`a8b0585`](https://github.com/HereLiesAz/hahapewpew/commit/a8b0585e5b51e5f8d0708fd8e7a57a936f604da6), **not** installed in production. No runtime model replaced; no visual approval inferred.
 
 ## Inputs and decision
 
@@ -35,7 +35,7 @@
 2. The first bounding-box-only candidate was **rejected after software rasterization** showed a pointed cap. The revised candidate's per-ring curvature is now checked numerically, and the test suite explicitly rejects narrow upper shoulders.
 3. This session has **not** run the Python tests or compiled the candidate generator in a repository checkout; the regression checks are authored but unexecuted.
 4. A full repository-side test and **Chromium browser screenshot** have **not** been executed in this session. Run `python3 -m unittest discover -s tests -p 'test_shift_dome_s22.py'` from a checkout containing both source and candidate, then render with the actual GLTFLoader in browser and compare front/side views. Check for near/far occlusion, eye attachment and game-distance silhouette before accepting.
-5. Cold GLEE adversarial review was unavailable. **Do not push, mark S2.2 complete, or substitute this candidate in the live game until that review and browser QA pass.**
+5. Cold GLEE adversarial review was unavailable. The user explicitly directed that this **candidate-only** commit be pushed to `main` despite this pending gate. This does **not** mark S2.2 complete or authorize replacing the live Shift asset. Cold GLEE review and actual Chromium browser QA remain prerequisites for acceptance.
 
 The source drawing governs visible shape; the numerical outline trace alone cannot grant owner approval.
 
@@ -62,3 +62,9 @@ A self-contained QA page and script were added under `tests/visual/shift-s22.htm
 
 The page loads only `workbench/shift/Shift_S22.glb`, applies the actual four-band Shift cel renderer, checks the real r180 sanitized `armR` joint and three animation clips, then exposes `document.body.dataset.shiftReady` and `window.__shiftQA` for browser automation and screenshot capture. It cannot modify the live website or the installed model. **These browser sessions have not been executed in this chat**; acceptance stays open until actual Chromium screenshots and movement inspection are recorded.
 
+
+## Main-branch handoff — October 24, 2026
+
+`main` includes the isolated `workbench/shift/Shift_S22.glb` candidate, generator, tests, source comparison, and stand-alone browser viewer. The active loader at `public/world3d.js:126` still requests `/assets/characters/Shift_Rigged.glb`; the published character and gameplay are unchanged. As checked immediately after the push, the new commit had **no reported workflow runs or commit statuses**; this does not constitute a passing test result.
+
+**Remaining S2.2 gates:** execute the Python candidate build/verification test, Node runtime loader test, and actual Chromium front/side/animation captures against `tests/visual/shift-s22.html`; perform independent cold GLEE review. Keep the S2.2 checkbox unchecked until evidence proves the original-art silhouette and confirms there are no visual/runtime regressions. Do not proceed to S2.3 or silently substitute the workbench GLB before S2.2 is accepted.
