@@ -68,3 +68,9 @@ The page loads only `workbench/shift/Shift_S22.glb`, applies the actual four-ban
 `main` includes the isolated `workbench/shift/Shift_S22.glb` candidate, generator, tests, source comparison, and stand-alone browser viewer. The active loader at `public/world3d.js:126` still requests `/assets/characters/Shift_Rigged.glb`; the published character and gameplay are unchanged. As checked immediately after the push, the new commit had **no reported workflow runs or commit statuses**; this does not constitute a passing test result.
 
 **Remaining S2.2 gates:** execute the Python candidate build/verification test, Node runtime loader test, and actual Chromium front/side/animation captures against `tests/visual/shift-s22.html`; perform independent cold GLEE review. Keep the S2.2 checkbox unchecked until evidence proves the original-art silhouette and confirms there are no visual/runtime regressions. Do not proceed to S2.3 or silently substitute the workbench GLB before S2.2 is accepted.
+
+## In-game S2.2 acceptance route (isolated feature branch)
+
+The `feature/shift-s22-in-game-qa` branch adds a **loopback-only** `shiftQA` query to the actual 3D game loader. Serve the **repository root** with `python3 -m http.server 8765` and open `http://127.0.0.1:8765/?shiftQA=front`; supported variants are `side`, `threequarter`, `back`, and `talk`. Only loopback selects `/workbench/shift/Shift_S22.glb` and sets `#world[data-shift-model="glb-s22"]` on successful load. Any non-loopback host continues requesting `/assets/characters/Shift_Rigged.glb`. The existing failure fallback stays unchanged.
+
+`window.__shiftQA` exposes the active game camera, cast, scene and renderer **only during the loopback test**, allowing direct WebGL captures at game scale. The route is acceptance tooling, not evidence that the candidate has passed visual review. The branch is intentionally kept off `main` until cold GLEE review and browser checks finish.

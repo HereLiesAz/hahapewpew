@@ -13,6 +13,10 @@ const canvas = document.querySelector('#world');
 const qwertyQaMode = ['front','side','threequarter','talk','kill','lids'].includes(new URLSearchParams(location.search).get('qwertyQA'))
   && ['localhost','127.0.0.1'].includes(location.hostname)
     ? new URLSearchParams(location.search).get('qwertyQA') : null;
+// The candidate is never loaded from the public hostname.
+const shiftQaMode = ['front','side','threequarter','back','talk'].includes(new URLSearchParams(location.search).get('shiftQA'))
+  && ['localhost','127.0.0.1'].includes(location.hostname)
+    ? new URLSearchParams(location.search).get('shiftQA') : null;
 const renderer = new THREE.WebGLRenderer({canvas, antialias:true, powerPreference:'high-performance'});
 const coarseDevice=matchMedia('(pointer:coarse)').matches || innerWidth < 700;
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, coarseDevice ? 1.15 : 1.6));
@@ -123,7 +127,9 @@ installQwertyAsset();
 async function installShiftAsset() {
   const rig=crew.Shift;
   try {
-    const gltf=await new GLTFLoader().loadAsync('/assets/characters/Shift_Rigged.glb');
+    const gltf=shiftQaMode
+      ? await new GLTFLoader().loadAsync('/workbench/shift/Shift_S22.glb')
+      : await new GLTFLoader().loadAsync('/assets/characters/Shift_Rigged.glb');
     const {eyes}=celShadeRobot(gltf.scene,'Shift');
     const skinMeshes=[];
     gltf.scene.traverse(node=>{if(node.isSkinnedMesh)skinMeshes.push(node);});
@@ -150,7 +156,7 @@ async function installShiftAsset() {
     const talk=mixer.clipAction(clip('Shift_Talk'));
     walk.play();talk.play();talk.setEffectiveWeight(0);
     rig.asset={model:gltf.scene,mixer,walk,talk,loaded:true};
-    canvas.dataset.shiftModel='glb';
+    canvas.dataset.shiftModel=shiftQaMode?'glb-s22':'glb';
   } catch(error) {
     console.warn('Shift GLB unavailable; retaining legacy mesh:',error);
   }
@@ -473,7 +479,7 @@ function updateActors(dt){
     }
     if(name==='Shift'&&rig.asset?.loaded) {
       rig.asset.walk.setEffectiveWeight(1);
-      rig.asset.talk.setEffectiveWeight(bubbleState.Shift?.until>seconds?0.55:0);
+      rig.asset.talk.setEffectiveWeight(bubbleState.Shift?.until>seconds||shiftQaMode==='talk'?0.55:0);
       rig.asset.mixer.update(dt);
     }
     if(name==='Qwerty'&&rig.asset?.loaded) {
@@ -536,7 +542,12 @@ const cameraControl={yaw:.52,pitch:.20,zoom:6.25,point:v3(0,1.25,0),free:v3(0,1.
 if(qwertyQaMode==='front')cameraControl.yaw=Math.PI/2;
 if(qwertyQaMode==='side')cameraControl.yaw=0;
 if(qwertyQaMode==='threequarter')cameraControl.yaw=.85;
+if(!qwertyQaMode&&shiftQaMode==='front')cameraControl.yaw=Math.PI/2;
+if(!qwertyQaMode&&shiftQaMode==='side')cameraControl.yaw=0;
+if(!qwertyQaMode&&shiftQaMode==='back')cameraControl.yaw=-Math.PI/2;
+if(!qwertyQaMode&&shiftQaMode==='threequarter')cameraControl.yaw=.85;
 if(qwertyQaMode)window.__qwertyQA={crew,camera,cameraControl,scene,renderer};
+if(shiftQaMode)window.__shiftQA={crew,camera,cameraControl,scene,renderer};
 const camModes=[{zoom:6.25,pitch:.20},{zoom:17,pitch:.35},{zoom:42,pitch:.66}];
 function updateCamera(dt){
   const ctl=cameraControl;

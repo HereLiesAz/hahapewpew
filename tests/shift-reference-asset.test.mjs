@@ -101,3 +101,23 @@ test('S2.2 isolated browser acceptance targets the candidate, not production',()
   assert.match(production,/loadAsync\('\/assets\/characters\/Shift_Rigged\.glb'\)/);
   assert.doesNotMatch(production,/Shift_S22/);
 });
+
+test('S2.2 in-game candidate is accessible only from loopback',()=>{
+  const source=readFileSync(new URL('../public/world3d.js',import.meta.url),'utf8');
+  const selector=source.match(/const shiftQaMode = [\s\S]*? : null;/)?.[0];
+  assert.ok(selector,'localhost-only Shift QA selector must exist');
+  const evaluate=(search,hostname)=>new Function('location','URLSearchParams',selector+'return shiftQaMode;')({search,hostname},URLSearchParams);
+  assert.equal(evaluate('?shiftQA=front','localhost'),'front');
+  assert.equal(evaluate('?shiftQA=side','127.0.0.1'),'side');
+  assert.equal(evaluate('?shiftQA=talk','localhost'),'talk');
+  assert.equal(evaluate('?shiftQA=back','localhost'),'back');
+  assert.equal(evaluate('?shiftQA=front','www.hahapewpew.com'),null);
+  assert.equal(evaluate('?shiftQA=front','hahapewpew.com'),null);
+  assert.equal(evaluate('?shiftQA=front','localhost.example'),null);
+  assert.equal(evaluate('?shiftQA=invalid','localhost'),null);
+  assert.equal(evaluate('','localhost'),null);
+  assert.match(source,/shiftQaMode\s*\?\s*await new GLTFLoader\(\)\.loadAsync\('\/workbench\/shift\/Shift_S22\.glb'\)/);
+  assert.match(source,/: await new GLTFLoader\(\)\.loadAsync\('\/assets\/characters\/Shift_Rigged\.glb'\)/);
+  assert.match(source,/canvas\.dataset\.shiftModel=shiftQaMode\?'glb-s22':'glb'/);
+  assert.match(source,/if\(shiftQaMode\)window\.__shiftQA=/);
+});
