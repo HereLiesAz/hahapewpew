@@ -1,6 +1,7 @@
 import * as THREE from '../../public/vendor/three.module.js';
 import {GLTFLoader} from '../../public/vendor/GLTFLoader.js';
 import {celShadeRobot} from '../../public/cel-robots.js';
+import {attachShiftConcealedMinigun} from '../../public/shift-weapon.js';
 
 // Isolated workbench acceptance. Never change /public's installed actor.
 const params=new URL(location.href).searchParams;
@@ -13,8 +14,10 @@ const views={
   back:[0,1.08,-6]
 };
 const poses=['idle','walk','talk'];
+const weaponMode=params.get('weapon')||'stowed';
+const weaponModes=['stowed','revealed','spin'];
 const error=document.querySelector('#error');
-if(!Object.hasOwn(views,view)||!poses.includes(pose))
+if(!Object.hasOwn(views,view)||!poses.includes(pose)||!weaponModes.includes(weaponMode))
   throw new Error('Supported views: front, side, threequarter, back; poses: idle, walk, talk.');
 const scene=new THREE.Scene();
 scene.background=new THREE.Color('#18191b');
@@ -62,6 +65,18 @@ try {
   if(!gunMount?.isBone||!skinned||eyes.length!==1||
      !clips.Shift_Idle||!clips.Shift_Walk||!clips.Shift_Talk)
     throw new Error('Candidate fails Shift runtime contract');
+  // S2.5 is QA-only on the newest candidate; no production gun is replaced.
+  const wrist=gltf.scene.getObjectByName('wristR');
+  const weapon=sourceAsset==='Shift_S24.glb'
+    ? attachShiftConcealedMinigun(wrist)
+    : null;
+  if(weapon) {
+    celShadeRobot(weapon.root,'Shift');
+    weapon.pose(weaponMode==='stowed'?0:1,weaponMode==='spin'?Math.PI/3:0);
+    weapon.setDeployed(weaponMode!=='stowed');
+    weapon.setFiring(weaponMode==='spin');
+    document.body.dataset.shiftWeapon=weaponMode;
+  }
   scene.add(gltf.scene);
   const mixer=new THREE.AnimationMixer(gltf.scene);
   const action=mixer.clipAction(clips['Shift_'+pose[0].toUpperCase()+pose.slice(1)]);
@@ -73,7 +88,11 @@ try {
   const moving=params.get('frames')==='1';
   let last=performance.now();
   function render(now) {
-    if(moving)mixer.update(Math.min(.05,Math.max(0,(now-last)/1000)));
+    const dt=Math.min(.05,Math.max(0,(now-last)/1000));
+    if(moving) {
+      mixer.update(dt);
+      weapon?.update(dt);
+    }
     last=now;
     renderer.render(scene,camera);
     if(moving)requestAnimationFrame(render);
@@ -83,7 +102,7 @@ try {
   window.__shiftQA={
     ready:true,view,pose,sourceAsset,skinned,arm:gunMount.name,eyeMaterial:eyes[0].type,
     animations:gltf.animations.map(clip=>clip.name),
-    scene,renderer,camera,model:gltf.scene,mixer
+    scene,renderer,camera,model:gltf.scene,mixer,weapon,weaponMode
   };
 } catch(e) {
   document.body.dataset.shiftReady='false';
