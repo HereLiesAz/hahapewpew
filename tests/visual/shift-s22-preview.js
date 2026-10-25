@@ -49,14 +49,17 @@ function resize() {
 addEventListener('resize',resize);
 resize();
 try {
-  const sourceAsset=params.get('model')==='s24'?'Shift_S24.glb'
+  const sourceAsset=params.get('model')==='s26'?'Shift_S26.glb'
+   : params.get('model')==='s24'?'Shift_S24.glb'
    : params.get('model')==='s23'?'Shift_S23.glb':'Shift_S22.glb';
- const gltf=await new GLTFLoader().loadAsync(sourceAsset==='Shift_S24.glb'
-   ? '../../workbench/shift/Shift_S24.glb'
-   : sourceAsset==='Shift_S23.glb'
-     ? '../../workbench/shift/Shift_S23.glb'
-     : '../../workbench/shift/Shift_S22.glb');
- if(sourceAsset==='Shift_S24.glb')camera.lookAt(0,.68,0);
+ const gltf=await new GLTFLoader().loadAsync(sourceAsset==='Shift_S26.glb'
+   ? '../../workbench/shift/Shift_S26.glb'
+   : sourceAsset==='Shift_S24.glb'
+     ? '../../workbench/shift/Shift_S24.glb'
+     : sourceAsset==='Shift_S23.glb'
+       ? '../../workbench/shift/Shift_S23.glb'
+       : '../../workbench/shift/Shift_S22.glb');
+ if(sourceAsset==='Shift_S24.glb'||sourceAsset==='Shift_S26.glb')camera.lookAt(0,.68,0);
   const gunMount=gltf.scene.getObjectByName('armR');
   let skinned=0;
   gltf.scene.traverse(node=>{if(node.isSkinnedMesh)skinned++;});
@@ -67,7 +70,7 @@ try {
     throw new Error('Candidate fails Shift runtime contract');
   // S2.5 is QA-only on the newest candidate; no production gun is replaced.
   const wrist=gltf.scene.getObjectByName('wristR');
-  const weapon=sourceAsset==='Shift_S24.glb'
+  const weapon=(sourceAsset==='Shift_S24.glb'||sourceAsset==='Shift_S26.glb')
     ? attachShiftConcealedMinigun(wrist)
     : null;
   if(weapon) {

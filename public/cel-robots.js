@@ -57,5 +57,5 @@ export function celShadeRobot(root, robot) {
     }
     obj.material=Array.isArray(obj.material)?obj.material.map(shade):shade(obj.material);
   });
-  return {eyes,gradientMap:ramp};
+  return {eyes,gradientMap:robot==='Shift'?shiftRamp:ramp};
 }
