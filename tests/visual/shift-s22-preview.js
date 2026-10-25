@@ -46,10 +46,14 @@ function resize() {
 addEventListener('resize',resize);
 resize();
 try {
-  const sourceAsset=params.get('model')==='s23'?'Shift_S23.glb':'Shift_S22.glb';
- const gltf=await new GLTFLoader().loadAsync(sourceAsset==='Shift_S23.glb'
-   ? '../../workbench/shift/Shift_S23.glb'
-   : '../../workbench/shift/Shift_S22.glb');
+  const sourceAsset=params.get('model')==='s24'?'Shift_S24.glb'
+   : params.get('model')==='s23'?'Shift_S23.glb':'Shift_S22.glb';
+ const gltf=await new GLTFLoader().loadAsync(sourceAsset==='Shift_S24.glb'
+   ? '../../workbench/shift/Shift_S24.glb'
+   : sourceAsset==='Shift_S23.glb'
+     ? '../../workbench/shift/Shift_S23.glb'
+     : '../../workbench/shift/Shift_S22.glb');
+ if(sourceAsset==='Shift_S24.glb')camera.lookAt(0,.68,0);
   const gunMount=gltf.scene.getObjectByName('armR');
   let skinned=0;
   gltf.scene.traverse(node=>{if(node.isSkinnedMesh)skinned++;});
