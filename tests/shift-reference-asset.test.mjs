@@ -101,8 +101,8 @@ test('S2.2 isolated browser acceptance targets the candidate, not production',()
   assert.match(production,/loadAsync\('\/assets\/characters\/Shift_Rigged\.glb'\)/);
   // S2.2 was merged with a loopback-only QA loader. Its mere presence
   // is not production installation; the non-QA URL is the real invariant.
-  assert.match(production,/shiftQaMode\\s*\\?/);
-  assert.match(production,/loadAsync\\('\/assets\/characters\/Shift_Rigged\\.glb'\\)/);
+  assert.match(production,/shiftQaMode\s*\?/);
+  assert.match(production,/loadAsync\('\/assets\/characters\/Shift_Rigged\.glb'\)/);
   assert.doesNotMatch(production,/Shift_S23\\.glb/);
 });
 
