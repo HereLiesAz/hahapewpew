@@ -167,3 +167,48 @@ test('S2.3 visual QA can select new candidate without replacing S2.2',()=>{
   const live=readFileSync(new URL('../public/world3d.js',import.meta.url),'utf8');
   assert.doesNotMatch(live,/Shift_S23\.glb/);
 });
+
+
+test('S2.4 candidate loads with compact torso, articulated knees and both grounded wedge feet',async()=>{
+  const target=new URL('../workbench/shift/Shift_S24.glb',import.meta.url);
+  const raw=readFileSync(target);
+  const jsonLength=raw.readUInt32LE(12);
+  const meta=JSON.parse(raw.toString('utf8',20,20+jsonLength));
+  const extra=meta.asset.extras.shiftLowerS24;
+  assert.equal(extra.step,'S2.4');
+  assert.deepEqual(extra.modifiedVertexCounts,
+    {body:144,arms:936,legs:504,untouched:9660});
+  const stage=meta.nodes[17];
+  assert.equal(stage.name,'Shift.S24.GroundAlign');
+  assert.deepEqual(stage.children,[0,1]);
+  assert.ok(stage.translation[1]<-.36&&stage.translation[1]>-.4);
+  assert.equal(meta.skins[0].joints.length,16);
+  assert.deepEqual(meta.animations.map(c=>c.name),['Shift_Walk','Shift_Idle','Shift_Talk']);
+  const gltf=await parsedModel(target);
+  const arm=gltf.scene.getObjectByName('armR');
+  const legJoints=['hipL','kneeL','ankleL','hipR','kneeR','ankleR'];
+  assert.ok(arm?.isBone);
+  for(const name of legJoints)
+    assert.ok(gltf.scene.getObjectByName(name)?.isBone,'S2.4 has leg joint '+name);
+  let skinned=0;
+  gltf.scene.traverse(obj=>{if(obj.isSkinnedMesh)skinned++});
+  assert.ok(skinned>0);
+  const {eyes}=celShadeRobot(gltf.scene,'Shift');
+  assert.equal(eyes.length,1);
+  assert.equal(eyes[0].type,'MeshBasicMaterial');
+  const action=new THREE.AnimationMixer(gltf.scene);
+  action.clipAction(gltf.animations.find(c=>c.name==='Shift_Walk')).play();
+  action.update(.24);
+  assert.equal(eyes[0].color.getHexString(),'ffffff');
+});
+
+test('S2.4 remains a private viewer candidate; public character and fallback unchanged',()=>{
+  const viewer=readFileSync(new URL('./visual/shift-s22-preview.js',import.meta.url),'utf8');
+  const runtime=readFileSync(new URL('../public/world3d.js',import.meta.url),'utf8');
+  assert.match(viewer,/model'\)==='s24'/);
+  assert.match(viewer,/Shift_S24\.glb/);
+  assert.match(viewer,/Shift_S23\.glb/);
+  assert.match(viewer,/Shift_S22\.glb/);
+  assert.doesNotMatch(runtime,/Shift_S24/);
+  assert.match(runtime,/loadAsync\('\/assets\/characters\/Shift_Rigged\.glb'\)/);
+});
