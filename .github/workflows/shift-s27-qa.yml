@@ -10,6 +10,7 @@ on:
       - 'workbench/shift/Shift_S28.glb'
       - 'scripts/shift_dome_s28.py'
       - 'tests/robot-proportions-s28.test.mjs'
+      - 'scripts/robot_proportions_browser_qa.mjs'
       - 'tests/test_shift_dome_s22.py'
       - 'workbench/shift/Shift_Rigged_PreS28.glb'
       - 'public/shift-weapon.js'
@@ -28,6 +29,7 @@ on:
       - 'workbench/shift/Shift_S28.glb'
       - 'scripts/shift_dome_s28.py'
       - 'tests/robot-proportions-s28.test.mjs'
+      - 'scripts/robot_proportions_browser_qa.mjs'
       - 'tests/test_shift_dome_s22.py'
       - 'workbench/shift/Shift_Rigged_PreS28.glb'
       - 'public/shift-weapon.js'
@@ -64,9 +66,13 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Capture actual in-game front/side/turn/weapon/fallback
         run: node scripts/shift_s27_browser_qa.mjs artifacts/shift-s27
+      - name: Capture production Qwerty scale and Shift circular-dome views
+        run: node scripts/robot_proportions_browser_qa.mjs artifacts/robot-proportions
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: shift-s27-browser-evidence
-          path: artifacts/shift-s27
+          path: |
+            artifacts/shift-s27
+            artifacts/robot-proportions
           if-no-files-found: warn

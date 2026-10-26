@@ -33,3 +33,7 @@ The exporter moves and recalculates normals for exactly **9,504** head-joint ver
 - **Visual caveat:** these mathematical checks cannot substitute for a reviewed real game front/side/top camera render of the corrected characters, especially if source art implies a different dome rise. Continue capturing browser evidence rather than silently marking S2.2–S2.7 final.
 
 **Production now uses the corrected Shift GLB**, loaded under the original URL, with the existing graceful procedural fallback. No unrelated Tab model or illustration is modified. Commit, push and merge are mandatory on this owner-requested correction.
+
+## Production WebGL capture gate
+
+`scripts/robot_proportions_browser_qa.mjs` now opens the **actual production asset paths** in Chromium. `?qwertyQA=front` only exposes the game scene for inspection; it does not switch either actor's model. The script waits for `glb-q16` and `glb`, computes the world-space loaded-GLB standing heights and verifies Qwerty's **0.27 uniform scene scale**, Shift's **0.46**, and a shorter Shift. It saves wide in-game, front close-up of each character, and a near-top-down close-up of Shift's live dome, plus `results.json`. The GitHub Actions workflow now executes this test after existing S2.7 animation and browser checks. These images are separate from the geometric ring-circularity proof and must be inspected before claiming artistic match.
