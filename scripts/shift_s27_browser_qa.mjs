@@ -59,6 +59,16 @@ try {
       null,{timeout:25000});
       await page.waitForTimeout(mode==='fire'?1600:mode==='weapon'?1100:550);
     }
+    if(mode==='fire'){
+      // Headless SwiftShader can render far below 60 fps. Advance actual
+      // in-game controller with deterministic simulation timesteps, not
+      // an unreliable fixed amount of wall-clock time.
+      await page.evaluate(()=>{
+        const motion=window.__shiftQA.crew.Shift.asset;
+        if(!motion?.s27)throw new Error('S27 controller unavailable');
+        for(let i=0;i<50;i++)motion.update(.05,{walking:false,firing:true});
+      });
+    }
     const result=await page.evaluate(mode=>{
       const c=document.querySelector('#world'),rig=window.__shiftQA.crew.Shift;
       const motion=rig.asset?.s27?rig.asset:null;
@@ -75,6 +85,7 @@ try {
         white:motion?.eyes[0]?.color.getHexString()??null
       };
     },mode);
+    record.cases.push(result); // Preserve failing observations for diagnosis.
     if(mode==='fallback'){
       if(!result.fallback||result.model!=='legacy'||result.visibleMeshes===0)
         throw new Error('S27 fallback failed: '+JSON.stringify(result));
@@ -91,7 +102,6 @@ try {
     }
     if(errors.length)throw new Error('Browser page error: '+errors.join('; '));
     await page.screenshot({path:output+'/'+mode+'-'+view+'.png'});
-    record.cases.push(result);
     await context.close(); // flush MP4 recording into output
   }
 } catch(error){
