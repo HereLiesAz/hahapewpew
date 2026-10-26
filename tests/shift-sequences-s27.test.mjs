@@ -108,3 +108,16 @@ test('S2.7 game QA requires localhost and explicitly preserves production fallba
   assert.match(runtime,/if\(!p\.from\)/);
   assert.match(runtime,/shiftQaView==='front'/);
 });
+
+
+test('S2.7 Chromium capture records in-game closeups without faking actor geometry',()=>{
+  const src=readFileSync(new URL('../scripts/shift_s27_browser_qa.mjs',import.meta.url),'utf8');
+  assert.match(src,/document\.querySelector\('#pause'\)\.click\(\)/);
+  assert.match(src,/document\.querySelector\('#follow'\)\.click\(\)/);
+  assert.match(src,/rig\.root\.getWorldPosition\(/);
+  assert.match(src,/ctl\.zoom=2\.3/);
+  assert.match(src,/view==='front'\?Math\.PI/);
+  assert.match(src,/projectedHeight<185/);
+  assert.match(src,/-closeup\.png/);
+  assert.match(src,/record\.cases\[record\.cases\.length-1\]\.closeup=frame/);
+});
