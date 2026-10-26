@@ -1,0 +1,106 @@
+#!/usr/bin/env node
+/**
+ * Actual game/browser S2.7 acceptance evidence.
+ * Requires: npm install --no-save playwright; npx playwright install chromium
+ * Run: node scripts/shift_s27_browser_qa.mjs [artifact directory]
+ *
+ * Never substitutes the production GLB; localhost explicitly selects S27.
+ */
+import {spawn} from 'node:child_process';
+import {mkdir,writeFile} from 'node:fs/promises';
+import {resolve} from 'node:path';
+import {chromium} from 'playwright';
+
+const output=resolve(process.argv[2]||'artifacts/shift-s27');
+await mkdir(output,{recursive:true});
+const server=spawn('python3',['scripts/serve_shift_qa.py'],{stdio:'pipe'});
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+let browser;
+const record={cases:[],errors:[]};
+async function ready(){
+  for(let n=0;n<80;n++){
+    if(server.exitCode!==null)throw new Error('QA server exited before readiness');
+    try{const result=await fetch('http://127.0.0.1:8765/');if(result.ok)return;}catch{}
+    await sleep(150);
+  }
+  throw new Error('Local S2.7 server did not start');
+}
+try {
+  await ready();
+  browser=await chromium.launch({
+    headless:true,
+    args:['--use-gl=angle','--use-angle=swiftshader','--enable-webgl',
+          '--enable-unsafe-swiftshader','--disable-dev-shm-usage']
+  });
+  const configurations=[
+    ['idle','front'],['walk','threequarter'],['turn','side'],
+    ['talk','front'],['weapon','threequarter'],['fire','threequarter'],
+    ['fallback','front']
+  ];
+  for(const [mode,view] of configurations){
+    const context=await browser.newContext({
+      viewport:{width:1280,height:720},
+      recordVideo:{dir:output,size:{width:1280,height:720}}
+    });
+    const page=await context.newPage(),errors=[];
+    page.on('pageerror',error=>errors.push(String(error)));
+    const target='http://127.0.0.1:8765/?shiftQA=s27-'+mode+'&shiftView='+view;
+    await page.goto(target,{waitUntil:'domcontentloaded',timeout:25000});
+    if(mode==='fallback'){
+      await page.waitForFunction(() => {
+        const c=document.querySelector('#world');
+        return c?.dataset.shiftModel==='legacy' && window.__shiftQA?.crew?.Shift;
+      },null,{timeout:20000});
+      await page.waitForTimeout(1200);
+    } else {
+      await page.waitForFunction(()=>
+        document.querySelector('#world')?.dataset.shiftModel==='glb-s27'
+        && window.__shiftQA?.crew?.Shift?.asset?.s27===true,
+      null,{timeout:25000});
+      await page.waitForTimeout(mode==='fire'?1600:mode==='weapon'?1100:550);
+    }
+    const result=await page.evaluate(mode=>{
+      const c=document.querySelector('#world'),rig=window.__shiftQA.crew.Shift;
+      const motion=rig.asset?.s27?rig.asset:null;
+      let meshes=0;
+      rig.root.traverseVisible(obj=>{if(obj.isMesh)meshes++});
+      return {
+        mode,model:c.dataset.shiftModel,visibleMeshes:meshes,
+        fallback:!motion,
+        clips:motion?.actionNames||null,
+        weaponVisible:motion?.weapon.root.visible??null,
+        spin:motion?.weapon.barrelSpin??null,
+        deployment:motion?.weapon.deployment??null,
+        eyeMaterial:motion?.eyes[0]?.type??null,
+        white:motion?.eyes[0]?.color.getHexString()??null
+      };
+    },mode);
+    if(mode==='fallback'){
+      if(!result.fallback||result.model!=='legacy'||result.visibleMeshes===0)
+        throw new Error('S27 fallback failed: '+JSON.stringify(result));
+    } else {
+      if(result.fallback||result.model!=='glb-s27'
+        ||result.white!=='ffffff'||result.eyeMaterial!=='MeshBasicMaterial')
+        throw new Error('Candidate not rendering correctly: '+JSON.stringify(result));
+      if((mode==='idle'||mode==='walk'||mode==='turn'||mode==='talk')
+          &&result.weaponVisible)throw new Error('Weapon visible during '+mode);
+      if((mode==='weapon'||mode==='fire')&&!result.weaponVisible)
+        throw new Error('Weapon not deployed in '+mode);
+      if(mode==='fire'&&!(result.spin>1))throw new Error('Barrel failed to spin');
+      if(mode==='weapon'&&result.spin!==0)throw new Error('Barrel spins before firing');
+    }
+    if(errors.length)throw new Error('Browser page error: '+errors.join('; '));
+    await page.screenshot({path:output+'/'+mode+'-'+view+'.png'});
+    record.cases.push(result);
+    await context.close(); // flush MP4 recording into output
+  }
+} catch(error){
+  record.errors.push(String(error));
+  process.exitCode=1;
+} finally {
+  await browser?.close();
+  server.kill('SIGTERM');
+  await writeFile(output+'/results.json',JSON.stringify(record,null,2));
+}
+if(record.errors.length)throw new Error(record.errors.join('\n'));
+console.log('S2.7 WebGL acceptance passes:',record.cases.length);
