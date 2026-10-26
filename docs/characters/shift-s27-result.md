@@ -65,3 +65,7 @@ node scripts/shift_s27_browser_qa.mjs artifacts/shift-s27
 ## CI follow-up: canonical deployed transforms
 
 The first actual S2.7 Actions run, [#40408566861](https://github.com/HereLiesAz/hahapewpew/actions/runs/40408566861), executed the Node regression suite and reported **65 passing, 1 failing** test. The failing test was the preexisting S2.5 deployment test: fully extended slide and hinge produced JavaScript negative zero (`-0`) instead of canonical `0`. S2.7 acceptance is **not** passed. The follow-up normalizes both fully deployed transforms to positive zero in `public/shift-weapon.js`, and extends workflow path triggers to the weapon and its tests. Full suite and browser evidence must be re-run and reviewed before accepting Shift.
+
+## Chromium CI timing follow-up
+
+The second CI attempt [#40408938441](https://github.com/HereLiesAz/hahapewpew/actions/runs/40408938441) passed all **66 Node tests** and the Shift Python suite, installed Chromium, and proceeded through the actual WebGL captures. The firing capture then failed the `spin > 1` assertion: headless SwiftShader may process much less simulated frame time than 1.6 seconds of wall-clock time, especially because game deltas are capped. The runner now drives the **actual loaded Shift controller** through 50 deterministic 0.05-second simulation updates before asserting firing spin and taking its WebGL screenshot. It also writes every observed mode, including the failing one, to `results.json`. Visual acceptance is not claimed until the rerun actually passes.
