@@ -105,21 +105,32 @@ try {
     await page.screenshot({path:output+'/'+mode+'-'+view+'.png'});
     // Then frame Shift in the actual game (not a standalone mock viewer).
     // Freeze walking so head/feet and weapon state remain reproducible.
-    const frame=await page.evaluate(({view})=>{
+    const frame=await page.evaluate(async ({view})=>{
+      const THREE=await import('/vendor/three.module.js');
       const qa=window.__shiftQA,rig=qa?.crew?.Shift;
       if(!qa?.camera||!qa?.cameraControl||!rig?.root)
         throw new Error('Actual game camera/Shift actor missing');
       document.querySelector('#pause').click();
       document.querySelector('#follow').click();
-      const target=rig.root.getWorldPosition(qa.cameraControl.point.clone());
-      target.y+=.67;  // 1.29m candidate, center at its visual mid-height.
+      // Measure real rendered geometry, including the skinned mesh's
+      // object/armature scales. A hardcoded height was incorrectly reporting
+      // 410px despite a character only ~200px tall in Chromium screenshots.
+      const actor=rig.asset?.s27?rig.asset.model:rig.root;
+      actor.updateWorldMatrix(true,true);
+      const box=new THREE.Box3().setFromObject(actor,true);
+      if(box.isEmpty())throw new Error('Shift world-space mesh bounds empty');
+      const extent=box.getSize(new THREE.Vector3());
+      const target=box.getCenter(new THREE.Vector3());
       const ctl=qa.cameraControl;
       ctl.free.copy(target);
       ctl.point.copy(target);
-      ctl.zoom=2.3;
+      const targetPixels=360;
+      const fovRadians=qa.camera.fov*Math.PI/180;
+      const fit=extent.y*innerHeight/(2*Math.tan(fovRadians/2)*targetPixels);
+      ctl.zoom=Math.max(.7,Math.min(3.8,fit));
       ctl.pitch=.12;
-      // The actor faces local +Z and the actor root turns +90deg around Y,
-      // so its front is world +X (NOT the former front QA yaw=PI/2).
+      // Shift faces local +Z and its actor root rotates +90deg about Y:
+      // its actual front is world +X, not world +Z.
       ctl.yaw=view==='front'?Math.PI:view==='side'?Math.PI/2:Math.PI*.75;
       const distance=ctl.zoom*Math.cos(ctl.pitch);
       qa.camera.position.set(
@@ -129,19 +140,21 @@ try {
       );
       qa.camera.lookAt(target);
       qa.camera.updateMatrixWorld(true);
-      const foot=rig.root.getWorldPosition(ctl.point.clone());
-      const top=foot.clone(); top.y+=1.29;
-      foot.project(qa.camera);top.project(qa.camera);
-      const projectedHeight=Math.abs(top.y-foot.y)*innerHeight/2;
+      const bottom=new THREE.Vector3(target.x,box.min.y,target.z).project(qa.camera);
+      const top=new THREE.Vector3(target.x,box.max.y,target.z).project(qa.camera);
+      const projectedHeight=Math.abs(top.y-bottom.y)*innerHeight/2;
       const center=target.clone().project(qa.camera);
       return {model:document.querySelector('#world')?.dataset.shiftModel,
+        measuredWorldHeight:extent.y,measuredWorldWidth:extent.x,
         projectedHeight,centerX:center.x,centerY:center.y,
         yaw:ctl.yaw,zoom:ctl.zoom,pitch:ctl.pitch};
     },{view});
     record.cases[record.cases.length-1].closeup=frame;
-    if(frame.model!==result.model || frame.projectedHeight<185 ||
+    if(frame.model!==result.model || frame.projectedHeight<260 ||
+       !Number.isFinite(frame.measuredWorldHeight) ||
+       frame.measuredWorldHeight<=0 ||
        Math.abs(frame.centerX)>.15 || Math.abs(frame.centerY)>.15)
-      throw new Error('S2.7 close-up framing failed: '+JSON.stringify(frame));
+      throw new Error('S2.7 geometry-based close-up framing failed: '+JSON.stringify(frame));
     // Camera is held on the frozen actor by the real game's updateCamera().
     await page.waitForTimeout(250);
     await page.screenshot({path:output+'/'+mode+'-'+view+'-closeup.png'});

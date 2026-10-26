@@ -115,9 +115,12 @@ test('S2.7 Chromium capture records in-game closeups without faking actor geomet
   assert.match(src,/document\.querySelector\('#pause'\)\.click\(\)/);
   assert.match(src,/document\.querySelector\('#follow'\)\.click\(\)/);
   assert.match(src,/rig\.root\.getWorldPosition\(/);
-  assert.match(src,/ctl\.zoom=2\.3/);
+  assert.match(src,/new THREE\.Box3\(\)\.setFromObject\(actor,true\)/);
+  assert.match(src,/extent\.y\*innerHeight/);
+  assert.match(src,/ctl\.zoom=Math\.max/);
   assert.match(src,/view==='front'\?Math\.PI/);
-  assert.match(src,/projectedHeight<185/);
+  assert.match(src,/projectedHeight<260/);
+  assert.match(src,/measuredWorldHeight:extent\.y/);
   assert.match(src,/-closeup\.png/);
   assert.match(src,/record\.cases\[record\.cases\.length-1\]\.closeup=frame/);
 });
