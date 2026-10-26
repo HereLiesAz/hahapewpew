@@ -61,3 +61,7 @@ node scripts/shift_s27_browser_qa.mjs artifacts/shift-s27
 **Evidence boundary:** The generator output and API-enforced geometry invariants can be independently checked without screenshots. A CI workflow **definition** is not a passing CI result. Any S2.7 browser recordings, screenshots or CI check marks must be read from a real run's uploaded artifacts; none are invented here. Side depth, animated foot contact, and absolute likeness to the owner's original drawing still require visual review. Do not mark S2.2–S2.7 complete or replace the live Shift GLB without passing evidence and cold review.
 
 **Owner workflow:** Every numbered step must be committed, pushed and merged, including candidates that still await sign-off. The next step after this one is the next numbered backlog item; the unfinished Shift acceptance gates remain recorded rather than silently skipped.
+
+## CI follow-up: canonical deployed transforms
+
+The first actual S2.7 Actions run, [#40408566861](https://github.com/HereLiesAz/hahapewpew/actions/runs/40408566861), executed the Node regression suite and reported **65 passing, 1 failing** test. The failing test was the preexisting S2.5 deployment test: fully extended slide and hinge produced JavaScript negative zero (`-0`) instead of canonical `0`. S2.7 acceptance is **not** passed. The follow-up normalizes both fully deployed transforms to positive zero in `public/shift-weapon.js`, and extends workflow path triggers to the weapon and its tests. Full suite and browser evidence must be re-run and reviewed before accepting Shift.

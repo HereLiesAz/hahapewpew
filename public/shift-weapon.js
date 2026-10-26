@@ -77,8 +77,8 @@ export function attachShiftConcealedMinigun(wristBone) {
       throw new RangeError('Weapon pose and spin angle must be finite');
     progress=clamp(amount,0,1);
     root.visible=progress>0;
-    extend.position.x=-.145*(1-progress);
-    hinge.rotation.z=-.80*(1-progress);
+    extend.position.x=progress===1?0:-.145*(1-progress);
+    hinge.rotation.z=progress===1?0:-.80*(1-progress);
     // The slide physically extends; the receiver does not magically scale.
     // Visibility, not a tiny external model, provides strict idle silhouette.
     rotor.rotation.x=spinAngle;

@@ -4,6 +4,8 @@ on:
     branches: [main]
     paths:
       - 'public/shift-motion.js'
+      - 'public/shift-weapon.js'
+      - 'tests/shift-weapon.test.mjs'
       - 'public/world3d.js'
       - 'workbench/shift/Shift_S27.glb'
       - 'tests/shift-sequences-s27.test.mjs'
@@ -12,6 +14,8 @@ on:
   pull_request:
     paths:
       - 'public/shift-motion.js'
+      - 'public/shift-weapon.js'
+      - 'tests/shift-weapon.test.mjs'
       - 'public/world3d.js'
       - 'workbench/shift/Shift_S27.glb'
       - 'tests/shift-sequences-s27.test.mjs'
