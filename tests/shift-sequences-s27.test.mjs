@@ -114,7 +114,7 @@ test('S2.7 Chromium capture records in-game closeups without faking actor geomet
   const src=readFileSync(new URL('../scripts/shift_s27_browser_qa.mjs',import.meta.url),'utf8');
   assert.match(src,/document\.querySelector\('#pause'\)\.click\(\)/);
   assert.match(src,/document\.querySelector\('#follow'\)\.click\(\)/);
-  assert.match(src,/rig\.root\.getWorldPosition\(/);
+  assert.match(src,/const actor=rig\.asset\?\.s27\?rig\.asset\.model:rig\.root/);
   assert.match(src,/new THREE\.Box3\(\)\.setFromObject\(actor,true\)/);
   assert.match(src,/extent\.y\*innerHeight/);
   assert.match(src,/ctl\.zoom=Math\.max/);
