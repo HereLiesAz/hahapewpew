@@ -4,6 +4,12 @@ on:
     branches: [main]
     paths:
       - 'public/shift-motion.js'
+      - 'public/character-models.js'
+      - 'public/assets/characters/Shift_Rigged.glb'
+      - 'public/assets/characters/Qwerty_Q16_Validated.glb'
+      - 'workbench/shift/Shift_S28.glb'
+      - 'scripts/shift_dome_s28.py'
+      - 'tests/robot-proportions-s28.test.mjs'
       - 'public/shift-weapon.js'
       - 'tests/shift-weapon.test.mjs'
       - 'public/world3d.js'
@@ -14,6 +20,12 @@ on:
   pull_request:
     paths:
       - 'public/shift-motion.js'
+      - 'public/character-models.js'
+      - 'public/assets/characters/Shift_Rigged.glb'
+      - 'public/assets/characters/Qwerty_Q16_Validated.glb'
+      - 'workbench/shift/Shift_S28.glb'
+      - 'scripts/shift_dome_s28.py'
+      - 'tests/robot-proportions-s28.test.mjs'
       - 'public/shift-weapon.js'
       - 'tests/shift-weapon.test.mjs'
       - 'public/world3d.js'

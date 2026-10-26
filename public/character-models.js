@@ -254,8 +254,8 @@ function shiftDomeDecal(head,material,cx,cy,width,height,angle=0,offset=.006){
     const dx=u*width,dy=v*height;
     const X=cx+Math.cos(angle)*dx-Math.sin(angle)*dy;
     const Y=cy+Math.sin(angle)*dx+Math.cos(angle)*dy;
-    const R=.72;
-    const Z=.92*Math.sqrt(Math.max(.0001,R*R-X*X-Y*Y))+offset;
+    const R=.62;
+    const Z=Math.sqrt(Math.max(.0001,R*R-X*X-Y*Y))+offset;
     positions.push(X,Y,Z);uvs.push(x/nx,y/ny);
   }
   for(let y=0;y<ny;y++)for(let x=0;x<nx;x++){
@@ -279,11 +279,11 @@ function buildShift(scene){
   panel(torso,M.glass,0,-.025,.28,.15,.165,.008);
   for(const s of [-1,1])for(let j=0;j<3;j++)bolt(torso,s*.155,-.18+j*.13,.259);
   const arms=[robotLimb(torso,-1,.21,M.steel),robotLimb(torso,1,.21,M.steel)];
-  const head=group(torso,0,.48,0);
-  const dome=add(head,new THREE.SphereGeometry(.72,64,40,0,Math.PI*2,0,Math.PI/2),M.steel,0,0,0);
-  dome.scale.z=.92;
-  const rim=add(head,new THREE.TorusGeometry(.712,.034,12,64),M.iron,0,.003,0);
-  rim.rotation.x=Math.PI/2;rim.scale.y=.92;
+  // Owner correction: circular in top view, just below half-sized Qwerty in height.
+  const head=group(torso,0,.26,0);
+  const dome=add(head,new THREE.SphereGeometry(.62,64,40,0,Math.PI*2,0,Math.PI/2),M.steel,0,0,0);
+  const rim=add(head,new THREE.TorusGeometry(.612,.034,12,64),M.iron,0,.003,0);
+  rim.rotation.x=Math.PI/2;
   // Shift's eyes are stationary 2-D white graphics on the curved metal dome.
   // The shallow dark border is also a surface graphic, not a socket or lid.
   for(const side of [-1,1]){
@@ -293,7 +293,7 @@ function buildShift(scene){
   }
   for(let i=0;i<14;i++){
     const theta=i*Math.PI*2/14;
-    bolt(head,Math.sin(theta)*.69,.02,Math.cos(theta)*.64,theta);
+    bolt(head,Math.sin(theta)*.60,.02,Math.cos(theta)*.60,theta);
   }
   const neck=group(torso,0,.35,0);
   tube(neck,M.iron,[0,0,0],[0,.14,0],.14,.13);
@@ -332,7 +332,7 @@ function trapGeometry(bottom=-.47,top=.46){
   geo.translate(0,0,-.23);geo.computeVertexNormals();return geo;
 }
 function buildQwerty(scene){
-  const root=group(scene);root.name='Qwerty';root.scale.setScalar(.54);
+  const root=group(scene);root.name='Qwerty';root.scale.setScalar(.27);
   const legs=[robotLeg(root,-1,.34),robotLeg(root,1,.34)];
   const torso=group(root,0,.55,0);
   sculpt(torso,M.iron,[[-.30,.19,.145],[-.22,.22,.17],[.03,.24,.19],[.23,.16,.14],[.31,.12,.12]],40);
@@ -378,7 +378,7 @@ function buildQwerty(scene){
   const hinge=add(head,new THREE.CylinderGeometry(.033,.033,1.29,16),M.oxide,0,splitY,backZ-.016);
   hinge.rotation.z=Math.PI/2;
   return {root,torso,head,arms:arms.map(a=>a.shoulder),legs:legs.map(l=>l.hip),
-    elbows:arms.map(a=>a.elbow),knees:legs.map(l=>l.knee),speechLid:lid,anchor:1.09,groundScale:.54};
+    elbows:arms.map(a=>a.elbow),knees:legs.map(l=>l.knee),speechLid:lid,anchor:1.09,groundScale:.27};
 }
 export function createCharacters(scene) {
   const actors={Tab:buildTab(scene),Shift:buildShift(scene),Qwerty:buildQwerty(scene)};
