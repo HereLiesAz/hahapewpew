@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
 from shift_dome_s22 import build
 
-SOURCE = ROOT / 'public/assets/characters/Shift_Rigged.glb'
+SOURCE = ROOT / 'workbench/shift/Shift_Rigged_PreS28.glb'
 CANDIDATE = ROOT / 'workbench/shift/Shift_S22.glb'
 
 
