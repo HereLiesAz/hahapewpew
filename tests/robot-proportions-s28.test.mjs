@@ -1,9 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import * as THREE from '../public/vendor/three.module.js';
 import {GLTFLoader} from '../public/vendor/GLTFLoader.js';
-import {createCharacters} from '../public/character-models.js';
 
 const oldShift=readFileSync(new URL('../workbench/shift/Shift_S27.glb',import.meta.url));
 const newShift=readFileSync(new URL('../workbench/shift/Shift_S28.glb',import.meta.url));
@@ -39,17 +37,12 @@ async function parsed(bytes){
 }
 
 test('Owner scale correction: Qwerty GLB untouched, only uniform displayed scale halved',()=>{
-  const crew=createCharacters(new THREE.Scene());
-  const Q=crew.Qwerty.root,S=crew.Shift.root;
-  assert.equal(Q.scale.x,.27);
-  assert.equal(Q.scale.y,.27);
-  assert.equal(Q.scale.z,.27);
-  assert.equal(crew.Qwerty.groundScale,.27);
-  assert.equal(S.scale.x,.46);
-  assert.equal(S.scale.y,.46);
-  assert.equal(S.scale.z,.46);
-  assert.equal(crew.Shift.groundScale,.46);
+  // Browser-only character-models.js creates DOM textures at import time:
+  // test the exact production scale declarations without importing its module.
   const source=readFileSync(new URL('../public/character-models.js',import.meta.url),'utf8');
+  assert.match(source,/root\.name='Shift';root\.scale\.setScalar\(\.46\)/);
+  assert.match(source,/groundScale:\.46/);
+  assert.match(source,/groundScale:\.27/);
   assert.match(source,/root\.name='Qwerty';root\.scale\.setScalar\(\.27\)/);
   assert.doesNotMatch(source,/root\.name='Qwerty';root\.scale\.setScalar\(\.54\)/);
   // GLB remains the previously validated original; no geometry changes.
@@ -147,12 +140,11 @@ test('Corrected production Shift loads through the actual r180 GLTFLoader',async
 });
 
 test('Procedural fallback also has a circular dome and the corrected relative size',()=>{
-  const crew=createCharacters(new THREE.Scene());
-  const fallback=crew.Shift;
-  const dome=fallback.head.children.find(x=>x.geometry?.type==='SphereGeometry');
-  assert.ok(dome,'missing Shift fallback dome');
-  assert.equal(dome.geometry.parameters.radius,.62);
-  assert.equal(dome.scale.x,dome.scale.z);
+  const source=readFileSync(new URL('../public/character-models.js',import.meta.url),'utf8');
+  assert.match(source,/SphereGeometry\(\.62,64,40/);
+  assert.match(source,/TorusGeometry\(\.612,\.034,12,64/);
+  assert.doesNotMatch(source,/dome\.scale\.z=\.92/);
+  assert.doesNotMatch(source,/rim\.scale\.y=\.92/);
   const fallbackTop=(.54+.26+.62)*.46;
   const qStanding=2.640000104904175*.27;
   assert.ok(Math.abs(fallbackTop/qStanding-.92)<.02);
