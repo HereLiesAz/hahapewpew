@@ -13,14 +13,14 @@ function glb(){
  const len=bytes.readUInt32LE(12);
  return JSON.parse(bytes.toString('utf8',20,20+len));
 }
-test('Shift is a skinned GLB with UVs and three clips',()=>{
+test('Production Shift is a skinned GLB with UVs and five stable clips',()=>{
  const g=glb();
  assert.ok(g.skins[0].joints.length>=14);
  for(const p of g.meshes[0].primitives){
    for(const attr of ['POSITION','NORMAL','TEXCOORD_0','JOINTS_0','WEIGHTS_0'])
      assert.ok(attr in p.attributes,attr);
  }
- assert.deepEqual(g.animations.map(a=>a.name),['Shift_Walk','Shift_Idle','Shift_Talk']);
+ assert.deepEqual(g.animations.map(a=>a.name),['Shift_Walk','Shift_Idle','Shift_Talk','Shift_Turn','Shift_Weapon']);
 });
 test('Shift eyes are static, flat white dome-attached graphics',()=>{
  const g=glb(),eyes=g.materials.filter(m=>m.name==='Shift/Eyes_2D_Emission');
