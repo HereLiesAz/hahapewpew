@@ -4,6 +4,7 @@ import { createCharacters, articulateWalk } from './character-models.js';
 import { GLTFLoader } from './vendor/GLTFLoader.js';
 import { celShadeRobot } from './cel-robots.js';
 import { createQwertyMotionRig } from './qwerty-motion.js';
+import { createShiftSequenceRig } from './shift-motion.js';
 import { dialoguePages, visibleDialoguePage } from './dialogue-pages.js';
 import { buildNeighborhoodBuilding, dressDistrict, isNolaSharedResource } from './nola-world.js';
 
@@ -14,9 +15,14 @@ const qwertyQaMode = ['front','side','threequarter','talk','kill','lids'].includ
   && ['localhost','127.0.0.1'].includes(location.hostname)
     ? new URLSearchParams(location.search).get('qwertyQA') : null;
 // The candidate is never loaded from the public hostname.
-const shiftQaMode = ['front','side','threequarter','back','talk'].includes(new URLSearchParams(location.search).get('shiftQA'))
+const shiftQaMode = ['front','side','threequarter','back','talk',
+  's27-idle','s27-walk','s27-turn','s27-talk','s27-weapon','s27-fire','s27-fallback']
+  .includes(new URLSearchParams(location.search).get('shiftQA'))
   && ['localhost','127.0.0.1'].includes(location.hostname)
     ? new URLSearchParams(location.search).get('shiftQA') : null;
+const shiftS27Qa=shiftQaMode?.startsWith('s27-')??false;
+const shiftQaView=['front','side','threequarter','back'].includes(new URLSearchParams(location.search).get('shiftView'))
+  ? new URLSearchParams(location.search).get('shiftView') : 'threequarter';
 const renderer = new THREE.WebGLRenderer({canvas, antialias:true, powerPreference:'high-performance'});
 const coarseDevice=matchMedia('(pointer:coarse)').matches || innerWidth < 700;
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, coarseDevice ? 1.15 : 1.6));
@@ -127,9 +133,25 @@ installQwertyAsset();
 async function installShiftAsset() {
   const rig=crew.Shift;
   try {
-    const gltf=shiftQaMode
-      ? await new GLTFLoader().loadAsync('/workbench/shift/Shift_S22.glb')
-      : await new GLTFLoader().loadAsync('/assets/characters/Shift_Rigged.glb');
+    const gltf=shiftQaMode==='s27-fallback'
+      ? await new GLTFLoader().loadAsync('/workbench/shift/Missing_Shift_S27.glb')
+      : shiftS27Qa
+        ? await new GLTFLoader().loadAsync('/workbench/shift/Shift_S27.glb')
+        : shiftQaMode
+          ? await new GLTFLoader().loadAsync('/workbench/shift/Shift_S22.glb')
+          : await new GLTFLoader().loadAsync('/assets/characters/Shift_Rigged.glb');
+    if(shiftS27Qa){
+      // Validate the complete rig and gun before hiding the procedural fallback.
+      const motion=createShiftSequenceRig(gltf);
+      const legacy=[...rig.root.children];
+      rig.root.add(gltf.scene);
+      legacy.forEach(node=>{node.visible=false;});
+      rig.asset={...motion,loaded:true,s27:true};
+      rig.gun=motion.weapon.root;
+      rig.barrel=motion.weapon.rotor;
+      canvas.dataset.shiftModel='glb-s27';
+      return;
+    }
     const {eyes}=celShadeRobot(gltf.scene,'Shift');
     const skinMeshes=[];
     gltf.scene.traverse(node=>{if(node.isSkinnedMesh)skinMeshes.push(node);});
@@ -451,11 +473,15 @@ const bulletGeo=new THREE.SphereGeometry(.13,8,6);
 function fireAt(h){
   if(h.panicked)return;
   h.panicked=true;
-  crew.Shift.gun.visible=true;
-  const origin=crew.Shift.gun.getWorldPosition(v3());origin.y+=.2;
+  const s27=crew.Shift.asset?.s27===true;
+  if(s27)crew.Shift.asset.weapon.setDeployed(true);
+  else crew.Shift.gun.visible=true;
+  const origin=s27?null:crew.Shift.gun.getWorldPosition(v3());
+  if(origin)origin.y+=.2;
   const target=v3(h.root.position.x,1.25,h.root.position.z);
   for(let k=0;k<7;k++){
-    temporary.push({kind:'pew',life:.5+k*.12,delay:k*.09,from:origin.clone(),to:target.clone(),dot:null,target:h});
+    temporary.push({kind:'pew',life:.5+k*.12,delay:(s27?.38:0)+k*.09,
+      from:origin?.clone()??null,to:target.clone(),dot:null,target:h});
   }
   showSpeech('Shift','> ENGAGING.',4);
 }
@@ -472,12 +498,23 @@ function updateActors(dt){
     // Rig fronts face +Z in local coordinates; the group travels world +X.
     rig.root.rotation.y=Math.PI/2;
     const qwertySpeaking=name==='Qwerty'&&(bubbleState.Qwerty?.until>seconds||qwertyQaMode==='talk');
-    articulateWalk(rig,t+along,5.2,1,qwertySpeaking);
+    if(name==='Shift'&&rig.asset?.s27)rig.root.position.y=0;
+    else articulateWalk(rig,t+along,5.2,1,qwertySpeaking);
     if(name==='Tab'&&rig.asset?.loaded) {
       // Face graphics do not animate or distort. Only body, arms and bear move.
       rig.asset.mixer.update(dt);
     }
-    if(name==='Shift'&&rig.asset?.loaded) {
+    if(name==='Shift'&&rig.asset?.s27){
+      const qa=shiftQaMode||'';
+      const pewActive=temporary.some(p=>p.kind==='pew');
+      rig.asset.update(dt,{
+        walking:qa!=='s27-idle'&&qa!=='s27-turn'&&qa!=='s27-talk'&&qa!=='s27-weapon',
+        speaking:qa==='s27-talk'||bubbleState.Shift?.until>seconds,
+        turning:qa==='s27-turn',
+        deploy:qa==='s27-weapon',
+        firing:qa==='s27-fire'||pewActive
+      });
+    } else if(name==='Shift'&&rig.asset?.loaded) {
       rig.asset.walk.setEffectiveWeight(1);
       rig.asset.talk.setEffectiveWeight(bubbleState.Shift?.until>seconds||shiftQaMode==='talk'?0.55:0);
       rig.asset.mixer.update(dt);
@@ -493,7 +530,7 @@ function updateActors(dt){
       a.update(dt);
     }
   }
-  if(crew.Shift.gun.visible){
+  if(!crew.Shift.asset?.s27&&crew.Shift.gun.visible){
     crew.Shift.barrel.rotation.x+=dt*28;
     if(!temporary.some(p=>p.kind==='pew'))crew.Shift.gun.visible=false;
   }
@@ -525,6 +562,11 @@ function updateActors(dt){
   for(let i=temporary.length-1;i>=0;i--){
     const p=temporary[i];p.delay-=dt;if(p.delay>0)continue;
     if(!p.dot){
+      if(!p.from){
+        p.from=crew.Shift.asset?.s27
+          ? crew.Shift.asset.weapon.muzzleWorldPosition(v3())
+          : crew.Shift.gun.getWorldPosition(v3());
+      }
       p.dot=mesh(scene,bulletGeo,palette.red,p.from.x,p.from.y,p.from.z);
       p.dot.castShadow=false;
     }
@@ -546,6 +588,10 @@ if(!qwertyQaMode&&shiftQaMode==='front')cameraControl.yaw=Math.PI/2;
 if(!qwertyQaMode&&shiftQaMode==='side')cameraControl.yaw=0;
 if(!qwertyQaMode&&shiftQaMode==='back')cameraControl.yaw=-Math.PI/2;
 if(!qwertyQaMode&&shiftQaMode==='threequarter')cameraControl.yaw=.85;
+if(shiftS27Qa){
+  cameraControl.yaw=shiftQaView==='front'?Math.PI/2
+    :shiftQaView==='side'?0:shiftQaView==='back'?-Math.PI/2:.85;
+}
 if(qwertyQaMode)window.__qwertyQA={crew,camera,cameraControl,scene,renderer};
 if(shiftQaMode)window.__shiftQA={crew,camera,cameraControl,scene,renderer};
 const camModes=[{zoom:6.25,pitch:.20},{zoom:17,pitch:.35},{zoom:42,pitch:.66}];

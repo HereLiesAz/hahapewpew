@@ -1,0 +1,52 @@
+name: Shift S2.7 visual QA
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'public/shift-motion.js'
+      - 'public/world3d.js'
+      - 'workbench/shift/Shift_S27.glb'
+      - 'tests/shift-sequences-s27.test.mjs'
+      - 'scripts/shift_s27_browser_qa.mjs'
+      - 'scripts/shift_sequences_s27.py'
+  pull_request:
+    paths:
+      - 'public/shift-motion.js'
+      - 'public/world3d.js'
+      - 'workbench/shift/Shift_S27.glb'
+      - 'tests/shift-sequences-s27.test.mjs'
+      - 'scripts/shift_s27_browser_qa.mjs'
+      - 'scripts/shift_sequences_s27.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  shift-s27:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci
+      - name: Existing repository regression tests
+        run: npm test
+      - name: Shift Python GLB generators and structure
+        run: python3 -m unittest discover -s tests -p 'test_shift_*.py'
+      - name: Chromium browser setup
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Capture actual in-game front/side/turn/weapon/fallback
+        run: node scripts/shift_s27_browser_qa.mjs artifacts/shift-s27
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shift-s27-browser-evidence
+          path: artifacts/shift-s27
+          if-no-files-found: warn
