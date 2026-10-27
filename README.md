@@ -1,6 +1,6 @@
 # hahapewpew
 
-Two murder robots and a ten-year-old girl in a cardboard box wander the end of the world. Their dialogue comes from **Cloudflare Workers AI**, running remotely on the site owner's Worker. The pew pew is local.
+Two murderous robots and a ten-year-old girl in a cardboard box wander the end of the world. Their dialogue comes from **Cloudflare Workers AI**, running remotely on the site owner's Worker. The pew pew is local.
 
 Live domain: **https://www.hahapewpew.com**.
 
