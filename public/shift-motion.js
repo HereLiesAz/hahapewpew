@@ -2,6 +2,7 @@
 // Shared by the production S28 GLB and the localhost S27 candidate.
 // Installation validates every clip before retiring the procedural fallback.
 import * as THREE from './vendor/three.module.js';
+import {toCreasedNormals} from './vendor/BufferGeometryUtils.js';
 import {celShadeRobot} from './cel-robots.js';
 import {attachShiftConcealedMinigun} from './shift-weapon.js';
 
@@ -29,6 +30,13 @@ export function createShiftSequenceRig(gltf) {
     }
   });
   if([...feet.values()].some(vertices=>!vertices.length))throw new Error('Shift foot geometry missing');
+  // The exported shell is triangle soup with flat per-face normals. Average
+  // normals at coincident shell vertices while retaining the hard rim crease.
+  // Clone first: positions, UVs, skin attributes and source GLB stay intact.
+  gltf.scene.traverse(node=>{
+    if(node.isMesh&&['Shift/Dome_Side','Shift/Dome_Graphite'].includes(node.material?.name))
+      node.geometry=toCreasedNormals(node.geometry.clone());
+  });
   const {eyes}=celShadeRobot(gltf.scene,'Shift');
   if(eyes.length!==1||eyes[0].type!=='MeshBasicMaterial'||
      eyes[0].color.getHexString()!=='ffffff')throw new Error('Shift eye graphics changed');
