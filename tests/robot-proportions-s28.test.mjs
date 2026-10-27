@@ -5,8 +5,8 @@ import {createHash} from 'node:crypto';
 import {createShiftSequenceRig} from '../public/shift-motion.js';
 import {GLTFLoader} from '../public/vendor/GLTFLoader.js';
 
-const oldShift=readFileSync(new URL('../workbench/shift/Shift_S27.glb',import.meta.url));
-const newShift=readFileSync(new URL('../workbench/shift/Shift_S28.glb',import.meta.url));
+const oldShift=readFileSync(new URL('../workbench/shift/Shift_S28.glb',import.meta.url));
+const newShift=readFileSync(new URL('../workbench/shift/Shift_S29.glb',import.meta.url));
 const liveShift=readFileSync(new URL('../public/assets/characters/Shift_Rigged.glb',import.meta.url));
 const qwerty=readFileSync(new URL('../public/assets/characters/Qwerty_Q16_Validated.glb',import.meta.url));
 
@@ -71,25 +71,26 @@ test('Shift corrected GLB is truly circular from ABOVE at every shell ring',()=>
     assert.ok(Math.max(...radii)-Math.min(...radii)<2e-6,
       'Top-view ring at '+height+' is elliptical rather than circular');
   }
-  assert.equal(shift.g.asset.extras.shiftDomeS28.ringCount,11);
-  assert.ok(shift.g.asset.extras.shiftDomeS28.circularMaxRadiusError<2e-6);
+  assert.equal(shift.g.asset.extras.shiftDomeS29.ringCount,11);
+  assert.ok(shift.g.asset.extras.shiftDomeS29.circularMaxRadiusError<2e-6);
   assert.deepEqual(liveShift,newShift,'the corrected model must be the actual LIVE Shift asset');
 });
 
-test('Shared torso size and exact 92% standing height — do not scale Shift body down',()=>{
+test('Shared torso size and shallow wok profile — standing height follows the head',()=>{
   const Q=open(qwerty),S=open(newShift);
   const qBody=accessor(Q,prim(Q,'Qwerty/Body_Graphite'),'POSITION').a;
   const sBody=accessor(S,prim(S,'Shift/Body_Graphite'),'POSITION').a;
   const qHeight=(qBody.max[1]-qBody.min[1])*.27;
   const sHeight=(sBody.max[1]-sBody.min[1])*.46;
   assert.ok(Math.abs(qHeight-sHeight)/qHeight<.02,'torso heights must match within 2%');
-  const qTop=Math.max(...Q.g.meshes[0].primitives.map(p=>Q.g.accessors[p.attributes.POSITION].max[1]));
   const stage=S.g.nodes.find(n=>n.name==='Shift.S24.GroundAlign');
   const sTop=Math.max(...S.g.meshes[0].primitives.map(p=>S.g.accessors[p.attributes.POSITION].max[1]));
-  const qStanding=qTop*.27;
   const sStanding=(sTop+stage.translation[1])*.46;
-  assert.ok(sStanding<qStanding,'Shift must be shorter');
-  assert.ok(Math.abs(sStanding/qStanding-.92)<1e-5,'Shift is 92% of Qwerty height');
+  assert.ok(Number.isFinite(sStanding)&&sStanding>0,'standing height is measured, not constrained against Qwerty');
+  const shell=accessor(S,prim(S,'Shift/Dome_Side'),'POSITION').a;
+  const width=shell.max[0]-shell.min[0],rise=shell.max[1]-shell.min[1];
+  assert.ok(rise/width>.26&&rise/width<.30,'head must read as a shallow wok');
+  assert.ok(rise<.36,'tall nose profile must not return');
 });
 
 test('Shift model correction touches head only, all 16 joints, 5 clips and UVs survive',()=>{
@@ -109,9 +110,10 @@ test('Shift model correction touches head only, all 16 joints, 5 clips and UVs s
     for(let i=0;i<accessor(old,before[k],'POSITION').a.count;i++){
       const a=xyz(old,before[k],i),b=xyz(fresh,after[k],i);
       assert.equal(a[0],b[0],name+' frontal X must not change');
+      assert.ok(Math.abs(a[2]-b[2])<2e-7,name+' circular depth must stay unchanged');
       if(joint(old,before[k],i)===3){
         changed++;
-        assert.ok(b[1]>=a[1]-1e-6,'head height must not shrink');
+        assert.ok(Math.abs(b[1]-.926)<=Math.abs(a[1]-.926)+1e-6,'head rise must shrink toward the existing rim');
       } else {
         unchanged++;
         assert.deepEqual(a,b,'non-head body/feet must stay intact');
@@ -144,15 +146,14 @@ test('Corrected production Shift loads through the actual r180 GLTFLoader',async
   assert.equal(eyes[0].color.getHexString(),'ffffff');
 });
 
-test('Procedural fallback also has a circular dome and the corrected relative size',()=>{
+test('Procedural fallback also uses a circular shallow-wok head',()=>{
   const source=readFileSync(new URL('../public/character-models.js',import.meta.url),'utf8');
   assert.match(source,/SphereGeometry\(\.62,64,40/);
   assert.match(source,/TorusGeometry\(\.612,\.034,12,64/);
   assert.doesNotMatch(source,/dome\.scale\.z=\.92/);
   assert.doesNotMatch(source,/rim\.scale\.y=\.92/);
-  const fallbackTop=(.54+.26+.62)*.46;
-  const qStanding=2.640000104904175*.27;
-  assert.ok(Math.abs(fallbackTop/qStanding-.92)<.02);
+  assert.match(source,/const head=group\(torso,0,\.26,0\);head\.scale\.y=\.56/);
+  assert.doesNotMatch(source,/torso\.scale\.y=/);
 });
 
 test('Production S28 controller deploys, spins, retracts and keeps graphic eyes attached',async()=>{

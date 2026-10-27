@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Owner's proportional correction: Shift circle-from-above dome and matched torso.
 
-Source is immutable S2.7 candidate; output also serves the published Shift
-path. Only head-assigned POSITION and NORMAL vertices are modified. The
-16-bone skin, all old motion clips, UVs, skin weights and non-head mesh bytes
+Source is the immutable S2.7 or S2.8 candidate; output also serves the published
+Shift path. Only head-assigned POSITION and NORMAL vertices are modified.
+Use --dome-rise-ratio for the later shallow-wok correction; this intentionally
+supersedes the historical 92% standing-height target. The 16-bone skin, all
+old motion clips, UVs, skin weights and non-head mesh bytes
 are retained. Qwerty is NOT rewritten; scale him to .27 in character-models.js.
 """
 import argparse
@@ -47,7 +49,9 @@ def write_glb(meta,data,target):
     target.write_bytes(output)
 
 
-def build(source:Path,qwerty:Path,target:Path):
+def build(source:Path,qwerty:Path,target:Path,*,dome_rise_ratio=None):
+    if dome_rise_ratio is not None and (not math.isfinite(dome_rise_ratio) or not 0 < dome_rise_ratio < .5):
+        raise ValueError('Shallow cap rise/diameter must be between zero and one half')
     gltf,data=read_glb(source)
     qmeta,_=read_glb(qwerty)
     if 'shiftSequencesS27' not in gltf['asset'].get('extras',{}):
@@ -97,7 +101,8 @@ def build(source:Path,qwerty:Path,target:Path):
     if len(ordered)!=11:
         raise ValueError('Expected 11 concentric dome rings')
     base,top=ordered[0]['y'],ordered[-1]['y']
-    new_top=floor+qtop*QWERTY_ROOT_SCALE*SHIFT_OVER_QWERTY_HEIGHT/SHIFT_ROOT_SCALE
+    new_top=(base+2*ordered[0]['rx']*dome_rise_ratio if dome_rise_ratio is not None
+             else floor+qtop*QWERTY_ROOT_SCALE*SHIFT_OVER_QWERTY_HEIGHT/SHIFT_ROOT_SCALE)
     height_scale=(new_top-base)/(top-base)
 
     def ratio(y):
@@ -184,13 +189,17 @@ def build(source:Path,qwerty:Path,target:Path):
     bodyS=(.8852148652076721-.5357768535614014)*SHIFT_ROOT_SCALE
     if abs(bodyQ-bodyS)/bodyQ>.02:
         raise ValueError('Robot torso heights diverge')
-    gltf['asset'].setdefault('extras',{})['shiftDomeS28']={
-        'step':'S2.8-owner-correction',
-        'source':'workbench/shift/Shift_S27.glb',
-        'reference':'owner 2026-10-26 top-circle, matched torsos, 92% height',
+    profile='shiftDomeS29' if dome_rise_ratio is not None else 'shiftDomeS28'
+    gltf['asset'].setdefault('extras',{})[profile]={
+        'step':'S2.9-shallow-wok' if dome_rise_ratio is not None else 'S2.8-owner-correction',
+        'source':str(source),
+        'reference':('owner: shallow upside-down wok, circular overhead, unchanged body'
+                     if dome_rise_ratio is not None else 'owner 2026-10-26 top-circle, matched torsos, 92% height'),
+        'domeRiseOverDiameter':dome_rise_ratio,
         'ringCount':11, 'circularMaxRadiusError':max_circular_error,
         'baseY':base,'oldTop':top,'newTop':new_top,'yScale':height_scale,
-        'targetRelativeHeight':SHIFT_OVER_QWERTY_HEIGHT,
+        ('measuredRelativeHeight' if dome_rise_ratio is not None else 'targetRelativeHeight'):
+            (new_top-floor)*SHIFT_ROOT_SCALE/(qtop*QWERTY_ROOT_SCALE),
         'oldQwertyRootScale':.54,'newQwertyRootScale':QWERTY_ROOT_SCALE,
         'shiftRootScale':SHIFT_ROOT_SCALE,
         'qwertyBodyWorldHeight':bodyQ,'shiftBodyWorldHeight':bodyS,
@@ -208,5 +217,7 @@ if __name__=='__main__':
     parser.add_argument('shift',type=Path)
     parser.add_argument('qwerty',type=Path)
     parser.add_argument('destination',type=Path)
+    parser.add_argument('--dome-rise-ratio',type=float,default=None,
+                        help='Shallow cap rise/diameter; supersedes the historical 92%% height target')
     args=parser.parse_args()
-    print(build(args.shift,args.qwerty,args.destination))
+    print(build(args.shift,args.qwerty,args.destination,dome_rise_ratio=args.dome_rise_ratio))
