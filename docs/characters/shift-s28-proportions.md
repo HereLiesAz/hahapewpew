@@ -50,12 +50,21 @@ The following values are recomputed from the loaded mesh in the neutral pose, no
 | --- | ---: | ---: |
 | Standing height | 0.7128000283 | 0.6557760102 |
 | Torso height | 0.1619999984 | 0.1607414854 |
-| Lowest vertex Y | approximately 0 | approximately 0 |
+| Lowest vertex Y in grounded QA comparison | -0.0455 | -0.0455 |
 
 The measured standing ratio is 0.9199999777. Eleven circular dome rings have maximum radial dispersion 3.9516e-8 **world** units. This differs in units from the earlier model-space exporter measurement above.
 
-The local Chromium run passed neutral-mesh, scale, circle, torso, ground contact, head/eye attachment, Qwerty talk/plate, weapon states and both production request-failure gates. Captures were opened and inspected: the pair is unobstructed, the dome reads as circular from overhead, feet meet the neutral ground plane, and Qwerty's upper shell moves separately from its fixed plate. The deployed gun is visible from Shift's right side. A further combat regression invokes the game's real `fireAt` and `updateActors` functions and requires visible projectiles plus barrel alignment with the target. The weapon is aimed after wrist animation, because the wrist clip alone points sideways rather than toward the target.
+The local Chromium run passed neutral-mesh, scale, circle, torso, ground contact, head/eye attachment, Qwerty talk/plate, weapon states and both production request-failure gates. Captures were opened and inspected: the pair is unobstructed, the dome reads as circular from overhead, Shift feet meet the actual rendered road, and Qwerty's upper shell moves separately from its fixed plate. The deployed gun is visible from Shift's right side. A further combat regression invokes the game's real `fireAt` and `updateActors` functions and requires visible projectiles plus barrel alignment with the target. The weapon is aimed after wrist animation, because the wrist clip alone points sideways rather than toward the target.
 
 The existing large red projectile geometry obscures part of the combat close-up; separate deployment/firing actuator captures show the gun unobstructed. Projectile geometry was not changed in this character correction.
 
 **Remaining artistic acceptance:** the dome's faceted cel shading and eye-border edge offsets remain visible in close-up; owner acceptance is not implied. Browser gates prove the recorded geometry and controller behavior, not a complete reference-art match. S2.2–S2.7 backlog acceptance remains open. CI results must be inspected independently of these local results.
+
+
+### Rendered road contact correction
+
+The earlier neutral-pose check established feet at Y=0 but did not establish contact with the actual road below it. Shift now samples its ankle-bound skinned foot vertices after animation and raycasts only the streamed ground/road meshes. Root placement adjusts until the lowest supported foot meets that surface; the GLB, body scale, and clips remain unchanged. Skinning bind inverses are refreshed before measurement, including when the actor has moved since the previous render.
+
+In the latest local Chromium run, the actual road at the comparison position is Y=-0.0455 and Shift's lowest rendered vertex is also Y=-0.0455. The game-combat path independently measures effectively zero foot-to-road clearance. The neutral Qwerty comparison is positioned on the same plane for the screenshot only; **Qwerty's production movement mechanism remains unchanged**.
+
+Regression coverage includes walking poses, actor relocation between rendered transforms, a raised surface, absence of a support surface, and the production browser's actual mesh-to-road measurement. Qwerty/Shift neutral standing heights and torso dimensions above remain unchanged by vertical placement.

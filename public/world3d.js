@@ -331,9 +331,16 @@ function ruinChunk(ix,iz=0){
   const g=new THREE.Group();g.position.set(ix*CHUNK_LENGTH,0,iz*CHUNK_LENGTH);
   g.userData.key=`${ix}:${iz}`;scene.add(g);
   const ground=mesh(g,groundGeo,palette.sand,0,-.14,0);ground.rotation.x=-Math.PI/2;ground.castShadow=false;
+  g.userData.walkSurfaces=[ground];
   const {eastWest:roadX,northSouth:roadZ}=streetAt(ix,iz);
-  if(roadX)block(g,roadMaterial,0,-.10,0,CHUNK_LENGTH,.075,13.8).castShadow=false;
-  if(roadZ)block(g,roadMaterial,0,-.088,0,13.8,.085,CHUNK_LENGTH).castShadow=false;
+  if(roadX){
+    const road=block(g,roadMaterial,0,-.10,0,CHUNK_LENGTH,.075,13.8);
+    road.castShadow=false;g.userData.walkSurfaces.push(road);
+  }
+  if(roadZ){
+    const road=block(g,roadMaterial,0,-.088,0,13.8,.085,CHUNK_LENGTH);
+    road.castShadow=false;g.userData.walkSurfaces.push(road);
+  }
   if(roadX){
     for(const side of [-1,1]){
       block(g,sidewalkMaterial,0,.06,side*9.1,CHUNK_LENGTH,.22,3.0).castShadow=false;
@@ -516,6 +523,7 @@ function updateActors(dt){
         deploy:qa==='s27-weapon',
         firing:qa==='s27-fire'||pewActive
       });
+      rig.asset.ground(rig.root,[...groups.values()].flatMap(g=>g.userData.walkSurfaces));
       const shot=temporary.find(p=>p.kind==='pew');
       if(shot){
         // The wrist clip is articulation, not world-space aiming. Barrels run
@@ -601,7 +609,7 @@ if(shiftS27Qa){
   cameraControl.yaw=shiftQaView==='front'?Math.PI/2
     :shiftQaView==='side'?0:shiftQaView==='back'?-Math.PI/2:.85;
 }
-if(qwertyQaMode)window.__qwertyQA={crew,camera,cameraControl,scene,renderer,fireAt,updateActors,temporary};
+if(qwertyQaMode)window.__qwertyQA={crew,camera,cameraControl,scene,renderer,fireAt,updateActors,temporary,groups};
 if(shiftQaMode)window.__shiftQA={crew,camera,cameraControl,scene,renderer};
 const camModes=[{zoom:6.25,pitch:.20},{zoom:17,pitch:.35},{zoom:42,pitch:.66}];
 function updateCamera(dt){

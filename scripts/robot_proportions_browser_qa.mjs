@@ -64,6 +64,12 @@ try {
       return out;
     }
     const bounds=(model,material)=>new T.Box3().setFromPoints(points(model,material));
+    const surfaces=[...qa.groups.values()].flatMap(g=>g.userData.walkSurfaces);
+    const contact=s.asset.ground(s.root,surfaces);
+    if(!contact)throw Error('No rendered road under Shift');
+    // Put the neutral Qwerty comparison on the same support plane. This is
+    // QA placement only; production Qwerty motion remains unchanged.
+    q.root.position.y+=contact.surfaceY-bounds(q.asset.root).min.y;
     const qb=bounds(q.asset.root),sb=bounds(s.asset.model);
     const qTorso=bounds(q.asset.root,'Qwerty/Body_Graphite').getSize(new T.Vector3()).y;
     const sTorso=bounds(s.asset.model,'Shift/Body_Graphite').getSize(new T.Vector3()).y;
@@ -80,7 +86,7 @@ try {
     return {qScale:q.root.scale.toArray(),sScale:s.root.scale.toArray(),
       qHeight:qb.max.y-qb.min.y,shiftHeight:sb.max.y-sb.min.y,
       relativeHeight:(sb.max.y-sb.min.y)/(qb.max.y-qb.min.y),qTorso,sTorso,
-      qFoot:qb.min.y,shiftFoot:sb.min.y,ringCount:rings.size,radialError,
+      qFoot:qb.min.y,shiftFoot:sb.min.y,surfaceY:contact.surfaceY,ringCount:rings.size,radialError,
       clips:s.asset.actionNames,barrels:s.asset.weapon.barrelCount,
       models:[document.querySelector('#world').dataset.qwertyModel,document.querySelector('#world').dataset.shiftModel]};
   });
@@ -89,7 +95,8 @@ try {
   assert.deepEqual(measured.sScale,[.46,.46,.46]);
   assert.ok(Math.abs(measured.relativeHeight-.92)<.005,JSON.stringify(measured));
   assert.ok(Math.abs(measured.qTorso-measured.sTorso)/measured.qTorso<.01);
-  assert.ok(Math.abs(measured.qFoot)<.02 && Math.abs(measured.shiftFoot)<.02);
+  assert.ok(Math.abs(measured.qFoot-measured.surfaceY)<1e-6);
+  assert.ok(Math.abs(measured.shiftFoot-measured.surfaceY)<1e-6);
   assert.equal(measured.ringCount,11);
   assert.ok(measured.radialError<2e-6);
   assert.equal(measured.barrels,6);
@@ -198,11 +205,19 @@ try {
     if(!shot)throw Error('Actual production combat emitted no projectile');
     const toTarget=shot.to.clone().sub(muzzle).normalize();
     return {alignment:direction.dot(toTarget),spin:weapon.barrelSpin,
-      projectileVisible:shot.dot.visible,weaponVisible:weapon.root.visible};
+      projectileVisible:shot.dot.visible,weaponVisible:weapon.root.visible,
+      groundGap:(()=>{
+        const foot=window.__productionQA.bounds(s.asset.model).min.y;
+        const ray=new T.Raycaster(new T.Vector3(s.root.position.x,2,s.root.position.z),new T.Vector3(0,-1,0));
+        const road=ray.intersectObjects([...qa.groups.values()].flatMap(g=>g.userData.walkSurfaces),false)[0];
+        if(!road)throw Error('No rendered road in combat');
+        return foot-road.point.y;
+      })()};
   });
   report.results.push({mode:'production-combat',...combat});
   assert.ok(combat.alignment>.999 && combat.spin>1);
   assert.ok(combat.projectileVisible && combat.weaponVisible);
+  assert.ok(Math.abs(combat.groundGap)<1e-6);
   await capture('shift-production-combat','side');
   // Abort the actual production URLs, rather than switching to a QA candidate.
   await page.close();

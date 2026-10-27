@@ -193,3 +193,34 @@ test('Production installation uses complete controller before retiring fallback'
   assert.match(block,/rig\.barrel=motion\.weapon\.rotor/);
   assert.match(block,/else canvas\.dataset\.shiftModel='glb'/);
 });
+
+test('Production Shift feet touch rendered road at rest and during walk',async()=>{
+  const T=await import('../public/vendor/three.module.js');
+  const motion=createShiftSequenceRig(await parsed(liveShift));
+  const actor=new T.Group();actor.scale.setScalar(.46);actor.add(motion.model);
+  const road=new T.Mesh(new T.PlaneGeometry(10,10),new T.MeshBasicMaterial());
+  road.rotation.x=-Math.PI/2;road.position.y=-.0625;
+  motion.mixer.stopAllAction();
+  motion.model.traverse(n=>{if(n.isSkinnedMesh)n.pose()});
+  assert.ok(motion.ground(actor,[road]));
+  const footY=()=>{
+    actor.updateMatrixWorld(true);
+    motion.model.traverse(n=>{if(n.isSkinnedMesh)n.skeleton.update()});
+    return new T.Box3().setFromObject(motion.model,true).min.y;
+  };
+  assert.ok(Math.abs(footY()-(-.0625))<1e-6);
+  Object.values(motion.clips).forEach(a=>a.reset().play());
+  for(let i=0;i<12;i++){
+    motion.update(.05,{walking:true});motion.ground(actor,[road]);
+    assert.ok(Math.abs(footY()-(-.0625))<1e-6);
+  }
+  // Move the actor between frames: stale bind inverses must not double its transform.
+  actor.position.set(1.25,.8,-.6);
+  road.position.y=.5;
+  motion.ground(actor,[road]);
+  assert.ok(Math.abs(footY()-.5)<1e-6);
+  const before=actor.position.clone();
+  assert.equal(motion.ground(actor,[]),null);
+  assert.deepEqual(actor.position,before);
+  motion.dispose();
+});
