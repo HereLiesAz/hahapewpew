@@ -1,0 +1,323 @@
+{
+  "step": "T3.1",
+  "source": "public/assets/art/tab.webp",
+  "sourceSize": [
+    454,
+    959
+  ],
+  "sourceSHA": "1f08d4b80c3b74874f964403587d88f89d5b11d7",
+  "measurementStatus": "approximate hand trace; verify bounding contours in high resolution before declaring final",
+  "units": "source pixels; x right, y down; rectangle [x,y,width,height]; polygons [x,y]",
+  "regions": {
+    "cardboardFront": {
+      "poly": [
+        [
+          145,
+          5
+        ],
+        [
+          333,
+          18
+        ],
+        [
+          322,
+          214
+        ],
+        [
+          142,
+          220
+        ]
+      ],
+      "role": "front face: two uneven round eye prints, eyebrow lines, barred teeth"
+    },
+    "cardboardLeft": {
+      "poly": [
+        [
+          62,
+          13
+        ],
+        [
+          145,
+          5
+        ],
+        [
+          142,
+          220
+        ],
+        [
+          46,
+          197
+        ]
+      ],
+      "role": "left printed side: upside-down THIS END UP and downward arrow"
+    },
+    "frontFlap": {
+      "poly": [
+        [
+          142,
+          217
+        ],
+        [
+          320,
+          213
+        ],
+        [
+          366,
+          268
+        ],
+        [
+          165,
+          276
+        ]
+      ],
+      "role": "flat angled cardboard front flap, no curved helmet brim"
+    },
+    "leftFlap": {
+      "poly": [
+        [
+          46,
+          197
+        ],
+        [
+          142,
+          218
+        ],
+        [
+          83,
+          313
+        ],
+        [
+          19,
+          277
+        ]
+      ],
+      "role": "side cardboard flap at shoulder"
+    },
+    "largePrintedEye": {
+      "rect": [
+        180,
+        55,
+        64,
+        69
+      ],
+      "role": "larger graphic eye printed directly on cardboard"
+    },
+    "smallPrintedEye": {
+      "rect": [
+        254,
+        70,
+        53,
+        59
+      ],
+      "role": "smaller graphic eye; not independently rotating"
+    },
+    "mouthGrille": {
+      "rect": [
+        178,
+        141,
+        119,
+        57
+      ],
+      "role": "printed tooth grid, not 3-D exposed teeth"
+    },
+    "textAndArrow": {
+      "rect": [
+        65,
+        30,
+        70,
+        154
+      ],
+      "role": "THIS END UP letter art inverted on box left side, with down-facing arrow"
+    },
+    "leftBentArmAndHand": {
+      "poly": [
+        [
+          50,
+          259
+        ],
+        [
+          3,
+          302
+        ],
+        [
+          14,
+          355
+        ],
+        [
+          122,
+          418
+        ],
+        [
+          151,
+          387
+        ],
+        [
+          188,
+          393
+        ],
+        [
+          186,
+          425
+        ],
+        [
+          152,
+          450
+        ],
+        [
+          112,
+          420
+        ]
+      ],
+      "role": "child left arm bent outward; visible hand rests at waist, fingers not mitten"
+    },
+    "rightArm": {
+      "poly": [
+        [
+          282,
+          268
+        ],
+        [
+          301,
+          274
+        ],
+        [
+          338,
+          499
+        ],
+        [
+          348,
+          528
+        ],
+        [
+          329,
+          536
+        ]
+      ],
+      "role": "narrow right arm hanging to bear ear"
+    },
+    "bodice": {
+      "poly": [
+        [
+          142,
+          272
+        ],
+        [
+          285,
+          273
+        ],
+        [
+          305,
+          356
+        ],
+        [
+          158,
+          377
+        ]
+      ],
+      "role": "dark short-sleeve bodice with visible dark pleats"
+    },
+    "dress": {
+      "poly": [
+        [
+          158,
+          355
+        ],
+        [
+          302,
+          350
+        ],
+        [
+          371,
+          714
+        ],
+        [
+          307,
+          720
+        ],
+        [
+          256,
+          698
+        ],
+        [
+          209,
+          707
+        ],
+        [
+          145,
+          658
+        ],
+        [
+          131,
+          593
+        ]
+      ],
+      "role": "gray uneven dress, draped cloth vertical folds, irregular hem"
+    },
+    "leftBareShin": {
+      "rect": [
+        150,
+        661,
+        57,
+        258
+      ],
+      "role": "exposed left shin from uneven hem to flat"
+    },
+    "rightBareShin": {
+      "rect": [
+        235,
+        709,
+        74,
+        217
+      ],
+      "role": "exposed right shin from longer hem to flat"
+    },
+    "leftDarkFlat": {
+      "rect": [
+        133,
+        901,
+        67,
+        53
+      ],
+      "role": "left flat rounded toe; not boot"
+    },
+    "rightDarkFlat": {
+      "rect": [
+        230,
+        900,
+        92,
+        55
+      ],
+      "role": "right flat rounded toe; not boot"
+    },
+    "teddy": {
+      "rect": [
+        338,
+        526,
+        106,
+        208
+      ],
+      "role": "small ear-held brown teddy: two ears, head and hanging limbs"
+    }
+  },
+  "normalized": {
+    "canvasRatio": 0.47340980187695514,
+    "frontBoxWidthOverHeight": 0.8883720930232558,
+    "bearHeightOverFigureHeight": 0.2184873949579832,
+    "largeEyeWidthOverSmall": 1.2075471698113207,
+    "boxFaceHeightOverFigureHeight": 0.22584033613445378
+  },
+  "semantics": {
+    "hasConventionalFace": false,
+    "visibleHair": false,
+    "flaps": 4,
+    "eyeballs": false,
+    "expressionPrinted": true,
+    "boxSideLettering": "THIS END UP (upside down)",
+    "boxSideArrow": "points down in source view",
+    "cloth": "asymmetrical drape, not rigid bell or tutu",
+    "hands": "individual flesh fingers",
+    "teddy": "hangs by one ear from right hand",
+    "feet": "dark rounded flats with bare lower shins",
+    "scale": "source crop alone does not establish absolute child-to-robot ratio; use same-scale composition or calibrated browser comparison before finalizing"
+  }
+}
