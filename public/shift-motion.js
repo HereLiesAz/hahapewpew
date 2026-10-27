@@ -16,9 +16,19 @@ export function createShiftSequenceRig(gltf) {
     bones[name]=gltf.scene.getObjectByName(name);
     if(!bones[name]?.isBone)throw new Error('Shift bone missing: '+name);
   }
+  const feet=new Map([['ankleL',[]],['ankleR',[]]]);
   let skinned=0;
   gltf.scene.traverse(node=>{if(node.isSkinnedMesh)skinned++});
   if(!skinned)throw new Error('Shift skinned mesh missing');
+  gltf.scene.traverse(node=>{
+    if(!node.isSkinnedMesh)return;
+    const joints=node.geometry.attributes.skinIndex;
+    for(let i=0;i<joints.count;i++){
+      const name=node.skeleton.bones[joints.getX(i)]?.name;
+      if(feet.has(name))feet.get(name).push({mesh:node,index:i});
+    }
+  });
+  if([...feet.values()].some(vertices=>!vertices.length))throw new Error('Shift foot geometry missing');
   const {eyes}=celShadeRobot(gltf.scene,'Shift');
   if(eyes.length!==1||eyes[0].type!=='MeshBasicMaterial'||
      eyes[0].color.getHexString()!=='ffffff')throw new Error('Shift eye graphics changed');
@@ -56,6 +66,40 @@ export function createShiftSequenceRig(gltf) {
     return {elapsed,weaponVisible:weapon.root.visible,barrelSpin:weapon.barrelSpin,
       deploying:weapon.deployment,clips:REQUIRED.slice()};
   }
+  /** Place the supporting animated foot on a real rendered walking surface.
+   * Raycasts only the supplied ground/road meshes, never scenery or actors.
+   * Adjusts scene placement; GLB geometry, skin and animation stay unchanged.
+   * Returns null when neither foot finds a surface within the local probe range.
+   */
+  function ground(actorRoot,surfaces){
+    actorRoot.updateWorldMatrix(true,false);
+    actorRoot.updateMatrixWorld(true); // refresh SkinnedMesh bind inverses as well
+    gltf.scene.traverse(n=>{if(n.isSkinnedMesh)n.skeleton.update()});
+    surfaces.forEach(n=>n.updateWorldMatrix(true,false));
+    const ray=new THREE.Raycaster();
+    let contact=null;
+    for(const vertices of feet.values()){
+      let lowest=null;
+      for(const {mesh,index} of vertices){
+        const p=mesh.getVertexPosition(index,new THREE.Vector3()).applyMatrix4(mesh.matrixWorld);
+        if(!lowest||p.y<lowest.y)lowest=p;
+      }
+      ray.set(lowest.clone().add(new THREE.Vector3(0,2,0)),new THREE.Vector3(0,-1,0));
+      ray.far=4;
+      const hit=ray.intersectObjects(surfaces,false)[0];
+      if(!hit)continue;
+      const adjustment=hit.point.y-lowest.y;
+      if(!contact||adjustment>contact.adjustment)
+        contact={adjustment,footY:lowest.y,surfaceY:hit.point.y};
+    }
+    if(!contact)return null;
+    const position=actorRoot.getWorldPosition(new THREE.Vector3());
+    position.y+=contact.adjustment;
+    if(actorRoot.parent)actorRoot.parent.worldToLocal(position);
+    actorRoot.position.copy(position);
+    actorRoot.updateMatrixWorld(true);
+    return contact;
+  }
   function dispose(){
     weapon.setFiring(false);
     weapon.pose(0,0);
@@ -64,7 +108,7 @@ export function createShiftSequenceRig(gltf) {
     mixer.uncacheRoot(gltf.scene);
   }
   return Object.freeze({
-    model:gltf.scene,mixer,clips,weapon,bones,eyes,update,dispose,
+    model:gltf.scene,mixer,clips,weapon,bones,eyes,update,ground,dispose,
     get actionNames(){return REQUIRED.slice()},
     get isDeployed(){return weapon.root.visible},
   });
