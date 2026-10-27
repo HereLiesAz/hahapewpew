@@ -58,7 +58,7 @@ The local Chromium run passed neutral-mesh, scale, circle, torso, ground contact
 
 The existing large red projectile geometry obscures part of the combat close-up; separate deployment/firing actuator captures show the gun unobstructed. Projectile geometry was not changed in this character correction.
 
-**Remaining artistic acceptance:** the dome's faceted cel shading and eye-border edge offsets remain visible in close-up; owner acceptance is not implied. Browser gates prove the recorded geometry and controller behavior, not a complete reference-art match. S2.2–S2.7 backlog acceptance remains open. CI results must be inspected independently of these local results.
+**Remaining artistic acceptance:** eye-border edge offsets remain visible in close-up; owner acceptance is not implied. The shell's per-triangle lighting artifacts are addressed by the S2.2 shading correction below. Browser gates prove the recorded geometry and controller behavior, not a complete reference-art match. S2.2–S2.7 backlog acceptance remains open. CI results must be inspected independently of these local results.
 
 
 ### Rendered road contact correction
@@ -68,3 +68,12 @@ The earlier neutral-pose check established feet at Y=0 but did not establish con
 In the latest local Chromium run, the actual road at the comparison position is Y=-0.0455 and Shift's lowest rendered vertex is also Y=-0.0455. The game-combat path independently measures effectively zero foot-to-road clearance. The neutral Qwerty comparison is positioned on the same plane for the screenshot only; **Qwerty's production movement mechanism remains unchanged**.
 
 Regression coverage includes walking poses, actor relocation between rendered transforms, a raised surface, absence of a support surface, and the production browser's actual mesh-to-road measurement. Qwerty/Shift neutral standing heights and torso dimensions above remain unchanged by vertical placement.
+
+
+### S2.2 — continuous dome shading
+
+The S28 exporter stores flat face normals on its non-indexed shell. The production sequence controller now uses the bundled `toCreasedNormals` utility on cloned geometry for `Shift/Dome_Side` and `Shift/Dome_Graphite` only. Coincident shell vertices share smooth normals; the utility retains hard creases at the rim. Four-band cel materials are retained. Neither production GLB is rewritten, and positions, UVs, skin indices/weights, eye graphics, body geometry and clips remain unchanged.
+
+The local production Chromium gate reports **zero normal seams across 2,691 repeated interior shell vertices**. Front, side and true top-down orthographic captures were opened and inspected: the patchwork of per-triangle lighting is replaced by continuous cel bands. The existing geometric, height, torso, road-contact, motion, weapon and request-failure checks passed in the same run. This corrects shading without changing the owner's accepted size correction; it does not assert final reference-art approval of the eye borders or complete S2.2–S2.7 artistic acceptance.
+
+`tests/robot-proportions-s28.test.mjs` checks every non-normal shell attribute and every non-shell attribute against the originally loaded GLB, verifies normalized continuous interior normals, and requires the original geometry buffers to remain untouched. The production browser gate separately inspects the actual installed mesh's shared normals.

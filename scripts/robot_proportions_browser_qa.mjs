@@ -82,10 +82,26 @@ try {
       rings.get(k).push(r);
     }
     const radialError=Math.max(...[...rings.values()].map(rs=>Math.max(...rs)-Math.min(...rs)));
+    let domeNormalSeams=0,domeSharedVertices=0;
+    s.asset.model.traverse(n=>{
+      if(!n.isMesh||n.material.name!=='Shift/Dome_Side')return;
+      const p=n.geometry.attributes.position,normal=n.geometry.attributes.normal;
+      const heights=Array.from({length:p.count},(_,i)=>p.getY(i));
+      const lo=Math.min(...heights),hi=Math.max(...heights),seen=new Map();
+      for(let i=0;i<p.count;i++){
+        if(p.getY(i)<=lo+1e-5||p.getY(i)>=hi-1e-5)continue;
+        const key=[p.getX(i),p.getY(i),p.getZ(i)].map(v=>v.toFixed(6)).join(',');
+        const value=new T.Vector3().fromBufferAttribute(normal,i);
+        if(seen.has(key)){
+          domeSharedVertices++;
+          if(value.distanceTo(seen.get(key))>1e-6)domeNormalSeams++;
+        }else seen.set(key,value);
+      }
+    });
     window.__productionQA={T,qa,q,s,points,bounds,qb,sb};
     return {qScale:q.root.scale.toArray(),sScale:s.root.scale.toArray(),
       qHeight:qb.max.y-qb.min.y,shiftHeight:sb.max.y-sb.min.y,
-      relativeHeight:(sb.max.y-sb.min.y)/(qb.max.y-qb.min.y),qTorso,sTorso,
+      relativeHeight:(sb.max.y-sb.min.y)/(qb.max.y-qb.min.y),qTorso,sTorso,domeNormalSeams,domeSharedVertices,
       qFoot:qb.min.y,shiftFoot:sb.min.y,surfaceY:contact.surfaceY,ringCount:rings.size,radialError,
       clips:s.asset.actionNames,barrels:s.asset.weapon.barrelCount,
       models:[document.querySelector('#world').dataset.qwertyModel,document.querySelector('#world').dataset.shiftModel]};
@@ -97,6 +113,8 @@ try {
   assert.ok(Math.abs(measured.qTorso-measured.sTorso)/measured.qTorso<.01);
   assert.ok(Math.abs(measured.qFoot-measured.surfaceY)<1e-6);
   assert.ok(Math.abs(measured.shiftFoot-measured.surfaceY)<1e-6);
+  assert.equal(measured.domeNormalSeams,0);
+  assert.ok(measured.domeSharedVertices>1000);
   assert.equal(measured.ringCount,11);
   assert.ok(measured.radialError<2e-6);
   assert.equal(measured.barrels,6);

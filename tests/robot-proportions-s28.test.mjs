@@ -224,3 +224,42 @@ test('Production Shift feet touch rendered road at rest and during walk',async()
   assert.deepEqual(actor.position,before);
   motion.dispose();
 });
+
+test('S2.2 dome normals are continuous while every geometric and skin attribute is preserved',async()=>{
+  const gltf=await parsed(liveShift),before=new Map();
+  gltf.scene.traverse(n=>{
+    if(n.isMesh)before.set(n,{geometry:n.geometry,attributes:Object.fromEntries(
+      Object.entries(n.geometry.attributes).map(([name,a])=>[name,Array.from(a.array)]))});
+  });
+  const motion=createShiftSequenceRig(gltf);
+  let changedShells=0,sharedVertices=0;
+  for(const [mesh,original] of before){
+    const shell=['Shift/Dome_Side','Shift/Dome_Graphite'].includes(mesh.material.name);
+    for(const [name,values] of Object.entries(original.attributes)){
+      assert.deepEqual(Array.from(original.geometry.attributes[name].array),values,'source geometry must remain untouched');
+      if(shell&&name==='normal')continue;
+      assert.deepEqual(Array.from(mesh.geometry.attributes[name].array),values,mesh.material.name+'/'+name);
+    }
+    if(!shell){assert.equal(mesh.geometry,original.geometry);continue;}
+    changedShells++;
+    assert.notEqual(mesh.geometry,original.geometry);
+    assert.notDeepEqual(Array.from(mesh.geometry.attributes.normal.array),original.attributes.normal);
+    const p=mesh.geometry.attributes.position,n=mesh.geometry.attributes.normal;
+    const ys=Array.from({length:p.count},(_,i)=>p.getY(i));
+    const lo=Math.min(...ys),hi=Math.max(...ys),seen=new Map();
+    for(let i=0;i<p.count;i++){
+      assert.ok(Math.abs(Math.hypot(n.getX(i),n.getY(i),n.getZ(i))-1)<1e-6);
+      if(p.getY(i)<=lo+1e-5||p.getY(i)>=hi-1e-5)continue;
+      const key=[p.getX(i),p.getY(i),p.getZ(i)].map(v=>v.toFixed(6)).join(',');
+      const normal=[n.getX(i),n.getY(i),n.getZ(i)];
+      if(seen.has(key)){
+        assert.deepEqual(normal,seen.get(key),'shared dome vertex must not retain a face seam');
+        sharedVertices++;
+      }else seen.set(key,normal);
+    }
+  }
+  assert.equal(changedShells,2);
+  assert.ok(sharedVertices>1000);
+  assert.equal(motion.eyes[0].type,'MeshBasicMaterial');
+  motion.dispose();
+});
