@@ -3,7 +3,7 @@
 
 The GLB's original armature, animations, eye linkage, torso and limb geometry
 are preserved. Only head-bound vertices and their face normals are modified.
-Source: public/assets/characters/Shift_Rigged.glb
+Source: workbench/shift/Shift_Rigged_PreS28.glb (immutable historical fixture)
 Output: workbench/shift/Shift_S22.glb
 """
 import argparse
@@ -161,7 +161,7 @@ def build(source: Path, dest: Path) -> dict:
     meta['asset'].setdefault('extras', {})['shiftDomeS22'] = {
         'step': 'S2.2',
         'status': 'candidate; orthographic browser acceptance pending',
-        'source': 'public/assets/characters/Shift_Rigged.glb',
+        'source': 'workbench/shift/Shift_Rigged_PreS28.glb',
         'reference': 'docs/characters/shift-fidelity.md',
         'profile': 'elliptic domed shell; radius=halfWidth*sqrt(1-heightFraction^2)',
         'targetW': target_width, 'targetH': target_height,

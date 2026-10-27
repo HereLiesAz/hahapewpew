@@ -11,6 +11,10 @@ on:
       - 'scripts/shift_dome_s28.py'
       - 'tests/robot-proportions-s28.test.mjs'
       - 'scripts/robot_proportions_browser_qa.mjs'
+      - 'scripts/qwerty_head_hinge.py'
+      - 'scripts/qwerty_depth_bounce.py'
+      - 'scripts/shift_dome_s22.py'
+      - 'tests/test_qwerty_depth_bounce.py'
       - 'tests/test_shift_dome_s22.py'
       - 'workbench/shift/Shift_Rigged_PreS28.glb'
       - 'public/shift-weapon.js'
@@ -30,6 +34,10 @@ on:
       - 'scripts/shift_dome_s28.py'
       - 'tests/robot-proportions-s28.test.mjs'
       - 'scripts/robot_proportions_browser_qa.mjs'
+      - 'scripts/qwerty_head_hinge.py'
+      - 'scripts/qwerty_depth_bounce.py'
+      - 'scripts/shift_dome_s22.py'
+      - 'tests/test_qwerty_depth_bounce.py'
       - 'tests/test_shift_dome_s22.py'
       - 'workbench/shift/Shift_Rigged_PreS28.glb'
       - 'public/shift-weapon.js'
@@ -58,8 +66,10 @@ jobs:
       - run: npm ci
       - name: Existing repository regression tests
         run: npm test
-      - name: Shift Python GLB generators and structure
-        run: python3 -m unittest discover -s tests -p 'test_shift_*.py'
+      - name: Python generator dependencies
+        run: python3 -m pip install numpy
+      - name: Complete Python GLB generators and structure
+        run: python3 -m unittest discover -s tests -p 'test_*.py'
       - name: Chromium browser setup
         run: |
           npm install --no-save playwright@1.56.1

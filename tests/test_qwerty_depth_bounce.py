@@ -1,11 +1,13 @@
 """Checks the deeper housing and vertical speech separation in Q1.3 candidate."""
+import struct
+import tempfile
 import sys
 import unittest
 from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
-from qwerty_head_hinge import unpack, arr
+from qwerty_head_hinge import unpack, arr, read
 
 ASSET = Path(__file__).resolve().parents[1] / 'workbench/qwerty/Qwerty_Q13_depth_bounce.glb'
 
@@ -13,6 +15,44 @@ class QwertyDepthBounceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.m, cls.b = unpack(ASSET)
+
+    def test_generator_rebuilds_historical_depth_and_talk(self):
+        from qwerty_depth_bounce import build
+        with tempfile.TemporaryDirectory() as folder:
+            dest = Path(folder) / 'rebuilt.glb'
+            build(ASSET.with_name('Qwerty_Q13.glb'), dest)
+            meta, binary = unpack(dest)
+            # Compare against the committed historical geometry, not the
+            # generator's own formula. Metadata provenance may evolve.
+            self.assertEqual(binary, self.b)
+            self.assertEqual(meta['animations'], self.m['animations'])
+
+    def test_accessor_is_a_writable_view(self):
+        meta, binary = unpack(ASSET)
+        index = meta['meshes'][0]['primitives'][0]['attributes']['POSITION']
+        acc = meta['accessors'][index]
+        view = meta['bufferViews'][acc['bufferView']]
+        offset = view.get('byteOffset', 0) + acc.get('byteOffset', 0)
+        values = arr(meta, binary, index)
+        values[0, 0] = 7.25
+        self.assertEqual(struct.unpack_from('<f', binary, offset)[0], 7.25)
+
+    def test_hinge_reader_keeps_storage_resizable(self):
+        meta, binary = unpack(ASSET)
+        index = meta['meshes'][0]['primitives'][0]['attributes']['POSITION']
+        values = read(meta, binary, index)
+        old = bytes(binary)
+        values[0, 0] = 7.25
+        self.assertEqual(bytes(binary), old)
+        binary.extend(b'\0' * 4)
+        self.assertEqual(len(binary), len(old) + 4)
+
+    def test_hinge_generator_still_rebuilds(self):
+        from qwerty_head_hinge import build
+        with tempfile.TemporaryDirectory() as folder:
+            dest = Path(folder) / 'hinge.glb'
+            build(ASSET.with_name('Qwerty_Q12.glb'), dest)
+            self.assertEqual(dest.read_bytes(), ASSET.with_name('Qwerty_Q13.glb').read_bytes())
 
     def test_skeleton_and_eye_bones(self):
         m = self.m
