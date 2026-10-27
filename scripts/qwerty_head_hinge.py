@@ -3,6 +3,7 @@
 entire trapezoidal head opens on its pre-existing rear-edge skull_upper pivot.
 No jaw, mouth, face split, added detailing, or changes to the Q1.2 silhouette.
 """
+from functools import partial
 import argparse
 import json
 import struct
@@ -10,12 +11,17 @@ from pathlib import Path
 import numpy as np
 from qwerty_head_geometry import unpack, COMPONENTS, SIZE
 
-def read(doc, binary, accessor_id):
+def read(doc, binary, accessor_id, *, copy=True):
+    """Read an accessor; copy by default so generators can resize storage."""
     acc=doc['accessors'][accessor_id]
     view=doc['bufferViews'][acc['bufferView']]
     off=view.get('byteOffset',0)+acc.get('byteOffset',0)
     dtype=COMPONENTS[acc['componentType']][0]
-    return np.frombuffer(binary,dtype=dtype,count=acc['count']*SIZE[acc['type']],offset=off).reshape(acc['count'],SIZE[acc['type']]).copy()
+    values=np.frombuffer(binary,dtype=dtype,count=acc['count']*SIZE[acc['type']],offset=off).reshape(acc['count'],SIZE[acc['type']])
+    return values.copy() if copy else values
+
+# Historical depth-bounce authoring intentionally mutates the original buffer.
+arr = partial(read, copy=False)
 
 def build(source, output):
     meta,buf=unpack(Path(source))
