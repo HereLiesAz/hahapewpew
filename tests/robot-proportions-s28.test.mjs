@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {createShiftSequenceRig} from '../public/shift-motion.js';
 import {GLTFLoader} from '../public/vendor/GLTFLoader.js';
 
 const oldShift=readFileSync(new URL('../workbench/shift/Shift_S27.glb',import.meta.url));
@@ -48,6 +50,9 @@ test('Owner scale correction: Qwerty GLB untouched, only uniform displayed scale
   // GLB remains the previously validated original; no geometry changes.
   assert.equal(open(qwerty).g.asset.version,'2.0');
   assert.equal(qwerty.length,274656);
+  // Independently hashed pre-correction asset at commit 4c99d76.
+  assert.equal(createHash('sha256').update(qwerty).digest('hex'),
+    '80a94695598ffc367d99d8994def3afb7088ed357e0226e9b03709a389b6c843');
 });
 
 test('Shift corrected GLB is truly circular from ABOVE at every shell ring',()=>{
@@ -148,4 +153,43 @@ test('Procedural fallback also has a circular dome and the corrected relative si
   const fallbackTop=(.54+.26+.62)*.46;
   const qStanding=2.640000104904175*.27;
   assert.ok(Math.abs(fallbackTop/qStanding-.92)<.02);
+});
+
+test('Production S28 controller deploys, spins, retracts and keeps graphic eyes attached',async()=>{
+  const gltf=await parsed(liveShift),a=createShiftSequenceRig(gltf);
+  const eye=[];
+  gltf.scene.traverse(n=>{
+    if(n.isSkinnedMesh&&n.material.name==='Shift/Eyes_2D_Emission')eye.push(n);
+  });
+  assert.equal(eye.length,1);
+  const mesh=eye[0],joints=mesh.geometry.attributes.skinIndex;
+  const weights=mesh.geometry.attributes.skinWeight;
+  for(let i=0;i<joints.count;i++){
+    assert.equal(mesh.skeleton.bones[joints.getX(i)],a.bones.head);
+    assert.equal(weights.getX(i),1);
+  }
+  const rest=a.bones.head.quaternion.clone();
+  for(let i=0;i<6;i++)a.update(.05,{walking:false,speaking:true,turning:true});
+  assert.ok(rest.angleTo(a.bones.head.quaternion)>.001);
+  assert.equal(a.weapon.root.visible,false);
+  for(let i=0;i<60;i++)a.update(.05,{walking:false,deploy:true});
+  assert.equal(a.weapon.root.visible,true);
+  assert.equal(a.weapon.barrelSpin,0);
+  for(let i=0;i<60;i++)a.update(.05,{walking:false,firing:true});
+  assert.ok(a.weapon.barrelSpin>20);
+  for(let i=0;i<60;i++)a.update(.05,{walking:false});
+  assert.equal(a.weapon.root.visible,false);
+  assert.equal(a.weapon.barrelSpin,0);
+  assert.equal(a.eyes[0].color.getHexString(),'ffffff');
+  a.dispose();
+});
+
+test('Production installation uses complete controller before retiring fallback',()=>{
+  const source=readFileSync(new URL('../public/world3d.js',import.meta.url),'utf8');
+  const block=source.slice(source.indexOf('if(shiftS27Qa||!shiftQaMode){'),source.indexOf("const {eyes}=celShadeRobot(gltf.scene,'Shift')"));
+  assert.ok(block.indexOf('createShiftSequenceRig(gltf)')>=0);
+  assert.ok(block.indexOf('createShiftSequenceRig(gltf)')<block.indexOf('node.visible=false'));
+  assert.match(block,/rig\.gun=motion\.weapon\.root/);
+  assert.match(block,/rig\.barrel=motion\.weapon\.rotor/);
+  assert.match(block,/else canvas\.dataset\.shiftModel='glb'/);
 });

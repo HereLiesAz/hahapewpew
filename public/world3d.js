@@ -140,7 +140,8 @@ async function installShiftAsset() {
         : shiftQaMode
           ? await new GLTFLoader().loadAsync('/workbench/shift/Shift_S22.glb')
           : await new GLTFLoader().loadAsync('/assets/characters/Shift_Rigged.glb');
-    if(shiftS27Qa){
+    if(shiftS27Qa||!shiftQaMode){
+      // Production and S27 share the complete controller; S22 stays historical.
       // Validate the complete rig and gun before hiding the procedural fallback.
       const motion=createShiftSequenceRig(gltf);
       const legacy=[...rig.root.children];
@@ -149,7 +150,8 @@ async function installShiftAsset() {
       rig.asset={...motion,loaded:true,s27:true};
       rig.gun=motion.weapon.root;
       rig.barrel=motion.weapon.rotor;
-      canvas.dataset.shiftModel='glb-s27';
+      if(shiftS27Qa){canvas.dataset.shiftModel='glb-s27';}
+      else canvas.dataset.shiftModel='glb';
       return;
     }
     const {eyes}=celShadeRobot(gltf.scene,'Shift');
@@ -514,6 +516,13 @@ function updateActors(dt){
         deploy:qa==='s27-weapon',
         firing:qa==='s27-fire'||pewActive
       });
+      const shot=temporary.find(p=>p.kind==='pew');
+      if(shot){
+        // The wrist clip is articulation, not world-space aiming. Barrels run
+        // along local +X; Object3D.lookAt aligns local +Z with the target.
+        rig.asset.weapon.root.lookAt(shot.to);
+        rig.asset.weapon.root.rotateY(-Math.PI/2);
+      }
     } else if(name==='Shift'&&rig.asset?.loaded) {
       rig.asset.walk.setEffectiveWeight(1);
       rig.asset.talk.setEffectiveWeight(bubbleState.Shift?.until>seconds||shiftQaMode==='talk'?0.55:0);
@@ -592,7 +601,7 @@ if(shiftS27Qa){
   cameraControl.yaw=shiftQaView==='front'?Math.PI/2
     :shiftQaView==='side'?0:shiftQaView==='back'?-Math.PI/2:.85;
 }
-if(qwertyQaMode)window.__qwertyQA={crew,camera,cameraControl,scene,renderer};
+if(qwertyQaMode)window.__qwertyQA={crew,camera,cameraControl,scene,renderer,fireAt,updateActors,temporary};
 if(shiftQaMode)window.__shiftQA={crew,camera,cameraControl,scene,renderer};
 const camModes=[{zoom:6.25,pitch:.20},{zoom:17,pitch:.35},{zoom:42,pitch:.66}];
 function updateCamera(dt){
