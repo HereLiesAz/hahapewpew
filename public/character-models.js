@@ -279,8 +279,8 @@ function buildShift(scene){
   panel(torso,M.glass,0,-.025,.28,.15,.165,.008);
   for(const s of [-1,1])for(let j=0;j<3;j++)bolt(torso,s*.155,-.18+j*.13,.259);
   const arms=[robotLimb(torso,-1,.21,M.steel),robotLimb(torso,1,.21,M.steel)];
-  // Owner correction: circular in top view, just below half-sized Qwerty in height.
-  const head=group(torso,0,.26,0);
+  // Owner correction: shallow inverted-wok cap, circular from above.
+  const head=group(torso,0,.26,0);head.scale.y=.56;
   const dome=add(head,new THREE.SphereGeometry(.62,64,40,0,Math.PI*2,0,Math.PI/2),M.steel,0,0,0);
   const rim=add(head,new THREE.TorusGeometry(.612,.034,12,64),M.iron,0,.003,0);
   rim.rotation.x=Math.PI/2;

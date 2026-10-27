@@ -119,6 +119,31 @@ class ShiftSilhouette(unittest.TestCase):
                             else: self.assertEqual(xx,yy)
 
 
+class ShiftShallowWok(unittest.TestCase):
+    """The later owner profile reuses the exporter without rewriting history."""
+
+    def test_wok_generator_rebuilds_live_binary_and_preserves_rig(self):
+        from shift_dome_s28 import build as build_profile
+        with tempfile.TemporaryDirectory() as folder:
+            target = Path(folder) / 'wok.glb'
+            build_profile(ROOT / 'workbench/shift/Shift_S28.glb',
+                          ROOT / 'public/assets/characters/Qwerty_Q16_Validated.glb',
+                          target, dome_rise_ratio=.28)
+            actual, binary = unpack(target)
+            expected, expected_binary = unpack(ROOT / 'public/assets/characters/Shift_Rigged.glb')
+            self.assertEqual(binary, expected_binary)
+            for key in ('nodes', 'skins', 'animations', 'materials', 'accessors'):
+                self.assertEqual(actual[key], expected[key], key)
+            self.assertEqual(actual['asset']['extras']['shiftDomeS29']['step'], 'S2.9-shallow-wok')
+
+    def test_shallow_profile_rejects_invalid_rise(self):
+        from shift_dome_s28 import build as build_profile
+        for ratio in (0, -.1, .5, float('nan'), float('inf')):
+            with self.subTest(ratio=ratio), self.assertRaises(ValueError):
+                build_profile(Path('unused.glb'), Path('unused-q.glb'),
+                              Path('unused-result.glb'), dome_rise_ratio=ratio)
+
+
 if __name__ == '__main__':
     unittest.main()
 

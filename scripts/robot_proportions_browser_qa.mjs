@@ -101,7 +101,8 @@ try {
     window.__productionQA={T,qa,q,s,points,bounds,qb,sb};
     return {qScale:q.root.scale.toArray(),sScale:s.root.scale.toArray(),
       qHeight:qb.max.y-qb.min.y,shiftHeight:sb.max.y-sb.min.y,
-      relativeHeight:(sb.max.y-sb.min.y)/(qb.max.y-qb.min.y),qTorso,sTorso,domeNormalSeams,domeSharedVertices,
+      relativeHeight:(sb.max.y-sb.min.y)/(qb.max.y-qb.min.y),qTorso,sTorso,
+      domeRise:db.max.y-db.min.y,domeDiameter:Math.max(db.max.x-db.min.x,db.max.z-db.min.z),domeNormalSeams,domeSharedVertices,
       qFoot:qb.min.y,shiftFoot:sb.min.y,surfaceY:contact.surfaceY,ringCount:rings.size,radialError,
       clips:s.asset.actionNames,barrels:s.asset.weapon.barrelCount,
       models:[document.querySelector('#world').dataset.qwertyModel,document.querySelector('#world').dataset.shiftModel]};
@@ -109,7 +110,8 @@ try {
   report.results.push({mode:'neutral-production',...measured});
   assert.deepEqual(measured.qScale,[.27,.27,.27]);
   assert.deepEqual(measured.sScale,[.46,.46,.46]);
-  assert.ok(Math.abs(measured.relativeHeight-.92)<.005,JSON.stringify(measured));
+  assert.ok(Number.isFinite(measured.relativeHeight)&&measured.relativeHeight>0);
+  assert.ok(measured.domeRise/measured.domeDiameter>.26&&measured.domeRise/measured.domeDiameter<.30,'head must be a shallow wok');
   assert.ok(Math.abs(measured.qTorso-measured.sTorso)/measured.qTorso<.01);
   assert.ok(Math.abs(measured.qFoot-measured.surfaceY)<1e-6);
   assert.ok(Math.abs(measured.shiftFoot-measured.surfaceY)<1e-6);

@@ -1,6 +1,8 @@
-# Owner correction — Qwerty half-height, Shift true circular dome
+# Shift circular dome — current shallow-wok profile and S2.8 history
 
-**Date:** 2026-10-26. **Authority:** the owner's explicit latest instruction supersedes the older, too-large Qwerty and flattened Shift geometry. This correction is for the **live characters**, not another abandoned workbench preview.
+**Current correction:** The owner rejected the tall dome and requested a shallow upside-down wok, explicitly leaving standing height wherever it ends up. The S2.9 section below supersedes all S2.8 crown-height and 92% targets in this historical record. Qwerty and Shift's body/root scale remain unchanged.
+
+**S2.8 history — date:** 2026-10-26. **Authority:** the owner's explicit latest instruction supersedes the older, too-large Qwerty and flattened Shift geometry. This correction is for the **live characters**, not another abandoned workbench preview.
 
 ## Qwerty
 
@@ -77,3 +79,28 @@ The S28 exporter stores flat face normals on its non-indexed shell. The producti
 The local production Chromium gate reports **zero normal seams across 2,691 repeated interior shell vertices**. Front, side and true top-down orthographic captures were opened and inspected: the patchwork of per-triangle lighting is replaced by continuous cel bands. The existing geometric, height, torso, road-contact, motion, weapon and request-failure checks passed in the same run. This corrects shading without changing the owner's accepted size correction; it does not assert final reference-art approval of the eye borders or complete S2.2–S2.7 artistic acceptance.
 
 `tests/robot-proportions-s28.test.mjs` checks every non-normal shell attribute and every non-shell attribute against the originally loaded GLB, verifies normalized continuous interior normals, and requires the original geometry buffers to remain untouched. The production browser gate separately inspects the actual installed mesh's shared normals.
+
+
+## S2.9 — owner-requested shallow inverted wok
+
+The head is now a low circular cap, with rise/diameter **0.28** rather than the tall S2.8 crown. Only head-bound positions and normals are rebuilt from the immutable `workbench/shift/Shift_S28.glb`; X/Z plan, rim elevation, torso, limbs, rig, UVs, weights, five clips and weapon mechanisms are preserved. The attached ink and white graphics follow the shallower head; no eye controls are introduced. The procedural fallback scales only its head group vertically to the same shallow profile.
+
+The live `public/assets/characters/Shift_Rigged.glb` is identical to `workbench/shift/Shift_S29.glb`. Reproduce it with:
+
+```sh
+python3 scripts/shift_dome_s28.py workbench/shift/Shift_S28.glb public/assets/characters/Qwerty_Q16_Validated.glb workbench/shift/Shift_S29.glb --dome-rise-ratio .28
+```
+
+The original exporter default remains available for historical S2.8 reproduction. The new `shiftDomeS29` metadata identifies the current correction; inherited `shiftDomeS28` metadata is historical provenance.
+
+Actual production Chromium neutral-pose measurements:
+
+| Measure | Qwerty | Shift |
+| --- | ---: | ---: |
+| Standing height | 0.7128000283 | 0.4089635926 |
+| Torso height | 0.1619999984 | 0.1607414854 |
+| Root scale | 0.27 | 0.46 |
+
+Shift's dome rise is 0.1583282232 world units across a diameter of 0.5654578853. Standing height is a measured consequence of the requested profile, **not a target**. The previous 92% constraint was removed at the owner's explicit instruction.
+
+Front, side and paired production captures were opened and inspected. The cap reads as a shallow inverted bowl, retains its circular overhead outline and continuous cel shading, and passes head/eye attachment, weapon, animation, fallback and rendered-road contact checks. These checks do not imply the owner's final artistic approval.
