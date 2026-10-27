@@ -1,6 +1,6 @@
 // S2.7: independent GLB clip mixer + S2.5 gun actuator for Shift.
-// This controller is opt-in in the localhost-only game QA route. It does not
-// replace the production Shift model or its established legacy fallback.
+// Shared by the production S28 GLB and the localhost S27 candidate.
+// Installation validates every clip before retiring the procedural fallback.
 import * as THREE from './vendor/three.module.js';
 import {celShadeRobot} from './cel-robots.js';
 import {attachShiftConcealedMinigun} from './shift-weapon.js';

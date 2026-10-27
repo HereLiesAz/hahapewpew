@@ -36,4 +36,26 @@ The exporter moves and recalculates normals for exactly **9,504** head-joint ver
 
 ## Production WebGL capture gate
 
-`scripts/robot_proportions_browser_qa.mjs` now opens the **actual production asset paths** in Chromium. `?qwertyQA=front` only exposes the game scene for inspection; it does not switch either actor's model. The script waits for `glb-q16` and `glb`, computes the world-space loaded-GLB standing heights and verifies Qwerty's **0.27 uniform scene scale**, Shift's **0.46**, and a shorter Shift. It saves wide in-game, front close-up of each character, and a near-top-down close-up of Shift's live dome, plus `results.json`. The GitHub Actions workflow now executes this test after existing S2.7 animation and browser checks. These images are separate from the geometric ring-circularity proof and must be inspected before claiming artistic match.
+`scripts/robot_proportions_browser_qa.mjs` loads the production URLs through the actual game installer. It waits for both models and the complete Shift sequence controller, then pauses the game and resets both skeletons to bind pose before measuring **visible, skinned world-space vertices**. Walking and speaking poses must not be used as standing rulers.
+
+The browser gate captures the pair at equal camera depth, Shift front/side/full-body, a true vertical orthographic top view, moving head/eyes, Qwerty's open/closed talk mechanism, and hidden/deployed/firing/retracted weapon states. It aborts each real production model request separately to verify the procedural fallback. No GLB bytes or character scales are changed by this integration.
+
+Production previously used only the old walk/talk mixer and legacy gun after loading S28. The complete existing five-clip controller and independent six-barrel gun actuator were confined to the S27 localhost route. Production now uses that same validated controller; historical S22 and failed-load fallback paths remain separate. The `s27` runtime flag identifies this controller in existing game combat/muzzle routing, including production S28.
+
+### Local Chromium evidence, 2026-10-26
+
+The following values are recomputed from the loaded mesh in the neutral pose, not inherited GLB accessor bounds:
+
+| Measure | Qwerty | Shift |
+| --- | ---: | ---: |
+| Standing height | 0.7128000283 | 0.6557760102 |
+| Torso height | 0.1619999984 | 0.1607414854 |
+| Lowest vertex Y | approximately 0 | approximately 0 |
+
+The measured standing ratio is 0.9199999777. Eleven circular dome rings have maximum radial dispersion 3.9516e-8 **world** units. This differs in units from the earlier model-space exporter measurement above.
+
+The local Chromium run passed neutral-mesh, scale, circle, torso, ground contact, head/eye attachment, Qwerty talk/plate, weapon states and both production request-failure gates. Captures were opened and inspected: the pair is unobstructed, the dome reads as circular from overhead, feet meet the neutral ground plane, and Qwerty's upper shell moves separately from its fixed plate. The deployed gun is visible from Shift's right side. A further combat regression invokes the game's real `fireAt` and `updateActors` functions and requires visible projectiles plus barrel alignment with the target. The weapon is aimed after wrist animation, because the wrist clip alone points sideways rather than toward the target.
+
+The existing large red projectile geometry obscures part of the combat close-up; separate deployment/firing actuator captures show the gun unobstructed. Projectile geometry was not changed in this character correction.
+
+**Remaining artistic acceptance:** the dome's faceted cel shading and eye-border edge offsets remain visible in close-up; owner acceptance is not implied. Browser gates prove the recorded geometry and controller behavior, not a complete reference-art match. S2.2–S2.7 backlog acceptance remains open. CI results must be inspected independently of these local results.
