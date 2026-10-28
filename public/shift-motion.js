@@ -90,18 +90,22 @@ export function createShiftSequenceRig(gltf) {
     const ray=new THREE.Raycaster();
     let contact=null;
     for(const vertices of feet.values()){
-      let lowest=null;
+      const seen=new Set();
       for(const {mesh,index} of vertices){
         const p=mesh.getVertexPosition(index,new THREE.Vector3()).applyMatrix4(mesh.matrixWorld);
-        if(!lowest||p.y<lowest.y)lowest=p;
+        // Triangle-soup corners repeat. Probe each distinct rendered position;
+        // the lowest corner alone can miss an uphill edge penetrating the road.
+        const key=p.toArray().join(',');
+        if(seen.has(key))continue;
+        seen.add(key);
+        ray.set(p.clone().add(new THREE.Vector3(0,2,0)),new THREE.Vector3(0,-1,0));
+        ray.far=4;
+        const hit=ray.intersectObjects(surfaces,false)[0];
+        if(!hit)continue;
+        const adjustment=hit.point.y-p.y;
+        if(!contact||adjustment>contact.adjustment)
+          contact={adjustment,footY:p.y,surfaceY:hit.point.y};
       }
-      ray.set(lowest.clone().add(new THREE.Vector3(0,2,0)),new THREE.Vector3(0,-1,0));
-      ray.far=4;
-      const hit=ray.intersectObjects(surfaces,false)[0];
-      if(!hit)continue;
-      const adjustment=hit.point.y-lowest.y;
-      if(!contact||adjustment>contact.adjustment)
-        contact={adjustment,footY:lowest.y,surfaceY:hit.point.y};
     }
     if(!contact)return null;
     const position=actorRoot.getWorldPosition(new THREE.Vector3());

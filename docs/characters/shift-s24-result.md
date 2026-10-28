@@ -58,3 +58,12 @@ The production installer now uses the S29 shallow-wok asset, which retains the S
 The local production Chromium run passed these gates; the three-quarter and walking close-ups were opened and inspected. The complete 85-test Node suite and 50-test Python suite passed. The existing CI production-capture step executes this new gate and uploads the close-ups and per-phase measurements in `results.json`.
 
 **Limits:** the game is paused while authored walking phases are sampled at a fixed road position. These checks establish skinned foot contact on that road, not locomotion distance, stance-foot sliding, slopes, or uneven terrain. They do not establish an exact body match to the perspective source drawing. S2.4 artistic acceptance stays open; no torso or limb redesign is authorized by this verification result.
+
+
+### Animated contact on inclined support
+
+The follow-up regression exposed a real grounding error: choosing only each foot's lowest world-Y vertex leaves other corners below a rising support plane. The production `createShiftSequenceRig().ground()` now probes all distinct rendered foot positions and applies the greatest required vertical correction. Repeated triangle corners share a probe. No body mesh, joint, clip, character scale or dome dimension changes.
+
+The new Node test drives the actual production controller and live GLB through walking poses on positive and negative support slopes at two actor headings. It independently raycasts every ankle-bound skinned vertex, rejects penetration and requires contact. It fails against the former lowest-vertex implementation and passes with the correction. Existing flat-road, relocation, raised-surface and missing-support regressions remain in place.
+
+This fixes vertical clearance; it does not rotate feet onto slopes, lock a planted foot against sliding, or establish a performance budget. The production browser gait gate continues to inspect the actual flat game road; the inclined planes are synthetic Node test surfaces. S2.4 artistic acceptance and M5.2's broader locomotion work remain open.
