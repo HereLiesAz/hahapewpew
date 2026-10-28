@@ -60,7 +60,7 @@ The local Chromium run passed neutral-mesh, scale, circle, torso, ground contact
 
 The existing large red projectile geometry obscures part of the combat close-up; separate deployment/firing actuator captures show the gun unobstructed. Projectile geometry was not changed in this character correction.
 
-**Remaining artistic acceptance:** eye-border edge offsets remain visible in close-up; owner acceptance is not implied. The shell's per-triangle lighting artifacts are addressed by the S2.2 shading correction below. Browser gates prove the recorded geometry and controller behavior, not a complete reference-art match. S2.2–S2.7 backlog acceptance remains open. CI results must be inspected independently of these local results.
+**Remaining artistic acceptance:** owner approval of the source-art match is not implied. The old eye-border depth offsets are addressed by the S2.3 surface-printing implementation in `shift-s23-result.md`. The shell's per-triangle lighting artifacts are addressed by the S2.2 shading correction below. Browser gates prove the recorded geometry and controller behavior, not a complete reference-art match. S2.2–S2.7 backlog acceptance remains open. CI results must be inspected independently of these local results.
 
 
 ### Rendered road contact correction

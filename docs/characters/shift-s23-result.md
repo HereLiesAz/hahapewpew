@@ -1,6 +1,6 @@
 # S2.3 — Shift fixed, ink-framed eye graphics
 
-**State:** isolated model candidate; not accepted, not installed in the live game. S2.2 remains open pending its own Chromium and independent-review gates. This step follows the explicit request to merge the S2.2 QA harness and move to the next task.
+**Historical candidate record:** the original S23 GLB remains an isolated candidate. Current production surface printing is documented at the end of this file. S2.2 remains open pending its own Chromium and independent-review gates. This step follows the explicit request to merge the S2.2 QA harness and move to the next task.
 
 ## Authority
 
@@ -34,4 +34,15 @@ The target values are calculated from the S2.1 art rectangles, not approved arti
 
 The `tests/visual/shift-s22-preview.js` workbench viewer now accepts `?model=s23` without removing the original `s22` selection. Serve `python3 scripts/serve_shift_qa.py`, then inspect **`http://127.0.0.1:8765/tests/visual/shift-s22.html?model=s23&view=front`**, and switch to `view=side`, `view=threequarter`, `pose=talk&time=0.24`, and `pose=walk&frames=1`.
 
-**Remaining gate:** actual Chromium captures at the intended game scale, head-motion/eye attachment inspection, full test suite, and cold independent GLEE review. Leave **S2.3 unchecked** until those checks establish accuracy. Do not replace the public `Shift_Rigged.glb` or promote this candidate to production.
+**Historical gate:** actual Chromium captures at the intended game scale, head-motion/eye attachment inspection, full test suite, and cold independent GLEE review. The production completion below establishes these attachment checks; this historical candidate record is not a separate artistic approval. Do not replace the public `Shift_Rigged.glb` or promote this candidate to production.
+
+
+## Production completion — graphics printed on the S29 shell
+
+The S29 wok profile is retained unchanged. The previous geometry decals sat above the actual gray head surface, so a passing head-bone linkage test alone did not establish that they looked attached. `public/shift-face-graphics.js`, called by the production sequence controller, now rasterizes the **existing XY triangle artwork** into a shared black/white mask and displays it on exact copies of the front shell triangles with identical skin bindings. No graphic contours, shell/body positions, source UVs, source GLBs, bones or clips are rewritten.
+
+The raised white mesh is hidden. Only its matching raised black eye-frame triangles are removed from the ink mesh's draw index; the rim and body outline remain. Transparent mask pixels preserve the gray shell. A shared unlit material preserves white interiors and fixed black borders; polygon depth bias avoids coplanar flicker without geometric extrusion. The back shell receives no graphic layer. No pupils, eyelids, independent movement or new facial controls are introduced.
+
+The local production Chromium gate checks printed vertices against their actual source-shell vertices, confirms retired raised graphics are absent from the draw, and inspects the printed material mask. It also captures dedicated front and side eye close-ups and measures head-coordinate invariance during head motion. Node regressions cover fixed white/black/transparent mask probes, animated surface coincidence, exact preservation of the rim/body draw indices, and reversible resource disposal.
+
+Front, side and overhead renders were opened and inspected: the detached white/black edges are gone. These establish the S2.3 attachment/appearance gate for the existing artwork; they do not invent approval of a redesigned expression. Final artistic feedback remains the owner's.

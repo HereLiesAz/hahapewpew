@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'public/shift-motion.js'
+      - 'public/shift-face-graphics.js'
       - 'public/character-models.js'
       - 'public/assets/characters/Shift_Rigged.glb'
       - 'public/assets/characters/Qwerty_Q16_Validated.glb'
@@ -28,6 +29,7 @@ on:
   pull_request:
     paths:
       - 'public/shift-motion.js'
+      - 'public/shift-face-graphics.js'
       - 'public/character-models.js'
       - 'public/assets/characters/Shift_Rigged.glb'
       - 'public/assets/characters/Qwerty_Q16_Validated.glb'

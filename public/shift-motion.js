@@ -1,9 +1,10 @@
 // S2.7: independent GLB clip mixer + S2.5 gun actuator for Shift.
-// Shared by the production S28 GLB and the localhost S27 candidate.
+// Shared by the production Shift GLB and the localhost S27 candidate.
 // Installation validates every clip before retiring the procedural fallback.
 import * as THREE from './vendor/three.module.js';
 import {toCreasedNormals} from './vendor/BufferGeometryUtils.js';
 import {celShadeRobot} from './cel-robots.js';
+import {attachShiftFaceGraphics} from './shift-face-graphics.js';
 import {attachShiftConcealedMinigun} from './shift-weapon.js';
 
 const REQUIRED=['Shift_Walk','Shift_Idle','Shift_Talk','Shift_Turn','Shift_Weapon'];
@@ -37,9 +38,11 @@ export function createShiftSequenceRig(gltf) {
     if(node.isMesh&&['Shift/Dome_Side','Shift/Dome_Graphite'].includes(node.material?.name))
       node.geometry=toCreasedNormals(node.geometry.clone());
   });
-  const {eyes}=celShadeRobot(gltf.scene,'Shift');
-  if(eyes.length!==1||eyes[0].type!=='MeshBasicMaterial'||
-     eyes[0].color.getHexString()!=='ffffff')throw new Error('Shift eye graphics changed');
+  const {eyes:sourceEyes}=celShadeRobot(gltf.scene,'Shift');
+  if(sourceEyes.length!==1||sourceEyes[0].type!=='MeshBasicMaterial'||
+     sourceEyes[0].color.getHexString()!=='ffffff')throw new Error('Shift eye graphics changed');
+  const faceGraphics=attachShiftFaceGraphics(gltf.scene);
+  const eyes=[faceGraphics.material];
   const weapon=attachShiftConcealedMinigun(bones.wristR);
   celShadeRobot(weapon.root,'Shift');
   const mixer=new THREE.AnimationMixer(gltf.scene);
@@ -109,6 +112,7 @@ export function createShiftSequenceRig(gltf) {
     return contact;
   }
   function dispose(){
+    faceGraphics.dispose();
     weapon.setFiring(false);
     weapon.pose(0,0);
     weapon.root.removeFromParent();
@@ -116,7 +120,7 @@ export function createShiftSequenceRig(gltf) {
     mixer.uncacheRoot(gltf.scene);
   }
   return Object.freeze({
-    model:gltf.scene,mixer,clips,weapon,bones,eyes,update,ground,dispose,
+    model:gltf.scene,mixer,clips,weapon,bones,eyes,faceGraphics,update,ground,dispose,
     get actionNames(){return REQUIRED.slice()},
     get isDeployed(){return weapon.root.visible},
   });

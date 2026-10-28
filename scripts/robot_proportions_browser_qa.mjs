@@ -98,9 +98,28 @@ try {
         }else seen.set(key,value);
       }
     });
+    const face=s.asset.faceGraphics;
+    let eyeSurfaceGap=0,visibleRaisedEyes=0,raisedInkIndices=0,whitePixels=0,blackPixels=0;
+    qa.scene.updateMatrixWorld(true);
+    for(const {mesh,source,sourceIndices} of face.layers){
+      mesh.skeleton.update();source.skeleton.update();
+      for(let i=0;i<sourceIndices.length;i++){
+        const printed=mesh.getVertexPosition(i,new T.Vector3()).applyMatrix4(mesh.matrixWorld);
+        const shellPoint=source.getVertexPosition(sourceIndices[i],new T.Vector3()).applyMatrix4(source.matrixWorld);
+        eyeSurfaceGap=Math.max(eyeSurfaceGap,printed.distanceTo(shellPoint));
+      }
+    }
+    s.asset.model.traverse(n=>{
+      if(n.material?.name==='Shift/Eyes_2D_Emission'&&n.material!==face.material&&n.visible)visibleRaisedEyes++;
+      if(n.material?.name==='Shift/Ink_Outline')
+        raisedInkIndices=n.geometry.index?Array.from(n.geometry.index.array).filter(i=>i>=288&&i<2016).length:Infinity;
+    });
+    const mask=face.texture.image.data;
+    for(let i=0;i<mask.length;i+=4)if(mask[i+3]===255){if(mask[i]===255)whitePixels++;else blackPixels++;}
     window.__productionQA={T,qa,q,s,points,bounds,qb,sb};
     return {qScale:q.root.scale.toArray(),sScale:s.root.scale.toArray(),
       qHeight:qb.max.y-qb.min.y,shiftHeight:sb.max.y-sb.min.y,
+      eyeSurfaceGap,printedEyeLayers:face.layers.length,visibleRaisedEyes,raisedInkIndices,whitePixels,blackPixels,
       relativeHeight:(sb.max.y-sb.min.y)/(qb.max.y-qb.min.y),qTorso,sTorso,
       domeRise:db.max.y-db.min.y,domeDiameter:Math.max(db.max.x-db.min.x,db.max.z-db.min.z),domeNormalSeams,domeSharedVertices,
       qFoot:qb.min.y,shiftFoot:sb.min.y,surfaceY:contact.surfaceY,ringCount:rings.size,radialError,
@@ -119,20 +138,26 @@ try {
   assert.ok(measured.domeSharedVertices>1000);
   assert.equal(measured.ringCount,11);
   assert.ok(measured.radialError<2e-6);
+  assert.ok(measured.eyeSurfaceGap<1e-8);
+  assert.equal(measured.printedEyeLayers,2);
+  assert.equal(measured.visibleRaisedEyes,0);
+  assert.equal(measured.raisedInkIndices,0);
+  assert.ok(measured.whitePixels>0&&measured.blackPixels>0);
   assert.equal(measured.barrels,6);
   assert.deepEqual(measured.clips,['Shift_Walk','Shift_Idle','Shift_Talk','Shift_Turn','Shift_Weapon']);
 
   async function capture(mode,view='front',pair=false){
     const result=await page.evaluate(({view,pair})=>{
       const {T,qa,q,s,bounds}=window.__productionQA;
-      const box=pair?bounds(q.asset.root).union(bounds(s.asset.model))
+      const eyes=view==='eyes'||view==='eyes-side';
+      const box=eyes?bounds(s.asset.model,'Shift/Dome_Side'):pair?bounds(q.asset.root).union(bounds(s.asset.model))
         :bounds(view==='qwerty'?q.asset.root:s.asset.model);
       const center=box.getCenter(new T.Vector3()),size=box.getSize(new T.Vector3());
-      const half=Math.max(size.y,size.x,size.z)*.65;
       const aspect=innerWidth/innerHeight;
+      const half=eyes?Math.max(size.y*.65,Math.max(size.x,size.z)*.55/aspect):Math.max(size.y,size.x,size.z)*.65;
       const cam=new T.OrthographicCamera(-half*aspect,half*aspect,half,-half,.01,30);
       const direction=view==='top'?new T.Vector3(0,1,0)
-        :view==='side'?new T.Vector3(0,0,-1):new T.Vector3(1,0,0);
+        :(view==='side'||view==='eyes-side')?new T.Vector3(0,0,-1):new T.Vector3(1,0,0);
       cam.position.copy(center).addScaledVector(direction,5);
       cam.up.set(0,view==='top'?0:1,view==='top'?-1:0);
       cam.lookAt(center);cam.updateMatrixWorld(true);
@@ -158,6 +183,8 @@ try {
   await capture('production-pair','front',true);
   await capture('shift-front');
   await capture('shift-side','side');
+  await capture('shift-eyes-front','eyes');
+  await capture('shift-eyes-side','eyes-side');
   const overhead=await capture('shift-top-orthographic','top');
   assert.deepEqual(overhead.direction,[0,1,0]);
   await capture('qwerty-front','qwerty');
