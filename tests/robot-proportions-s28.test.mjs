@@ -228,6 +228,40 @@ test('Production Shift feet touch rendered road at rest and during walk',async()
   motion.dispose();
 });
 
+test('Shift animated foot vertices clear rising and falling surfaces',async()=>{
+  const T=await import('../public/vendor/three.module.js');
+  const motion=createShiftSequenceRig(await parsed(liveShift));
+  const actor=new T.Group();actor.scale.setScalar(.46);actor.add(motion.model);
+  const road=new T.Mesh(new T.PlaneGeometry(10,10),new T.MeshBasicMaterial());
+  for(const slope of [-.12,.12])for(const heading of [0,Math.PI/2]){
+    road.rotation.set(-Math.PI/2,slope,0);road.position.y=.15;
+    actor.rotation.y=heading;actor.position.set(.2,0,-.2);
+    for(let frame=0;frame<12;frame++){
+      motion.update(.05,{walking:true});
+      assert.ok(motion.ground(actor,[road]));
+      actor.updateMatrixWorld(true);
+      const gaps=[];
+      motion.model.traverseVisible(mesh=>{
+        if(!mesh.isSkinnedMesh)return;
+        mesh.skeleton.update();
+        const joints=mesh.geometry.attributes.skinIndex;
+        for(let i=0;i<joints.count;i++){
+          if(!['ankleL','ankleR'].includes(mesh.skeleton.bones[joints.getX(i)]?.name))continue;
+          const point=mesh.getVertexPosition(i,new T.Vector3()).applyMatrix4(mesh.matrixWorld);
+          const ray=new T.Raycaster(point.clone().add(new T.Vector3(0,2,0)),new T.Vector3(0,-1,0),0,4);
+          const hit=ray.intersectObject(road)[0];
+          assert.ok(hit);gaps.push(point.y-hit.point.y);
+        }
+      });
+      assert.ok(gaps.length>0);
+      assert.ok(Math.min(...gaps)>=-1e-6,'foot intersects slope: '+Math.min(...gaps));
+      assert.ok(Math.min(...gaps)<1e-6,'no supporting contact');
+    }
+  }
+  motion.dispose();
+});
+
+
 test('S2.2 dome normals are continuous while every geometric and skin attribute is preserved',async()=>{
   const gltf=await parsed(liveShift),before=new Map();
   gltf.scene.traverse(n=>{
