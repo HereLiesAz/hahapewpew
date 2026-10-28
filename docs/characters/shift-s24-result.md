@@ -1,6 +1,8 @@
 # S2.4 — Shift torso, limbs, feet and rest-pose joint alignment
 
-**State:** workbench candidate, **not accepted**. The model stays at `workbench/shift/Shift_S24.glb`; the production character at `public/assets/characters/Shift_Rigged.glb` is unchanged. Merging this candidate is not permission to swap it into the live game. The S2.4 checklist remains unchecked pending actual render/motion tests.
+**Historical S2.4 candidate record.** The current production verification is recorded below. The following candidate measurements and implementation notes describe the original S24 export, not the current shallow-wok head.
+
+**Original state:** workbench candidate, **not accepted**. The model stays at `workbench/shift/Shift_S24.glb`; the production character at `public/assets/characters/Shift_Rigged.glb` is unchanged. Merging this candidate is not permission to swap it into the live game. The S2.4 checklist remains unchecked pending actual render/motion tests.
 
 ## Reference and proportions
 
@@ -45,3 +47,14 @@ Use `python3 scripts/serve_shift_qa.py` from a checkout; open
 change to `view=side` and `view=threequarter`; use `pose=walk&frames=1` and `pose=talk&time=0.24` to inspect motion. The private viewer is local-only and does not replace the live Shift asset.
 
 **Merge policy:** The user explicitly requires every step's candidate work to be committed, pushed, and merged. The S2.4 **implementation candidate** may therefore be merged for continuity while the S2.4 acceptance box stays open until complete evidence is available. The next numbered step S2.5 must not be misrepresented as completed or as production-ready.
+
+
+## Current production S2.4 verification
+
+The production installer now uses the S29 shallow-wok asset, which retains the S24 lower body through S27/S28. The owner's later instruction preserves the body size and leaves height wherever the wok correction puts it; the original dome/standing ratios above are historical, not current targets. No body, head, root scale or GLB is changed by this verification step.
+
+`scripts/robot_proportions_browser_qa.mjs` now captures the live production model at front, side and three-quarter angles, plus three walking poses. It samples 32 evenly spaced phases over the authored `Shift_Walk` clip using the production sequence controller. For each phase it evaluates every visible ankle-bound skinned vertex, raycasts the actual rendered road beneath that vertex, rejects foot penetration, and requires at least one foot to meet the road. Both knees must change orientation. This adds a browser regression beyond the existing neutral-pose and Node synthetic-plane grounding tests.
+
+The local production Chromium run passed these gates; the three-quarter and walking close-ups were opened and inspected. The complete 85-test Node suite and 50-test Python suite passed. The existing CI production-capture step executes this new gate and uploads the close-ups and per-phase measurements in `results.json`.
+
+**Limits:** the game is paused while authored walking phases are sampled at a fixed road position. These checks establish skinned foot contact on that road, not locomotion distance, stance-foot sliding, slopes, or uneven terrain. They do not establish an exact body match to the perspective source drawing. S2.4 artistic acceptance stays open; no torso or limb redesign is authorized by this verification result.
