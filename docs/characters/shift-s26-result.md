@@ -1,6 +1,22 @@
 # S2.6 — Shift GLB rig and four-band material export
 
-**Status:** Candidate committed for integration continuity. This step's binary and material contract is structurally verified, but **full Node/Python tests, browser shading captures, and independent cold GLEE review are outstanding**. Do not check S2.6 complete or replace the live Shift asset until the actual-render acceptance evidence passes.
+## Current production acceptance
+
+The live S29 asset loads through the production `world3d.js` installer and `createShiftSequenceRig`. It retains the original 16 named bones, skin attributes, UVs and five clips; the concealed gun remains separately attached. The controller applies the shared six opaque cel materials and then prints the fixed, unlit face mask on the shell. No asset, geometry, material palette, character scale, animation or live gameplay code changes in this acceptance step.
+
+The production regression now checks all 11,244 source skin vertices: finite matching position/normal/UV/skin attribute counts, valid joint indices, normalized nonnegative weights, and rest-skinned positions agreeing with original geometry. It verifies the actual installed opaque materials use nearest-filtered four-band ramps and that the printed face retains its unlit texture mask. These are project structural checks, not a claim of an external glTF validator run.
+
+The Chromium gate renders a calibration atlas using references to the six actual installed materials. Flat swatches carry controlled unit normals giving dot products −0.75, −0.25, +0.25 and +0.75 under one white directional light of intensity π. Tone mapping is disabled only for this calibration, so Lambert's 1/π cancels and the expected pixel is the linear palette multiplied by the corresponding ramp intensity, converted to sRGB. All 24 opaque samples matched expected bytes within the two-byte tolerance and each material produced four distinct colours. Separate samples of the actual printed mask remained white/black across all rows. This is a shader/material test; the swatches are not replacement character meshes.
+
+A second capture pair renders the real installed, skinned Shift root in an isolated scene at zero and bright directional illumination, keeping the production renderer's tone mapping. The shell responds to light while every fully white pixel in the dark image remains white in the bright image. The pair and the atlas were opened and inspected. Renderer settings and the root's original parent are restored in `finally` blocks.
+
+Evidence: `shift-material-gpu-bands.png`, `shift-light-dark.png`, `shift-light-bright.png` and their measurements in the production browser `results.json`. The existing CI capture/upload steps publish these artifacts. All 88 Node tests, 50 Python tests and the complete production Chromium gate passed locally. Cold independent GLEE review covers the checks and captures; merged-commit CI must still be inspected separately.
+
+This completes the S2.6 rig/material technical gate. It does not approve the entire character artwork, establish a performance budget, solve foot sliding, or verify a public deployment. S2.2, S2.4, S2.7 and broader locomotion acceptance remain separate.
+
+## Historical S26 export record
+
+**Original status:** Candidate committed for integration continuity. This step's binary and material contract is structurally verified, but **full Node/Python tests, browser shading captures, and independent cold GLEE review are outstanding**. Do not check S2.6 complete or replace the live Shift asset until the actual-render acceptance evidence passes.
 
 ## Authoritative inputs
 

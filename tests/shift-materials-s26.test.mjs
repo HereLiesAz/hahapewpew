@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import * as THREE from '../public/vendor/three.module.js';
 import {GLTFLoader} from '../public/vendor/GLTFLoader.js';
 import {celShadeRobot} from '../public/cel-robots.js';
+import {createShiftSequenceRig} from '../public/shift-motion.js';
 import {attachShiftConcealedMinigun} from '../public/shift-weapon.js';
 
 const uri=new URL('../workbench/shift/Shift_S26.glb',import.meta.url);
@@ -137,4 +138,57 @@ test('S2.6 preview is workbench-only and game keeps original production GLB',()=
   assert.match(viewer,/attachShiftConcealedMinigun/);
   assert.doesNotMatch(runtime,/Shift_S26\.glb/);
   assert.match(runtime,/loadAsync\('\/assets\/characters\/Shift_Rigged\.glb'\)/);
+});
+
+
+test('S2.6 live S29 skin has finite UVs, normalized weights and coherent rest bind matrices',async()=>{
+  const live=readFileSync(new URL('../public/assets/characters/Shift_Rigged.glb',import.meta.url));
+  const bytes=live.buffer.slice(live.byteOffset,live.byteOffset+live.byteLength);
+  const gltf=await new Promise((ok,fail)=>new GLTFLoader().parse(bytes,'',ok,fail));
+  gltf.scene.updateMatrixWorld(true);
+  let vertices=0,meshes=0;
+  gltf.scene.traverse(mesh=>{
+    if(!mesh.isSkinnedMesh)return;
+    meshes++;
+    assert.deepEqual(mesh.skeleton.bones.map(b=>b.name),[
+      'root','spine','neck','head','armL','elbowL','wristL','armR','elbowR','wristR',
+      'hipL','kneeL','ankleL','hipR','kneeR','ankleR'
+    ]);
+    assert.equal(mesh.skeleton.boneInverses.length,16);
+    mesh.skeleton.update();
+    const a=mesh.geometry.attributes;
+    for(const key of ['position','normal','uv','skinIndex','skinWeight']){
+      assert.equal(a[key].count,a.position.count,key);
+      assert.ok(Array.from(a[key].array).every(Number.isFinite),key);
+    }
+    for(let i=0;i<a.position.count;i++){
+      const weight=[a.skinWeight.getX(i),a.skinWeight.getY(i),a.skinWeight.getZ(i),a.skinWeight.getW(i)];
+      assert.ok(weight.every(w=>w>=0&&w<=1));
+      assert.ok(Math.abs(weight.reduce((x,y)=>x+y,0)-1)<1e-6);
+      for(const j of [a.skinIndex.getX(i),a.skinIndex.getY(i),a.skinIndex.getZ(i),a.skinIndex.getW(i)])
+        assert.ok(Number.isInteger(j)&&j>=0&&j<16);
+      const original=new THREE.Vector3().fromBufferAttribute(a.position,i);
+      assert.ok(mesh.getVertexPosition(i,new THREE.Vector3()).distanceTo(original)<1e-6,'rest skin deforms source position');
+    }
+    vertices+=a.position.count;
+  });
+  assert.equal(meshes,7);assert.equal(vertices,11244);
+  const motion=createShiftSequenceRig(gltf),materials=new Set();
+  gltf.scene.traverseVisible(n=>{if(n.isMesh)materials.add(n.material)});
+  let toon=0;
+  for(const m of materials){
+    if(m.name==='Shift/Eyes_2D_Emission'){
+      assert.equal(m.type,'MeshBasicMaterial');assert.equal(m.toneMapped,false);
+      assert.ok(m.map,'printed face mask must survive production installation');
+    }else{
+      toon++;assert.equal(m.type,'MeshToonMaterial',m.name);
+      assert.equal(m.gradientMap.image.width,4);
+      assert.equal(m.gradientMap.magFilter,THREE.NearestFilter);
+      assert.equal(m.gradientMap.minFilter,THREE.NearestFilter);
+      assert.deepEqual([...m.gradientMap.image.data].filter((_,i)=>i%4===0),[120,158,211,255]);
+      assert.equal(m.map,null);
+    }
+  }
+  assert.equal(toon,6);assert.equal(motion.actionNames.length,5);
+  motion.dispose();
 });

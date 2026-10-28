@@ -29,7 +29,7 @@
 - [x] **S2.3 Immovable graphic eyes:** Attach two flat white 2D eye surfaces to the dome curvature at the correct angles; no eyeballs, eyelids or tracking. **Done when:** eye shape/location remain fixed in head coordinates through movement.
 - [ ] **S2.4 Torso, arms, legs and feet:** Rebuild compact proportions and leg joints from the reference. **Done when:** full-body compare and foot contact checks pass.
 - [x] **S2.5 Hidden minigun:** Model the concealed weapon and separately actuated reveal/spin mechanism without altering idle silhouette. **Done when:** stowed/revealed poses and barrel rotation checks pass.
-- [ ] **S2.6 Cel material and GLB rig:** Prepare named bones/UVs and consistent banded material; keep white eyes emissive and unshaded. **Done when:** glTF structural checks and robot shading samples pass.
+- [x] **S2.6 Cel material and GLB rig:** Prepare named bones/UVs and consistent banded material; keep white eyes emissive and unshaded. **Done when:** glTF structural checks and robot shading samples pass.
 - [ ] **S2.7 Animate and accept:** Export idle/walk/turn/weapon sequences and inspect in an actual game browser. **Done when:** recordings, joint movement and fallback tests pass before replacing Shift.
 
 ## 3 — Tab: child, box and bear
@@ -91,3 +91,6 @@ S2.3 production attachment: the existing graphics are printed on exact skinned s
 
 
 S2.5 production weapon gate: the existing `world3d.js` production installer calls `createShiftSequenceRig`, which attaches the concealed six-barrel actuator. Reviewed live-path Chromium profile/muzzle/spin and full-body state captures, zero visible meshes stowed/retracted, actual six-barrel vertex motion, fixed hinge/slide/muzzle during spin, and the existing game-combat aiming gate satisfy this sub-step. See `docs/characters/shift-s25-result.md`. The technical gate does not imply owner approval of all character artwork or physical internal packing.
+
+
+S2.6 production rig/material gate: the live S29 skin passed named-joint, UV, weight and rest-bind checks. Actual installed material references produced four verified GPU bands, and controlled captures of the real skinned root kept the printed eyes white while shell lighting changed. See `docs/characters/shift-s26-result.md`. This records structural/material acceptance, not blanket artistic or deployment acceptance.
