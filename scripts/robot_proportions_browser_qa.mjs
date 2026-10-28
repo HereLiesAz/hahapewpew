@@ -149,16 +149,20 @@ try {
   async function capture(mode,view='front',pair=false){
     const result=await page.evaluate(({view,pair})=>{
       const {T,qa,q,s,bounds}=window.__productionQA;
-      const eyes=view==='eyes'||view==='eyes-side';
-      const box=eyes?bounds(s.asset.model,'Shift/Dome_Side'):pair?bounds(q.asset.root).union(bounds(s.asset.model))
+      const eyes=view==='eyes'||view==='eyes-side',gun=view==='gun'||view==='gun-muzzle';
+      const box=gun?bounds(s.asset.weapon.root,view==='gun-muzzle'?'Shift/Control_Light':null):eyes?bounds(s.asset.model,'Shift/Dome_Side'):pair?bounds(q.asset.root).union(bounds(s.asset.model))
         :bounds(view==='qwerty'?q.asset.root:s.asset.model);
       const center=box.getCenter(new T.Vector3()),size=box.getSize(new T.Vector3());
       const aspect=innerWidth/innerHeight;
       const half=eyes?Math.max(size.y*.65,Math.max(size.x,size.z)*.55/aspect):Math.max(size.y,size.x,size.z)*.65;
       const cam=new T.OrthographicCamera(-half*aspect,half*aspect,half,-half,.01,30);
-      const direction=view==='top'?new T.Vector3(0,1,0)
+      let direction=view==='top'?new T.Vector3(0,1,0)
         :(view==='side'||view==='eyes-side')?new T.Vector3(0,0,-1):view==='threequarter'?new T.Vector3(1,0,-1).normalize():new T.Vector3(1,0,0);
-      cam.position.copy(center).addScaledVector(direction,5);
+      if(gun){
+        direction=new T.Vector3(1,0,0).transformDirection(s.asset.weapon.rotor.matrixWorld);
+        if(view==='gun')direction.applyAxisAngle(new T.Vector3(0,1,0),Math.PI/3);
+      }
+      cam.position.copy(center).addScaledVector(direction,gun?Math.max(size.x,size.y,size.z)*1.5+.02:5);
       cam.up.set(0,view==='top'?0:1,view==='top'?-1:0);
       cam.lookAt(center);cam.updateMatrixWorld(true);
       // Prevent the other actor occluding single-character side views.
@@ -168,16 +172,35 @@ try {
       }
       qa.renderer.render(qa.scene,cam);
       const data=qa.renderer.domElement.toDataURL('image/png');
+      let imageRange=null;
+      if(gun){
+        const probe=document.createElement('canvas');probe.width=160;probe.height=100;
+        const ctx=probe.getContext('2d');ctx.drawImage(qa.renderer.domElement,0,0,160,100);
+        const rgba=ctx.getImageData(0,0,160,100).data;
+        let low=255,high=0;
+        for(let i=0;i<rgba.length;i+=4){low=Math.min(low,rgba[i],rgba[i+1],rgba[i+2]);high=Math.max(high,rgba[i],rgba[i+1],rgba[i+2]);}
+        imageRange=high-low;
+      }
       hidden.forEach(([root,visible])=>{root.visible=visible});
       const top=new T.Vector3(center.x,box.max.y,center.z).project(cam);
       const bottom=new T.Vector3(center.x,box.min.y,center.z).project(cam);
-      return {data,projection:cam.type,direction:direction.toArray(),
+      let projectedSpan=null;
+      if(gun){
+        const pixels=window.__productionQA.points(s.asset.weapon.root).map(p=>p.project(cam));
+        projectedSpan=Math.max(
+          (Math.max(...pixels.map(p=>p.x))-Math.min(...pixels.map(p=>p.x)))*innerWidth/2,
+          (Math.max(...pixels.map(p=>p.y))-Math.min(...pixels.map(p=>p.y)))*innerHeight/2);
+      }
+      return {data,projection:cam.type,direction:direction.toArray(),projectedSpan,imageRange,
         projectedHeight:Math.abs(top.y-bottom.y)*innerHeight/2,
         bounds:{min:box.min.toArray(),max:box.max.toArray()}};
     },{view,pair});
     await writeFile(dir+'/'+mode+'.png',Buffer.from(result.data.split(',')[1],'base64'));
     delete result.data;report.results.push({mode,...result});
-    if(view!=='top')assert.ok(result.projectedHeight>300);
+    if(view==='gun'||view==='gun-muzzle'){
+      assert.ok(result.projectedSpan>300);assert.ok(result.imageRange>20,'weapon close-up is blank');
+    }
+    else if(view!=='top')assert.ok(result.projectedHeight>300);
     return result;
   }
   await capture('production-pair','front',true);
@@ -275,13 +298,44 @@ try {
     const weapon=await page.evaluate(mode=>{
       const {s}=window.__productionQA,a=s.asset;
       for(let i=0;i<80;i++)a.update(.05,{walking:false,deploy:mode==='deploy',firing:mode==='fire'});
-      return {visible:a.weapon.root.visible,spin:a.weapon.barrelSpin,deployment:a.weapon.deployment};
+      let visibleMeshes=0;
+      a.weapon.root.traverseVisible(n=>{if(n.isMesh)visibleMeshes++;});
+      return {visible:a.weapon.root.visible,visibleMeshes,spin:a.weapon.barrelSpin,deployment:a.weapon.deployment};
     },mode);
     report.results.push({mode:'weapon-'+mode,...weapon});
     assert.equal(weapon.visible,mode==='deploy'||mode==='fire');
+    assert.equal(weapon.visibleMeshes>0,weapon.visible);
     if(mode==='fire')assert.ok(weapon.spin>1);
     else assert.equal(weapon.spin,0);
     await capture('shift-weapon-'+mode,'side');
+    if(mode==='deploy'){
+      await capture('shift-gun-deployed-close','gun');
+      await capture('shift-gun-six-muzzles','gun-muzzle');
+    }
+    if(mode==='fire'){
+      await capture('shift-gun-spin-before','gun-muzzle');
+      const spin=await page.evaluate(()=>{
+        const {T,qa,s}=window.__productionQA,w=s.asset.weapon;
+        function sample(){
+          qa.scene.updateMatrixWorld(true);
+          const barrels=w.rotor.children.filter(n=>n.name.startsWith('Shift.Weapon.Barrel.'));
+          return {vertices:barrels.map(n=>n.getVertexPosition(0,new T.Vector3()).applyMatrix4(n.matrixWorld).toArray()),
+            muzzle:w.muzzleWorldPosition().toArray(),hinge:w.hinge.quaternion.toArray(),slide:w.extend.position.toArray()};
+        }
+        const before=sample();
+        w.update(.017);
+        return {before,after:sample()};
+      });
+      assert.equal(spin.before.vertices.length,6);
+      const displacement=spin.before.vertices.map((p,i)=>Math.hypot(...p.map((v,k)=>v-spin.after.vertices[i][k])));
+      assert.ok(displacement.every(d=>d>.001),'rendered barrels must rotate');
+      assert.deepEqual(spin.before.hinge,spin.after.hinge);
+      assert.deepEqual(spin.before.slide,spin.after.slide);
+      assert.ok(Math.hypot(...spin.before.muzzle.map((v,i)=>v-spin.after.muzzle[i]))<1e-6);
+      report.results.push({mode:'rendered-barrel-motion',...spin,displacement});
+      await capture('shift-gun-spin-after','gun-muzzle');
+    }
+
   }
   const combat=await page.evaluate(()=>{
     const {T,qa,s}=window.__productionQA;

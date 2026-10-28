@@ -96,7 +96,7 @@ test('S2.5 four-band robot shader applies without modifying white eyes',()=>{
   }
 });
 
-test('S2.5 viewer runs solely against the workbench actor; live gun remains untouched',()=>{
+test('S2.5 historical viewer stays isolated while production uses the shared weapon controller',()=>{
   const viewer=readFileSync(new URL('./visual/shift-s22-preview.js',import.meta.url),'utf8');
   const runtime=readFileSync(new URL('../public/world3d.js',import.meta.url),'utf8');
   const model=readFileSync(new URL('../workbench/shift/Shift_S24.glb',import.meta.url));
@@ -106,5 +106,28 @@ test('S2.5 viewer runs solely against the workbench actor; live gun remains unto
   assert.match(viewer,/weaponMode===\x27stowed\x27\?0:1/);
   assert.match(viewer,/weapon\?\.update\(dt\)/);
   assert.match(runtime,/loadAsync\('\/assets\/characters\/Shift_Rigged\.glb'\)/);
-  assert.doesNotMatch(runtime,/shift-weapon\.js|Shift_S25\.glb/);
+  assert.doesNotMatch(runtime,/Shift_S25\.glb/);
+  assert.match(runtime,/createShiftSequenceRig\(gltf\)/);
+  const controller=readFileSync(new URL('../public/shift-motion.js',import.meta.url),'utf8');
+  assert.match(controller,/attachShiftConcealedMinigun\(bones.wristR\)/);
+});
+
+
+test('S2.5 six actual barrel meshes orbit the axis without moving the hinge or muzzle',()=>{
+  const {frame,weapon:w}=makeWeapon();
+  w.pose(1,0);w.setFiring(true);frame.updateMatrixWorld(true);
+  const barrels=w.rotor.children.filter(n=>n.name.startsWith('Shift.Weapon.Barrel.'));
+  const vertex=n=>n.getVertexPosition(0,new THREE.Vector3()).applyMatrix4(n.matrixWorld);
+  const before=barrels.map(vertex),muzzle=w.muzzleWorldPosition();
+  const hinge=w.hinge.quaternion.clone(),slide=w.extend.position.clone();
+  w.update(.017);frame.updateMatrixWorld(true);
+  assert.equal(barrels.length,6);
+  for(let i=0;i<barrels.length;i++){
+    const after=vertex(barrels[i]);
+    assert.ok(after.distanceTo(before[i])>.001);
+    assert.ok(Math.abs(after.x-before[i].x)<1e-9,'no longitudinal barrel motion');
+  }
+  assert.ok(w.muzzleWorldPosition().distanceTo(muzzle)<1e-9);
+  assert.ok(w.hinge.quaternion.equals(hinge));
+  assert.ok(w.extend.position.equals(slide));
 });
