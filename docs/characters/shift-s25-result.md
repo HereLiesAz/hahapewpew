@@ -1,6 +1,18 @@
-# S2.5 — Shift's concealed six-barrel gun (isolated candidate)
+# S2.5 — Shift's concealed six-barrel gun
 
-**State:** source implementation and candidate viewer are merged for continuity; **visual acceptance remains open**. The live game still uses its original `Shift_Rigged.glb` and existing legacy weapon behavior. This work does **not** swap the production character or change the owner's original artwork.
+## Current production gate
+
+The live S29 Shift uses `public/shift-motion.js`, which attaches the existing concealed gun to `wristR`. Production `world3d.js` installs this controller, routes combat through it and aims its barrel axis at the shot target. The historical isolated-candidate notes below predate that integration. No geometry, GLB, scale, clip or gameplay behavior changes in this acceptance step.
+
+The production Chromium harness now records zero visible weapon meshes when stowed/retracted, six actual rotating barrel meshes, and dedicated deployed/profile/muzzle/spin close-ups. It samples actual rendered barrel vertices before and after the independent rotor update, requires displacement for all six, and requires the hinge, telescoping slide and muzzle axis to stay fixed. Existing real `fireAt`/`updateActors` aiming and projectile checks remain in the same run.
+
+The close-up camera stays near the gun rather than placing a downward-facing view below the road. A blank-image rejection and minimum projected mesh span guard unusable captures; opening the images is still required. Evidence files are `shift-gun-deployed-close.png`, `shift-gun-six-muzzles.png`, `shift-gun-spin-before.png`, `shift-gun-spin-after.png`, and the full-body hidden/deploy/fire/retract views. The CI production-capture step uploads these with per-vertex measurements in `results.json`.
+
+The Node regression independently checks real mesh vertices rather than only a spin counter. All 87 Node tests and 50 Python tests passed locally. The complete production Chromium run passed; deployed, six-tip, before/after-spin and full-body state captures were opened and inspected. Cold independent GLEE review found no remaining defect. CI success must be checked separately after merging. This gate covers concealed idle and independently actuated reveal/spin/retract, not a physically engineered internal packing arrangement or blanket owner approval of every character detail. S2.2, S2.4, S2.6, S2.7 and broader locomotion acceptance remain separate.
+
+## Historical isolated-candidate record
+
+**Original state:** source implementation and candidate viewer are merged for continuity; **visual acceptance remains open**. The live game still uses its original `Shift_Rigged.glb` and existing legacy weapon behavior. This work does **not** swap the production character or change the owner's original artwork.
 
 ## Reference boundary
 
