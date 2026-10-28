@@ -157,7 +157,7 @@ try {
       const half=eyes?Math.max(size.y*.65,Math.max(size.x,size.z)*.55/aspect):Math.max(size.y,size.x,size.z)*.65;
       const cam=new T.OrthographicCamera(-half*aspect,half*aspect,half,-half,.01,30);
       const direction=view==='top'?new T.Vector3(0,1,0)
-        :(view==='side'||view==='eyes-side')?new T.Vector3(0,0,-1):new T.Vector3(1,0,0);
+        :(view==='side'||view==='eyes-side')?new T.Vector3(0,0,-1):view==='threequarter'?new T.Vector3(1,0,-1).normalize():new T.Vector3(1,0,0);
       cam.position.copy(center).addScaledVector(direction,5);
       cam.up.set(0,view==='top'?0:1,view==='top'?-1:0);
       cam.lookAt(center);cam.updateMatrixWorld(true);
@@ -183,11 +183,57 @@ try {
   await capture('production-pair','front',true);
   await capture('shift-front');
   await capture('shift-side','side');
+  await capture('shift-threequarter','threequarter');
   await capture('shift-eyes-front','eyes');
   await capture('shift-eyes-side','eyes-side');
   const overhead=await capture('shift-top-orthographic','top');
   assert.deepEqual(overhead.direction,[0,1,0]);
   await capture('qwerty-front','qwerty');
+
+  // Sample a complete authored walk cycle using the production controller and
+  // actual road triangles. Inspect every skinned ankle vertex, not root height.
+  const gait=[];
+  for(let frame=0;frame<32;frame++){
+    const sample=await page.evaluate(()=>{
+      const {T,qa,s}=window.__productionQA;
+      if(!window.__productionQA.gaitStarted){
+        Object.values(s.asset.clips).forEach(a=>a.reset().play());
+        window.__productionQA.gaitStarted=true;
+      }
+      s.asset.update(s.asset.clips.Shift_Walk.getClip().duration/32,{walking:true});
+      const surfaces=[...qa.groups.values()].flatMap(g=>g.userData.walkSurfaces);
+      if(!s.asset.ground(s.root,surfaces))throw Error('Walk has no road support');
+      qa.scene.updateMatrixWorld(true);
+      const feet=[];
+      for(const name of ['ankleL','ankleR']){
+        const vertices=[];
+        s.asset.model.traverseVisible(mesh=>{
+          if(!mesh.isSkinnedMesh)return;
+          mesh.skeleton.update();
+          const joints=mesh.geometry.attributes.skinIndex;
+          for(let i=0;i<joints.count;i++)if(mesh.skeleton.bones[joints.getX(i)]?.name===name)
+            vertices.push(mesh.getVertexPosition(i,new T.Vector3()).applyMatrix4(mesh.matrixWorld));
+        });
+        if(!vertices.length)throw Error('Missing rendered foot: '+name);
+        let clearance=Infinity;
+        for(const vertex of vertices){
+          const ray=new T.Raycaster(vertex.clone().add(new T.Vector3(0,2,0)),new T.Vector3(0,-1,0),0,4);
+          const hit=ray.intersectObjects(surfaces,false)[0];
+          if(!hit)throw Error('No road beneath rendered foot vertex');
+          clearance=Math.min(clearance,vertex.y-hit.point.y);
+        }
+        feet.push({name,clearance,vertices:vertices.length});
+      }
+      return {time:s.asset.mixer.time,feet,
+        knees:['kneeL','kneeR'].map(n=>s.asset.bones[n].quaternion.toArray())};
+    });
+    for(const foot of sample.feet)assert.ok(foot.clearance>=-1e-6,'animated foot penetrates road');
+    assert.ok(Math.min(...sample.feet.map(f=>f.clearance))<1e-6,'neither foot supports walk');
+    gait.push(sample);
+    if([0,10,21].includes(frame))await capture('shift-walk-'+frame,'threequarter');
+  }
+  for(let knee=0;knee<2;knee++)assert.ok(gait.some(s=>s.knees[knee].some((v,i)=>Math.abs(v-gait[0].knees[knee][i])>1e-4)),'knee did not animate');
+  report.results.push({mode:'production-body-gait',samples:gait});
 
   const motion=await page.evaluate(()=>{
     const {T,q,s,qa,points}=window.__productionQA;
