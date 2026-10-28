@@ -213,6 +213,107 @@ try {
   assert.deepEqual(overhead.direction,[0,1,0]);
   await capture('qwerty-front','qwerty');
 
+  // Calibrate the actual installed materials through WebGL, rather than only
+  // inspecting ramp bytes. These flat swatches isolate lighting/colour math.
+  const shading=await page.evaluate(()=>{
+    const {T,qa,s}=window.__productionQA,renderer=qa.renderer;
+    const materials=new Map();
+    s.asset.model.traverseVisible(n=>{if(n.isMesh&&n.material.isMeshToonMaterial)materials.set(n.material.name,n.material)});
+    const entries=[...materials.entries()].sort(([a],[b])=>a.localeCompare(b));
+    const face=s.asset.faceGraphics,mask=face.texture.image;
+    function solidUV(value){
+      for(let y=1;y<mask.height-1;y++)for(let x=1;x<mask.width-1;x++){
+        let solid=true;
+        for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+          const i=((y+dy)*mask.width+x+dx)*4;
+          if(mask.data[i]!==value||mask.data[i+3]!==255)solid=false;
+        }
+        if(solid)return [(x+.5)/mask.width,(y+.5)/mask.height];
+      }
+      throw Error('No solid printed-face texel');
+    }
+    const whiteUV=solidUV(255),blackUV=solidUV(0);
+    const scene=new T.Scene();scene.background=new T.Color(0x202020);
+    const light=new T.DirectionalLight(0xffffff,Math.PI);light.position.set(0,0,3);scene.add(light);
+    const camera=new T.OrthographicCamera(-4,4,2.5,-2.5,.01,10);camera.position.z=3;
+    const geometries=[],rows=[-.75,-.25,.25,.75],bands=[120,158,211,255];
+    const samples=[],probe=document.createElement('canvas');probe.width=160;probe.height=100;
+    const ctx=probe.getContext('2d');
+    const oldTone=renderer.toneMapping;
+    try{
+      renderer.toneMapping=T.NoToneMapping;
+      for(let col=0;col<8;col++)for(let row=0;row<4;row++){
+        const geometry=new T.PlaneGeometry(.8,.8);geometries.push(geometry);
+        const normal=geometry.attributes.normal;
+        for(let i=0;i<normal.count;i++)normal.setXYZ(i,Math.sqrt(1-rows[row]**2),0,rows[row]);
+        let material;
+        if(col<6)material=entries[col][1];
+        else{
+          material=face.material;const uv=col===6?whiteUV:blackUV;
+          for(let i=0;i<geometry.attributes.uv.count;i++)geometry.attributes.uv.setXY(i,...uv);
+        }
+        const tile=new T.Mesh(geometry,material);tile.position.set(col-3.5,1.5-row,0);scene.add(tile);
+      }
+      renderer.render(scene,camera);ctx.drawImage(renderer.domElement,0,0,160,100);
+      for(let col=0;col<8;col++){
+        const pixels=[],expected=[];
+        for(let row=0;row<4;row++){
+          pixels.push([...ctx.getImageData(10+col*20,20+row*20,1,1).data].slice(0,3));
+          const color=col<6?entries[col][1].color.clone().multiplyScalar(bands[row]/255):new T.Color(col===6?0xffffff:0);
+          expected.push(color.getHexString().match(/../g).map(v=>parseInt(v,16)));
+        }
+        samples.push({material:col<6?entries[col][0]:col===6?'printed-white':'printed-black',pixels,expected});
+      }
+      return {samples,data:renderer.domElement.toDataURL('image/png')};
+    }finally{renderer.toneMapping=oldTone;geometries.forEach(g=>g.dispose());}
+  });
+  await writeFile(dir+'/shift-material-gpu-bands.png',Buffer.from(shading.data.split(',')[1],'base64'));delete shading.data;
+  for(const sample of shading.samples){
+    for(let row=0;row<4;row++)for(let channel=0;channel<3;channel++)
+      assert.ok(Math.abs(sample.pixels[row][channel]-sample.expected[row][channel])<=2,JSON.stringify(sample));
+    if(sample.material.startsWith('Shift/'))assert.equal(new Set(sample.pixels.map(p=>p.join(','))).size,4);
+  }
+  report.results.push({mode:'production-material-gpu-bands',...shading});
+
+  // Render the real installed skinned mesh in isolation under two controlled
+  // light levels. Keep the production renderer's tone mapping and face mask.
+  const lighting=await page.evaluate(()=>{
+    const {T,qa,s,bounds}=window.__productionQA,root=s.root,parent=root.parent;
+    const isolated=new T.Scene();isolated.background=new T.Color(0x202020);
+    const light=new T.DirectionalLight(0xffffff,0);light.position.set(5,4,2);isolated.add(light);
+    const box=bounds(s.asset.model),center=box.getCenter(new T.Vector3()),size=box.getSize(new T.Vector3());
+    const half=Math.max(size.x,size.y,size.z)*.65,aspect=innerWidth/innerHeight;
+    const camera=new T.OrthographicCamera(-half*aspect,half*aspect,half,-half,.01,30);
+    camera.position.copy(center).add(new T.Vector3(5,0,0));camera.lookAt(center);
+    const probe=document.createElement('canvas');probe.width=innerWidth;probe.height=innerHeight;
+    const ctx=probe.getContext('2d'),frames=[];
+    try{
+      isolated.attach(root);
+      for(const intensity of [0,Math.PI*3]){
+        light.intensity=intensity;qa.renderer.render(isolated,camera);
+        ctx.drawImage(qa.renderer.domElement,0,0);
+        const pixels=ctx.getImageData(0,0,probe.width,probe.height).data;
+        frames.push({intensity,pixels,data:qa.renderer.domElement.toDataURL('image/png')});
+      }
+      let whitePixels=0,whiteChanged=0,changedPixels=0;
+      for(let i=0;i<frames[0].pixels.length;i+=4){
+        const a=frames[0].pixels,b=frames[1].pixels;
+        if(a[i]===255&&a[i+1]===255&&a[i+2]===255){
+          whitePixels++;if(b[i]!==255||b[i+1]!==255||b[i+2]!==255)whiteChanged++;
+        }
+        if(Math.abs(a[i]-b[i])+Math.abs(a[i+1]-b[i+1])+Math.abs(a[i+2]-b[i+2])>20)changedPixels++;
+      }
+      return {whitePixels,whiteChanged,changedPixels,frames:frames.map(({intensity,data})=>({intensity,data}))};
+    }finally{parent.attach(root);qa.scene.updateMatrixWorld(true);}
+  });
+  for(let i=0;i<lighting.frames.length;i++){
+    await writeFile(dir+'/shift-light-'+(i?'bright':'dark')+'.png',Buffer.from(lighting.frames[i].data.split(',')[1],'base64'));
+    delete lighting.frames[i].data;
+  }
+  assert.ok(lighting.whitePixels>1000);assert.equal(lighting.whiteChanged,0);
+  assert.ok(lighting.changedPixels>10000,'actual shell must respond to light');
+  report.results.push({mode:'production-skinned-lighting',...lighting});
+
   // Sample a complete authored walk cycle using the production controller and
   // actual road triangles. Inspect every skinned ankle vertex, not root height.
   const gait=[];
