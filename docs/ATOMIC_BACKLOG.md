@@ -26,7 +26,7 @@
 
 - [x] **S2.1 Reference contract:** Measure the dome-to-body ratio, small torso/limb and foot positions against the original drawing. **Done when:** labeled reference tracing and prohibited redesign details are documented.
 - [ ] **S2.2 Dome silhouette:** Create a true rounded dome with correct rim and depth, not a sphere perched on a toy block. **Done when:** front/side orthographic silhouettes pass.
-- [ ] **S2.3 Immovable graphic eyes:** Attach two flat white 2D eye surfaces to the dome curvature at the correct angles; no eyeballs, eyelids or tracking. **Done when:** eye shape/location remain fixed in head coordinates through movement.
+- [x] **S2.3 Immovable graphic eyes:** Attach two flat white 2D eye surfaces to the dome curvature at the correct angles; no eyeballs, eyelids or tracking. **Done when:** eye shape/location remain fixed in head coordinates through movement.
 - [ ] **S2.4 Torso, arms, legs and feet:** Rebuild compact proportions and leg joints from the reference. **Done when:** full-body compare and foot contact checks pass.
 - [ ] **S2.5 Hidden minigun:** Model the concealed weapon and separately actuated reveal/spin mechanism without altering idle silhouette. **Done when:** stowed/revealed poses and barrel rotation checks pass.
 - [ ] **S2.6 Cel material and GLB rig:** Prepare named bones/UVs and consistent banded material; keep white eyes emissive and unshaded. **Done when:** glTF structural checks and robot shading samples pass.
@@ -86,3 +86,5 @@
 ## Completion ledger
 
 Each completed checkbox should be committed together with its deliverable and have its commit ID recorded in this ledger if known. A test-branch commit is not automatically a production deployment. The earlier procedural assets are **candidates**, not retroactive completion of any step above.
+
+S2.3 production attachment: the existing graphics are printed on exact skinned shell triangles by `public/shift-face-graphics.js`, called from the production sequence installer. Actual Chromium front/side close-ups and animated vertex checks establish flush, head-only attachment; source artwork/GLBs and the S29 wok dimensions are unchanged. See `docs/characters/shift-s23-result.md`. This completion records the attachment gate, not owner approval of every artistic detail.

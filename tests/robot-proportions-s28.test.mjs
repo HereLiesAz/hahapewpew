@@ -159,15 +159,17 @@ test('Procedural fallback also uses a circular shallow-wok head',()=>{
 test('Production S28 controller deploys, spins, retracts and keeps graphic eyes attached',async()=>{
   const gltf=await parsed(liveShift),a=createShiftSequenceRig(gltf);
   const eye=[];
-  gltf.scene.traverse(n=>{
+  gltf.scene.traverseVisible(n=>{
     if(n.isSkinnedMesh&&n.material.name==='Shift/Eyes_2D_Emission')eye.push(n);
   });
-  assert.equal(eye.length,1);
-  const mesh=eye[0],joints=mesh.geometry.attributes.skinIndex;
+  assert.equal(eye.length,2);
+  for(const mesh of eye){
+  const joints=mesh.geometry.attributes.skinIndex;
   const weights=mesh.geometry.attributes.skinWeight;
   for(let i=0;i<joints.count;i++){
     assert.equal(mesh.skeleton.bones[joints.getX(i)],a.bones.head);
     assert.equal(weights.getX(i),1);
+  }
   }
   const rest=a.bones.head.quaternion.clone();
   for(let i=0;i<6;i++)a.update(.05,{walking:false,speaking:true,turning:true});
@@ -241,7 +243,10 @@ test('S2.2 dome normals are continuous while every geometric and skin attribute 
       if(shell&&name==='normal')continue;
       assert.deepEqual(Array.from(mesh.geometry.attributes[name].array),values,mesh.material.name+'/'+name);
     }
-    if(!shell){assert.equal(mesh.geometry,original.geometry);continue;}
+    if(!shell){
+      if(mesh.material.name!=='Shift/Ink_Outline')assert.equal(mesh.geometry,original.geometry);
+      continue;
+    }
     changedShells++;
     assert.notEqual(mesh.geometry,original.geometry);
     assert.notDeepEqual(Array.from(mesh.geometry.attributes.normal.array),original.attributes.normal);
@@ -263,4 +268,72 @@ test('S2.2 dome normals are continuous while every geometric and skin attribute 
   assert.ok(sharedVertices>1000);
   assert.equal(motion.eyes[0].type,'MeshBasicMaterial');
   motion.dispose();
+});
+
+test('S2.3 printed eyes have white interiors, fixed black borders and a clear exterior',async()=>{
+  const motion=createShiftSequenceRig(await parsed(liveShift));
+  const {material,texture}=motion.faceGraphics;
+  const {data,width,height}=texture.image;
+  const pixel=(u,v)=>Array.from(data.slice((Math.floor(v*height)*width+Math.floor(u*width))*4,
+                                          (Math.floor(v*height)*width+Math.floor(u*width))*4+4));
+  // Fixed interior/border/exterior probes from the inspected S29 graphic mask.
+  assert.deepEqual(pixel(.2,.4),[255,255,255,255]);
+  assert.deepEqual(pixel(.8,.55),[255,255,255,255]);
+  assert.deepEqual(pixel(.8,.7),[0,0,0,255]);
+  assert.deepEqual(pixel(.5,.5),[0,0,0,0]);
+  assert.deepEqual(pixel(0,0),[0,0,0,0]);
+  assert.equal(material.type,'MeshBasicMaterial');
+  assert.equal(material.toneMapped,false);
+  assert.equal(material.alphaTest,.5);
+  assert.equal(material.depthWrite,false);
+  assert.equal(material.map,texture);
+  for(let i=0;i<data.length;i+=4){
+    assert.equal(data[i],data[i+1]);assert.equal(data[i],data[i+2]);
+    assert.ok(data[i]===0||data[i]===255);
+    assert.ok(data[i+3]===0||data[i+3]===255);
+  }
+  motion.dispose();
+});
+
+test('S2.3 printed graphics coincide exactly with real shell vertices throughout head motion',async()=>{
+  const T=await import('../public/vendor/three.module.js');
+  const gltf=await parsed(liveShift),motion=createShiftSequenceRig(gltf);
+  for(let frame=0;frame<8;frame++){
+    motion.update(.05,{walking:true,speaking:true,turning:true});
+    gltf.scene.updateMatrixWorld(true);
+    for(const {mesh,source,sourceIndices} of motion.faceGraphics.layers){
+      mesh.skeleton.update();source.skeleton.update();
+      assert.equal(mesh.skeleton,source.skeleton);
+      assert.equal(mesh.geometry.attributes.position.count,sourceIndices.length);
+      for(let i=0;i<sourceIndices.length;i+=17){
+        const actual=mesh.getVertexPosition(i,new T.Vector3()).applyMatrix4(mesh.matrixWorld);
+        const surface=source.getVertexPosition(sourceIndices[i],new T.Vector3()).applyMatrix4(source.matrixWorld);
+        assert.ok(actual.distanceTo(surface)<1e-8,'graphic floated above the shell');
+        assert.ok(mesh.geometry.attributes.position.getZ(i)>=-1e-7,'rear eyes must not appear');
+      }
+    }
+  }
+  motion.dispose();
+});
+
+test('S2.3 replaces only the raised eye triangles and disposes reversibly',async()=>{
+  const gltf=await parsed(liveShift);let ink,white;
+  gltf.scene.traverse(n=>{
+    if(n.material?.name==='Shift/Ink_Outline')ink=n;
+    if(n.material?.name==='Shift/Eyes_2D_Emission')white=n;
+  });
+  const original=ink.geometry,motion=createShiftSequenceRig(gltf);
+  assert.equal(white.visible,false);
+  assert.deepEqual(Array.from(ink.geometry.index.array),[
+    ...Array.from({length:288},(_,i)=>i),...Array.from({length:72},(_,i)=>2016+i)
+  ]);
+  let disposed=0,originalDisposed=0;
+  original.addEventListener('dispose',()=>originalDisposed++);
+  motion.faceGraphics.texture.addEventListener('dispose',()=>disposed++);
+  for(const {mesh} of motion.faceGraphics.layers)mesh.geometry.addEventListener('dispose',()=>disposed++);
+  motion.faceGraphics.dispose();motion.dispose();
+  assert.equal(disposed,3);
+  assert.equal(originalDisposed,0);
+  assert.equal(ink.geometry,original);
+  assert.equal(white.visible,true);
 });
