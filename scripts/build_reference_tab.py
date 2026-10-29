@@ -27,7 +27,7 @@ P={
  'Ink':('#171513',0),'Cardboard':('#b58d63',0),'Cardboard_Light':('#d7aa73',0),
  'Box_Face':('#ffffff',0),'Box_Side':('#ffffff',0),'Tape':('#886c4e',0),
  'Dress_Dark':('#4a4443',0),'Dress_Main':('#756b68',0),'Dress_Light':('#a39891',0),
- 'Dress_Shadow':('#373233',0),'Skin':('#e6a984',0),'Skin_Shadow':('#ad7256',0),
+ 'Dress_Shadow':('#373233',0),'Dress_Dirt':('#4a3c31',0),'Skin':('#e6a984',0),'Skin_Shadow':('#ad7256',0),
  'Shoe':('#29292b',0),'Bear':('#86572e',0),'Bear_Shadow':('#543119',0),
  'Bear_Muzzle':('#c39a63',0),'Bear_Black':('#141112',0)
 }
@@ -81,7 +81,7 @@ class Builder:
  def path(self,m,points,rad,j):
   for a,b in zip(points,points[1:]):self.rod(m,a,b,rad,j,8)
 
-def make_box_textures():
+def make_surface_textures():
  # Paint face on cardboard entirely within frontal surface, matching asymmetric hand drawn expression.
  W=512; face=Image.new('RGBA',(W,W),(192,147,96,255));d=ImageDraw.Draw(face)
  ink=(34,28,23,255);width=10
@@ -104,6 +104,27 @@ def make_box_textures():
  res={}
  for n,im in [('Box_Face',face),('Box_Side',side)]:
   f=io.BytesIO();im.save(f,format='PNG',optimize=True);res[n]=f.getvalue()
+ # Dirty cloth is UV-locked; deterministic grime avoids runtime noise.
+ rng=np.random.default_rng(431)
+ uneven=np.asarray(Image.fromarray(rng.integers(0,256,(48,48),dtype=np.uint8)).resize((W,W),Image.Resampling.BICUBIC),dtype=np.float32)
+ for n in ('Dress_Main','Dress_Dark','Dress_Light'):
+  base=np.array([int(P[n][0][i:i+2],16) for i in (1,3,5)],np.float32)
+  grain=rng.normal(0,6.0,(W,W,1))
+  wash=(uneven[...,None]-128)*.12
+  grime=np.linspace(5,25,W,dtype=np.float32)[:,None,None]
+  cloth=np.clip(base+grain+wash-grime,0,255).astype(np.uint8)
+  im=Image.fromarray(cloth,'RGB').convert('RGBA')
+  stains=Image.new('RGBA',(W,W));sd=ImageDraw.Draw(stains)
+  for k in range(90):
+   x=int(rng.integers(0,W));y=int(rng.integers(0,W))
+   rx=int(rng.integers(5,29));ry=int(rng.integers(12,65))
+   sd.ellipse((x-rx,y-ry,x+rx,y+ry),fill=(56,40,29,int(rng.integers(17,61))))
+  for k in range(28):
+   x=int(rng.integers(0,W));y=int(rng.integers(0,W))
+   sd.line([(x,y),(x+int(rng.integers(-20,21)),y+int(rng.integers(18,60)))],
+           fill=(40,34,30,int(rng.integers(35,75))),width=int(rng.integers(2,6)))
+  im=Image.alpha_composite(im,stains)
+  out=io.BytesIO();im.save(out,format='PNG',optimize=True);res[n]=out.getvalue()
  return res
 
 def build():
@@ -159,38 +180,58 @@ def build():
  # Black vertical neckline-like short dashes beneath the box flaps.
  for x in [-.11,0,.11]:
   b.path('Dress_Shadow',[(x,1.92,.159),(x*1.05,1.865,.171),(x*1.1,1.821,.166)],.012,'chest')
- # Sweeping off-center dress skirt; at right hem hangs lower than the left.
- N=80;M=28;v=[];uv=[];f=[]
+ # This dress is soiled and torn, not intentionally high-low tailored:
+ # irregular physical apertures and notched edges expose the shins below.
+ def skirt_point(a,t,offset=1.):
+  r=.185+.255*t**1.16
+  pleat=1+.105*t**1.7*S(9*a+2*t)+.048*t*t*S(15*a-4*t)+.025*t*t*S(5*a+.45)
+  drape=-.185*t*max(0,C(a))+.052*t*max(0,-C(a))+.032*t*S(3*a)
+  nick=.052*t**16*max(0,S(19*a+.4))**6
+  nick+=.093*t**17*math.exp(-((a-2.88)/.095)**2)
+  nick+=.073*t**17*math.exp(-((a-1.10)/.12)**2)
+  return [r*C(a)*pleat*offset,1.39-.78*t+drape*t**3+nick,
+          r*.68*S(a)*pleat*offset]
+ N=96;M=42;v=[];uv=[];f=[]
  for row in range(M+1):
-  t=row/M;y0=1.39-t*.78
+  t=row/M
   for i in range(N+1):
    a=i*2*PI/N
-   r=.185+.255*(t**1.16)
-   pleat=(1+.075*(t**1.7)*math.sin(9*a+2*t)+.030*t*math.sin(15*a-4*t))
-   asym=-.185*t*max(0,C(a))+.052*t*max(0,-C(a))+.032*t*S(3*a)
-   # The right hem hangs lower; the opposite side lifts above the left shin.
-   yy=y0+asym*(t**3)
-   v.append([r*C(a)*pleat,yy,r*.68*S(a)*pleat]);uv.append([i/N,row/M])
+   v.append(skirt_point(a,t));uv.append([i/N,row/M])
  for row in range(M):
-  for i in range(N):a=row*(N+1)+i;z=a+N+1;f.extend([(a,z,a+1),(a+1,z,z+1)])
+  t=(row+.5)/M
+  for i in range(N):
+   a=(i+.5)*2*PI/N
+   rip1=((a-2.84)/.19)**2+((t-.75)/.095)**2
+   rip2=((a-1.08)/.14)**2+((t-.60)/.072)**2
+   if rip1<1 or rip2<1:continue
+   u=row*(N+1)+i;z=u+N+1
+   f.extend([(u,z,u+1),(u+1,z,z+1)])
  b.add('Dress_Main',v,f,'spine',uv)
- # Gray linen panels and dark folds follow same deformed waist-to-hem silhouette.
- def fold(a0,angularwidth,material,width):
-  v=[];uv=[];inds=[];R=28
-  for j in range(R+1):
-   t=j/R;r=.185+.255*t**1.16
+ # Topology of layered folds matches the same drape without bridging rips.
+ def fold(a0,angularwidth,material):
+  verts=[];tex=[];faces=[];R=42
+  for row in range(R+1):
+   t=row/R
    for k in range(3):
     a=a0+angularwidth*(k/2-.5)
-    rr=r*(1+.075*(t**1.7)*math.sin(9*a+2*t)+.030*t*math.sin(15*a-4*t))
-    yy=1.39-.78*t+(-.185*t*max(0,C(a))+.052*t*max(0,-C(a))+.032*t*S(3*a))*t**3
-    v.append([rr*C(a)*1.006,yy,rr*.68*S(a)*1.006]);uv.append([k/2,t])
-  for j in range(R):
-   for k in range(2):a=j*3+k;z=a+3;inds.extend([(a,z,a+1),(a+1,z,z+1)])
-  b.add(material,v,inds,'spine',uv)
+    verts.append(skirt_point(a,t,1.006));tex.append([k/2,t])
+  for row in range(R):
+   for k in range(2):
+    u=row*3+k;z=u+3
+    faces.extend([(u,z,u+1),(u+1,z,z+1)])
+  b.add(material,verts,faces,'spine',tex)
  for a,w,m in [(PI*.19,.33,'Dress_Light'),(PI*.53,.24,'Dress_Shadow'),
                (PI*.80,.24,'Dress_Light'),(PI*.99,.20,'Dress_Dark'),
                (PI*1.70,.26,'Dress_Shadow'),(PI*1.86,.29,'Dress_Light'),
-               (PI*1.96,.18,'Dress_Dark')]:fold(a,w,m,0)
+               (PI*1.96,.18,'Dress_Dark')]:fold(a,w,m)
+ # Threads follow, but do not fill, the torn geometry.
+ for a in (.82,1.06,1.12,2.78,2.86,3.04,4.95):
+  edge=np.array(skirt_point(a,1.,1.01))
+  b.path('Dress_Dirt',[edge,edge+np.array((.007,-.022,.008)),
+                       edge+np.array((-.005,-.047,.014))],.0035,'spine')
+ for a,t in ((2.64,.73),(2.96,.78),(.93,.59),(1.22,.62)):
+  edge=np.array(skirt_point(a,t,1.01))
+  b.path('Dress_Dirt',[edge,edge+np.array((.013,-.015,.012))],.003,'spine')
  # Belt-like waist band curved around torso, not a hard squared box.
  for k in range(40):
   a=2*PI*k/40;n=2*PI*(k+1)/40
@@ -310,7 +351,7 @@ class Writer:
               anim('Tab_Idle',[('spine','rotation',[0,1.5,3.0],[rz(0),rz(.018),rz(0)])]),
               anim('Tab_Bear_Swing',[('bear','rotation',[0,.33,.66,1.0,1.33],[rz(.10),rz(0),rz(-.10),rz(0),rz(.10)])])]
   textures={};imgs=[];texs=[]
-  for name,content in make_box_textures().items():
+  for name,content in make_surface_textures().items():
    bv=self.view(content);im={'bufferView':bv,'mimeType':'image/png','name':name};imgs.append(im)
    texs.append({'source':len(imgs)-1,'sampler':0,'name':name});textures[name]=len(texs)-1
   mats=[]
