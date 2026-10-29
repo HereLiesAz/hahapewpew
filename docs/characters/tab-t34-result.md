@@ -1,0 +1,25 @@
+# T3.4 — asymmetrical cloth and ear-held teddy
+
+Design authority: `public/assets/art/tab.webp`, `docs/characters/tab-t31-result.md`.
+The skirt keeps a narrow waist but now has fuller nonuniform pleats,
+a raised left hem, a lower right hem and independent longitudinal fabric
+fold panels. The source image, sleeve geometry and face mask are unchanged.
+
+The teddy's *left ear* is moved back into contact with the existing right-hand
+fingers; the sewn cloth and limbs hang freely. Its materials gain minimal
+stitched shadow seams. The teddy remains skinned to `bear` under `hand.R`
+so the existing swing clip continues to animate the grip; no separate prop
+or floating accessory has been introduced.
+
+Regression: `tests/test_tab_dress_teddy_t34.py` checks the exported
+hem silhouette, separate fold mesh, ear-to-hand proximity, lower hanging
+body, rig, textures and all animation clips. The production browser QA
+captures `tab-dress-front`, `tab-dress-side`, `tab-bear-grip`.
+Approval requires the current GLB, passing tests and inspected game captures.
+
+The T3.2 hash gates for dress and bear were intentionally retired because
+their old byte-for-byte constraints conflicted with these two requested
+production steps. Its hollow box topology, head-joint bounds, printed image
+hashes and source-regeneration checks remain active.
+
+The original T3.2 composite GLB-metadata SHA included a skin accessor *index*, which legitimately moved when the teddy gained a previously unused material primitive. The test now checks the stable 20-joint hierarchy, bone names and three clips directly; print-image byte hashes remain enforced.

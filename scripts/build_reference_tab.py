@@ -166,10 +166,10 @@ def build():
   for i in range(N+1):
    a=i*2*PI/N
    r=.185+.255*(t**1.16)
-   pleat=(1+.04*math.sin(9*a+2*t)+.022*math.sin(15*a-4*t))
-   asym=-.135*t*max(0,C(a))+.035*t*S(3*a)
-   # hem at y ~0.53-0.73, above exposed bare legs
-   yy=y0+asym*(t**4)
+   pleat=(1+.075*(t**1.7)*math.sin(9*a+2*t)+.030*t*math.sin(15*a-4*t))
+   asym=-.185*t*max(0,C(a))+.052*t*max(0,-C(a))+.032*t*S(3*a)
+   # The right hem hangs lower; the opposite side lifts above the left shin.
+   yy=y0+asym*(t**3)
    v.append([r*C(a)*pleat,yy,r*.68*S(a)*pleat]);uv.append([i/N,row/M])
  for row in range(M):
   for i in range(N):a=row*(N+1)+i;z=a+N+1;f.extend([(a,z,a+1),(a+1,z,z+1)])
@@ -180,13 +180,17 @@ def build():
   for j in range(R+1):
    t=j/R;r=.185+.255*t**1.16
    for k in range(3):
-    a=a0+angularwidth*(k/2-.5);rr=r*(1+.04*math.sin(9*a+2*t)+.022*math.sin(15*a-4*t))
-    yy=1.39-.78*t+(-.135*t*max(0,C(a))+.035*t*S(3*a))*t**4
-    v.append([rr*C(a)*1.005,yy,rr*.68*S(a)*1.005]);uv.append([k/2,t])
+    a=a0+angularwidth*(k/2-.5)
+    rr=r*(1+.075*(t**1.7)*math.sin(9*a+2*t)+.030*t*math.sin(15*a-4*t))
+    yy=1.39-.78*t+(-.185*t*max(0,C(a))+.052*t*max(0,-C(a))+.032*t*S(3*a))*t**3
+    v.append([rr*C(a)*1.006,yy,rr*.68*S(a)*1.006]);uv.append([k/2,t])
   for j in range(R):
    for k in range(2):a=j*3+k;z=a+3;inds.extend([(a,z,a+1),(a+1,z,z+1)])
   b.add(material,v,inds,'spine',uv)
- for a,w,m in [(PI*.19,.33,'Dress_Light'),(PI*.53,.24,'Dress_Shadow'),(PI*.80,.24,'Dress_Light'),(PI*.99,.20,'Dress_Dark')]:fold(a,w,m,0)
+ for a,w,m in [(PI*.19,.33,'Dress_Light'),(PI*.53,.24,'Dress_Shadow'),
+               (PI*.80,.24,'Dress_Light'),(PI*.99,.20,'Dress_Dark'),
+               (PI*1.70,.26,'Dress_Shadow'),(PI*1.86,.29,'Dress_Light'),
+               (PI*1.96,.18,'Dress_Dark')]:fold(a,w,m,0)
  # Belt-like waist band curved around torso, not a hard squared box.
  for k in range(40):
   a=2*PI*k/40;n=2*PI*(k+1)/40
@@ -229,19 +233,26 @@ def build():
  for k in range(3):
   x=.344+k*.019;b.rod('Skin',(x,.957,.083),(x+.007,.924,.081),.010,'hand.R',8)
  b.rod('Skin',(.325,1.026,.068),(.329,.976,.122),.013,'hand.R',10,.010)
- # Bear hangs down at approximately skirt-hem height, angled slightly outward.
- x,y,z=.465,.777,.156
+ # The left ear sits inside the right hand's grasp, not floating in front
+ # of it. The remaining plush falls below the wrist independently of the dress.
+ x,y,z=.465,.777,.109
  b.ellipsoid('Bear',(x,y-.07,z),(.111,.167,.075),'bear',20)
  b.ellipsoid('Bear',(x,y+.10,z),(.144,.124,.087),'bear',20)
  for side in [-1,1]:
-  b.ellipsoid('Bear',(x+side*.117,y+.196,z),(.048,.056,.031),'bear',12)
+  b.ellipsoid('Bear',(x+side*.117,y+.196,z),(.048,.056,.034),'bear',12)
   b.ellipsoid('Bear',(x+side*.124,y-.057,z),(.050,.105,.049),'bear',12)
-  b.ellipsoid('Bear',(x+side*.072,y-.220,z),(.045,.075,.045),'bear',12)
+  b.ellipsoid('Bear',(x+side*.072,y-.220+(side>0)*.018,z),(.045,.075,.045),'bear',12)
   b.ellipsoid('Bear_Muzzle',(x+side*.052,y+.121,z+.084),(.035,.038,.01),'bear',12)
   b.ellipsoid('Bear_Black',(x+side*.052,y+.128,z+.094),(.010,.013,.008),'bear',10)
  b.ellipsoid('Bear_Muzzle',(x,y-.054,z+.069),(.078,.124,.016),'bear')
  b.ellipsoid('Bear_Muzzle',(x,y+.057,z+.087),(.067,.043,.014),'bear')
  b.ellipsoid('Bear_Black',(x,y+.066,z+.106),(.021,.015,.009),'bear',10)
+ # Small stitched seams and sagging fabric reinforce a carried soft toy,
+ # not a rigid plastic figure. The held ear remains attached to the bear bone.
+ b.path('Bear_Shadow',[(x-.100,y+.040,z+.056),(x-.103,y-.045,z+.073),
+                      (x-.075,y-.163,z+.055)],.006,'bear')
+ b.path('Bear_Shadow',[(x-.144,y+.203,z-.010),(x-.137,y+.242,z+.008),
+                      (x-.109,y+.239,z+.024)],.006,'bear')
  return b
 
 class Writer:
