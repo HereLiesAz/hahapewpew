@@ -14,7 +14,7 @@ export function createShiftSequenceRig(gltf) {
   const actionsByName=new Map(gltf.animations.map(c=>[c.name,c]));
   for(const name of REQUIRED)if(!actionsByName.has(name))throw new Error('Shift clip missing: '+name);
   const bones={};
-  for(const name of ['head','root','wristR','armR','hipL','kneeL','ankleL','hipR','kneeR','ankleR']){
+  for(const name of ['head','root','spine','neck','wristR','armR','hipL','kneeL','ankleL','hipR','kneeR','ankleR']){
     bones[name]=gltf.scene.getObjectByName(name);
     if(!bones[name]?.isBone)throw new Error('Shift bone missing: '+name);
   }
@@ -22,6 +22,33 @@ export function createShiftSequenceRig(gltf) {
   let skinned=0;
   gltf.scene.traverse(node=>{if(node.isSkinnedMesh)skinned++});
   if(!skinned)throw new Error('Shift skinned mesh missing');
+  // Owner correction: make the small torso and attached arms 55% of their
+  // authored size without shrinking the S29 wok/head. The head settles
+  // naturally with the shorter body; leg length, root scale, mesh buffers
+  // and clips stay unchanged. Reapply after pose().
+  const compactScale=.55;
+  const spineRest=bones.spine.position.clone(),neckRest=bones.neck.position.clone();
+  const torsoShells=[];
+  gltf.scene.traverse(node=>{
+    if(node.isSkinnedMesh&&node.material?.name==='Shift/Body_Graphite')torsoShells.push(node);
+  });
+  if(torsoShells.length!==1)throw new Error('Shift torso shell missing or ambiguous');
+  const bodyVertices=torsoShells[0].geometry.attributes.position;
+  let originalTorsoBottom=Infinity;
+  for(let i=0;i<bodyVertices.count;i++)
+    originalTorsoBottom=Math.min(originalTorsoBottom,bodyVertices.getY(i));
+  if(!(originalTorsoBottom<spineRest.y))throw new Error('Shift torso rest bounds invalid');
+  // Shrink toward the original hip contact, not the spine pivot: shrinking
+  // around that pivot lifts the torso clear of the legs.
+  const spineDrop=(spineRest.y-originalTorsoBottom)*(1-compactScale);
+  function restoreCompactBody(){
+    bones.spine.position.copy(spineRest);
+    bones.spine.position.y-=spineDrop;
+    bones.spine.scale.setScalar(compactScale);
+    bones.neck.position.copy(neckRest);
+    bones.neck.scale.setScalar(1/compactScale);
+  }
+  restoreCompactBody();
   gltf.scene.traverse(node=>{
     if(!node.isSkinnedMesh)return;
     const joints=node.geometry.attributes.skinIndex;
@@ -55,6 +82,7 @@ export function createShiftSequenceRig(gltf) {
   let elapsed=0;
   function update(dt,{walking=true,speaking=false,turning=false,deploy=false,firing=false}={}) {
     if(!Number.isFinite(dt)||dt<0||dt>.2)throw new RangeError('Invalid Shift update delta');
+    restoreCompactBody();
     elapsed+=dt;
     const active=Boolean(deploy||firing);
     if(active&&!deployed){
@@ -83,6 +111,7 @@ export function createShiftSequenceRig(gltf) {
    * Returns null when neither foot finds a surface within the local probe range.
    */
   function ground(actorRoot,surfaces){
+    restoreCompactBody();
     actorRoot.updateWorldMatrix(true,false);
     actorRoot.updateMatrixWorld(true); // refresh SkinnedMesh bind inverses as well
     gltf.scene.traverse(n=>{if(n.isSkinnedMesh)n.skeleton.update()});
@@ -124,7 +153,7 @@ export function createShiftSequenceRig(gltf) {
     mixer.uncacheRoot(gltf.scene);
   }
   return Object.freeze({
-    model:gltf.scene,mixer,clips,weapon,bones,eyes,faceGraphics,update,ground,dispose,
+    model:gltf.scene,mixer,clips,weapon,bones,eyes,faceGraphics,update,ground,restoreCompactBody,dispose,
     get actionNames(){return REQUIRED.slice()},
     get isDeployed(){return weapon.root.visible},
   });

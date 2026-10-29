@@ -312,6 +312,15 @@ function buildShift(scene){
   }
   add(gun,new THREE.TorusGeometry(.175,.036,8,28),M.oxide,1.08,0,0).rotation.y=Math.PI/2;
   gun.visible=false;
+  // The fallback preserves the wok's size, but its height settles naturally
+  // with the shortened torso. Leg joints remain under the unscaled root.
+  torso.scale.setScalar(.55);
+  // Compensate the shrunken torso's upward-moving lower edge to keep
+  // its original hip/leg contact. The sculpt's rest half-height is .27.
+  torso.position.y -= .27*(1-.55);
+  head.scale.x /= .55;
+  head.scale.y /= .55;
+  head.scale.z /= .55;
   return {root,torso,head,arms:arms.map(a=>a.shoulder),legs:legs.map(l=>l.hip),
     elbows:arms.map(a=>a.elbow),knees:legs.map(l=>l.knee),gun,barrel,anchor:.91,groundScale:.46};
 }

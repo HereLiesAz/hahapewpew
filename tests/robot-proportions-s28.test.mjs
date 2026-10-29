@@ -128,6 +128,45 @@ test('Shift model correction touches head only, all 16 joints, 5 clips and UVs s
   ]);
 });
 
+test('Live Shift torso shrinks independently of the dome and original geometry',async()=>{
+  const T=await import('../public/vendor/three.module.js');
+  const gltf=await parsed(liveShift);
+  const head=gltf.scene.getObjectByName('head');
+  let torso;
+  gltf.scene.traverse(n=>{if(n.isSkinnedMesh&&n.material?.name==='Shift/Body_Graphite')torso=n});
+  assert.ok(head?.isBone&&torso,'independent head and torso required');
+  const source=Array.from(torso.geometry.attributes.position.array);
+  const height=()=>{
+    gltf.scene.updateMatrixWorld(true);
+    torso.skeleton.update();
+    return new T.Box3().setFromObject(torso,true).getSize(new T.Vector3()).y;
+  };
+  const originalHeight=height();
+  const originalBottom=new T.Box3().setFromObject(torso,true).min.y;
+  const originalHead=head.getWorldPosition(new T.Vector3());
+  const originalHeadScale=head.getWorldScale(new T.Vector3());
+  const controller=createShiftSequenceRig(gltf);
+  const compactHeight=height();
+  assert.ok(compactHeight/originalHeight>.50&&compactHeight/originalHeight<.60,
+    'compact torso must be visibly smaller');
+  const compactBottom=new T.Box3().setFromObject(torso,true).min.y;
+  assert.ok(Math.abs(compactBottom-originalBottom)<1e-6,
+    'torso bottom must remain at the original leg contact, not float above it');
+  const loweredHead=head.getWorldPosition(new T.Vector3());
+  assert.ok(originalHead.y-loweredHead.y>.15&&originalHead.y-loweredHead.y<.18,
+    'the wok settles with the smaller torso instead of hovering above it');
+  assert.ok(Math.abs(loweredHead.x-originalHead.x)<1e-6);
+  assert.ok(Math.abs(loweredHead.z-originalHead.z)<1e-6);
+  assert.ok(head.getWorldScale(new T.Vector3()).distanceTo(originalHeadScale)<1e-6);
+  assert.deepEqual(Array.from(torso.geometry.attributes.position.array),source);
+  torso.pose();
+  controller.restoreCompactBody();
+  assert.ok(Math.abs(height()-compactHeight)<1e-6,'pose recovery restores the body correction');
+  controller.update(.05,{walking:true,speaking:true});
+  assert.ok(head.getWorldScale(new T.Vector3()).distanceTo(originalHeadScale)<1e-6);
+  controller.dispose();
+});
+
 test('Corrected production Shift loads through the actual r180 GLTFLoader',async()=>{
   const gltf=await parsed(liveShift);
   let skinned=0;
