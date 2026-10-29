@@ -74,7 +74,20 @@ try {
     t.root.position.y+=contact.surfaceY-bounds(t.asset.model).min.y;
     const qb=bounds(q.asset.root),sb=bounds(s.asset.model),tb=bounds(t.asset.model);
     const qTorso=bounds(q.asset.root,'Qwerty/Body_Graphite').getSize(new T.Vector3()).y;
-    const sTorso=bounds(s.asset.model,'Shift/Body_Graphite').getSize(new T.Vector3()).y;
+    const bodyBounds=bounds(s.asset.model,'Shift/Body_Graphite');
+    const sTorso=bodyBounds.getSize(new T.Vector3()).y;
+    const hipVertices=[];
+    s.asset.model.traverseVisible(n=>{
+      if(!n.isSkinnedMesh)return;
+      n.skeleton.update();
+      const skin=n.geometry.attributes.skinIndex;
+      for(let i=0;i<skin.count;i++){
+        if(['hipL','hipR'].includes(n.skeleton.bones[skin.getX(i)]?.name))
+          hipVertices.push(n.getVertexPosition(i,new T.Vector3()).applyMatrix4(n.matrixWorld).y);
+      }
+    });
+    if(!hipVertices.length)throw Error('No skinned upper legs');
+    const hipTop=Math.max(...hipVertices),bodyBottom=bodyBounds.min.y;
     const dome=points(s.asset.model,'Shift/Dome_Side');
     const db=new T.Box3().setFromPoints(dome),center=db.getCenter(new T.Vector3());
     const rings=new Map();
@@ -126,7 +139,7 @@ try {
         rootDepths:[t.root.position.x,q.root.position.x,s.root.position.x],models:[document.querySelector('#world').dataset.tabModel,document.querySelector('#world').dataset.qwertyModel,document.querySelector('#world').dataset.shiftModel]},
       qHeight:qb.max.y-qb.min.y,shiftHeight:sb.max.y-sb.min.y,
       eyeSurfaceGap,printedEyeLayers:face.layers.length,visibleRaisedEyes,raisedInkIndices,whitePixels,blackPixels,
-      relativeHeight:(sb.max.y-sb.min.y)/(qb.max.y-qb.min.y),qTorso,sTorso,
+      relativeHeight:(sb.max.y-sb.min.y)/(qb.max.y-qb.min.y),qTorso,sTorso,hipTop,bodyBottom,
       domeRise:db.max.y-db.min.y,domeDiameter:Math.max(db.max.x-db.min.x,db.max.z-db.min.z),domeNormalSeams,domeSharedVertices,
       qFoot:qb.min.y,shiftFoot:sb.min.y,surfaceY:contact.surfaceY,ringCount:rings.size,radialError,
       clips:s.asset.actionNames,barrels:s.asset.weapon.barrelCount,
@@ -143,7 +156,12 @@ try {
   assert.deepEqual(measured.sScale,[.46,.46,.46]);
   assert.ok(Number.isFinite(measured.relativeHeight)&&measured.relativeHeight>0);
   assert.ok(measured.domeRise/measured.domeDiameter>.26&&measured.domeRise/measured.domeDiameter<.30,'head must be a shallow wok');
-  assert.ok(Math.abs(measured.qTorso-measured.sTorso)/measured.qTorso<.01);
+  // The previous equal-torso policy was superseded by the owner's much
+  // smaller Shift body request. The head, leg length and root scale stay put.
+  assert.ok(measured.sTorso/measured.qTorso>.50&&measured.sTorso/measured.qTorso<.60,
+    'Shift torso must be markedly smaller than Qwerty');
+  assert.ok(measured.bodyBottom<=measured.hipTop+.001,
+    'visible hip-to-torso gap in live skinned actor');
   assert.ok(Math.abs(measured.qFoot-measured.surfaceY)<1e-6);
   assert.ok(Math.abs(measured.shiftFoot-measured.surfaceY)<1e-6);
   assert.equal(measured.domeNormalSeams,0);
