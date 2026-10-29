@@ -1,0 +1,31 @@
+name: Regenerate Tab reference GLB
+on:
+  push:
+    branches:
+      - feature/tab-t33-child-anatomy
+      - feature/tab-t34-dress-teddy
+    paths:
+      - scripts/build_reference_tab.py
+      - .github/workflows/tab-asset-build.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install numpy Pillow
+      - run: python3 scripts/build_reference_tab.py --out public/assets/characters/Tab_Reference.glb
+      - name: Commit reproducible Tab asset on feature branch
+        run: |
+          git add public/assets/characters/Tab_Reference.glb
+          if ! git diff --cached --quiet; then
+            git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'Regenerate Tab GLB from source'
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi
