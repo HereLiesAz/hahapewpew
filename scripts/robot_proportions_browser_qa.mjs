@@ -217,7 +217,7 @@ try {
       qa.renderer.render(qa.scene,cam);
       const data=qa.renderer.domElement.toDataURL('image/png');
       let imageRange=null,blackFraction=null;
-      if(gun||tabBox||tabAnatomy||tabDress||tabBear){
+      if(gun||tabBox||tabAnatomy){
         const probe=document.createElement('canvas');probe.width=160;probe.height=100;
         const ctx=probe.getContext('2d');ctx.drawImage(qa.renderer.domElement,0,0,160,100);
         const rgba=ctx.getImageData(0,0,160,100).data;
