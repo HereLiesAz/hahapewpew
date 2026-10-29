@@ -44,8 +44,42 @@ class TabDressBear(unittest.TestCase):
         self.assertGreater(plush[:,1].max(),1.02)
         self.assertGreater(len(self.points('Bear_Shadow')),0)
 
+    def test_torn_skirt_contains_missing_triangles_and_frays(self):
+        from build_reference_tab import build
+        blocks=build().parts['Dress_Main']
+        self.assertEqual(len(blocks),1)
+        verts,faces,uv,joint=blocks[0]
+        self.assertEqual(joint,J['spine'])
+        self.assertGreater(len(verts),4000)
+        # The intact 96x42 skirt would have 8,064 triangles.
+        self.assertLess(len(faces),8044)
+        self.assertGreater(len(faces),7850)
+        self.assertEqual(uv.shape,(len(verts),2))
+        self.assertGreater(len(self.points('Dress_Dirt')),100)
+
+    def test_soil_and_abrasion_are_baked_into_cloth_uvs(self):
+        import io
+        from PIL import Image
+        images={im['name']:im for im in self.g['images']}
+        for name in ('Dress_Main','Dress_Dark','Dress_Light'):
+            im=images[name]
+            view=self.g['bufferViews'][im['bufferView']]
+            off=view.get('byteOffset',0)
+            pixels=np.array(Image.open(io.BytesIO(self.data[off:off+view['byteLength']])).convert('RGB'))
+            self.assertEqual(pixels.shape,(512,512,3))
+            self.assertGreater(np.ptp(pixels[:,:,0]),45,name)
+            self.assertGreater(np.unique(pixels.reshape(-1,3),axis=0).shape[0],500,name)
+
+    def test_teddy_slumps_outward_from_the_same_ear_grip(self):
+        grip=np.array([.348,.973,.109])
+        plush=self.points('Bear','bear')
+        hand=self.points('Skin','hand.R')
+        self.assertLess(np.linalg.norm(hand-grip,axis=1).min(),.06)
+        self.assertLess(np.linalg.norm(plush-grip,axis=1).min(),.065)
+        self.assertGreater(np.mean(plush[:,0]),.50)
+
     def test_box_print_skinning_and_movement_channels_survive(self):
-        self.assertEqual(len(self.g['images']),2)
+        self.assertEqual(len(self.g['images']),5)
         self.assertEqual(len(self.g['skins'][0]['joints']),20)
         self.assertEqual([c['name'] for c in self.g['animations']],
                          ['Tab_Walk','Tab_Idle','Tab_Bear_Swing'])

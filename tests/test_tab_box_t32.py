@@ -87,8 +87,9 @@ class TabBox(unittest.TestCase):
                          ['Tab_Walk','Tab_Idle','Tab_Bear_Swing'])
         expected = ['732077ec2814ad9a1f5a7362a29155f4165edbdf9a0e9c27a40eda3dbcc1ac12',
                     '29cea1ff5bf95003b6e0b3d0d6f01a61cead0b8c24f9442b4df876801b889e5f']
-        self.assertEqual(len(self.g['images']), len(expected))
-        for im, sha in zip(self.g['images'], expected):
+        self.assertEqual([im['name'] for im in self.g['images']],
+                         ['Box_Face','Box_Side','Dress_Main','Dress_Dark','Dress_Light'])
+        for im, sha in zip(self.g['images'][:2], expected):
             view = self.g['bufferViews'][im['bufferView']]
             off = view.get('byteOffset', 0)
             self.assertEqual(hashlib.sha256(self.data[off:off+view['byteLength']]).hexdigest(), sha)
