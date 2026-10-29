@@ -180,10 +180,13 @@ try {
     const result=await page.evaluate(({view,pair})=>{
       const {T,qa,q,s,t,bounds}=window.__productionQA;
       const eyes=view==='eyes'||view==='eyes-side',gun=view==='gun'||view==='gun-muzzle';
-      const trio=view==='trio',tab=view.startsWith('tab'),tabBox=tab&&view!=='tab';
+      const trio=view==='trio',tab=view.startsWith('tab');
+      const tabBox=['tab-front','tab-side','tab-threequarter','tab-fold'].includes(view);
+      const tabAnatomy=view.startsWith('tab-anatomy');
       const focus=tab?t:view==='qwerty'?q:s;
       const box=trio?bounds(t.asset.model).union(bounds(q.asset.root)).union(bounds(s.asset.model)):view==='motion'?window.__productionQA.motionBox:gun?bounds(s.asset.weapon.root,view==='gun-muzzle'?'Shift/Control_Light':null):eyes?bounds(s.asset.model,'Shift/Dome_Side'):pair?bounds(q.asset.root).union(bounds(s.asset.model))
         :bounds(focus===q?q.asset.root:focus.asset.model);
+      if(tabAnatomy)box.copy(bounds(t.asset.model,'Tab/Skin')).union(bounds(t.asset.model,'Tab/Shoe'));
       if(tabBox){
         box.copy(bounds(t.asset.model,'Tab/Cardboard'));
         for(const material of ['Tab/Cardboard_Light','Tab/Box_Face','Tab/Box_Side','Tab/Tape'])
@@ -195,6 +198,7 @@ try {
       const cam=new T.OrthographicCamera(-half*aspect,half*aspect,half,-half,.01,30);
       let direction=view==='top'?new T.Vector3(0,1,0)
         :(view==='side'||view==='eyes-side')?new T.Vector3(0,0,-1):(view==='threequarter'||view==='motion')?new T.Vector3(1,0,-1).normalize():new T.Vector3(1,0,0);
+      if(tabAnatomy&&view==='tab-anatomy-side')direction=new T.Vector3(0,0,1);
       if(tabBox)direction=view==='tab-side'?new T.Vector3(0,0,1)
         :view==='tab-fold'?new T.Vector3(1,-.45,1).normalize()
         :view==='tab-threequarter'?new T.Vector3(1,.25,1).normalize():new T.Vector3(1,0,0);
@@ -265,6 +269,8 @@ try {
     assert.ok(Math.abs(pixels/trioView.trioPixels.Qwerty-measured.trio.heights[name]/measured.trio.heights.Qwerty)<1e-6);
   }
   await capture('tab-reference-front','tab');
+  for(const view of ['tab-anatomy-front','tab-anatomy-side'])
+    await capture(view,view);
   for(const view of ['tab-front','tab-side','tab-threequarter','tab-fold'])
     await capture('tab-box-'+view.slice(4),view);
   await capture('production-pair','front',true);

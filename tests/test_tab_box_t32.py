@@ -63,14 +63,12 @@ class TabBox(unittest.TestCase):
                     edges[key] = edges.get(key, 0)+1
             self.assertTrue(all(n == 2 for n in edges.values()), label)
 
-    def test_non_cardboard_geometry_stays_byte_identical(self):
+    def test_unmodified_dress_and_bear_geometry_stays_byte_identical(self):
         expected = {
             'Tab/Dress_Dark': '9d57c0ff7b7908b97f4f3af3fe5e0567e8e3a8eb2f83666dc3052b78914877ad',
             'Tab/Dress_Main': '3a75a91938322eb43d10804092c295e3c69c93032b8681529f23a3917cf3c668',
             'Tab/Dress_Light': '8850c25481789f17f74b49caf5d1369466b77c53d529defeee638621e6bf2779',
             'Tab/Dress_Shadow': 'b91363ca74dbda930571ccdc8179f94ff67c940ba4a857ba657c16c414c79e89',
-            'Tab/Skin': 'b00f211f1c95fbc6a24df72b3c964b43f252c876c3c5cfbaa22e31d2841a4a27',
-            'Tab/Shoe': '7bd57f1184b805de12b0af70eda9ec35e0f265a0c91a25b93081a66210c9f276',
             'Tab/Bear': '56f13ee73839f399c08483d24edc77bf67454b188352dd26a9a108f2110b3d11',
             'Tab/Bear_Muzzle': '308c9ea237bcc6998080110c969a8648dac7602f7fbccedc15e4444c9ba72ec8',
             'Tab/Bear_Black': '5517994262bfc74a4d4d1f786595ac93feb1f1167e020b3703abcc08cde2510c',

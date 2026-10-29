@@ -196,30 +196,39 @@ def build():
  for side in [-1,1]:
   hip='hip.L' if side<0 else 'hip.R';knee='knee.L' if side<0 else 'knee.R';ankle='ankle.L' if side<0 else 'ankle.R'
   x=side*.135
-  b.ellipsoid('Skin',(x,.765,.012),(.107,.19,.104),hip)
-  b.rod('Skin',(x,.72,.0),(x+side*.014,.36,.016),.085,hip,16,.071)
-  b.ellipsoid('Skin',(x+side*.014,.356,.018),(.073,.089,.073),knee)
-  b.rod('Skin',(x+side*.015,.36,.016),(x+side*.004,.145,.028),.071,knee,18,.049)
-  b.ellipsoid('Skin',(x+side*.004,.15,.030),(.055,.073,.060),ankle)
-  # Blunt Mary Jane shoe toe points forwards (+Z), with black sole and graphic strap.
-  b.ellipsoid('Shoe',(x,.073,.145),(.103,.073,.175),ankle,24)
-  b.rod('Ink',(x-.074,.129,.117),(x+.074,.129,.117),.010,ankle,8)
- # Brown short sleeves over the upper arms; left arm angled out and bent to the hip.
+  # Bare child legs retain the short proportion, but knees are anatomically
+  # tapered rather than ball joints and rounded flats sit on the ground.
+  b.ellipsoid('Skin',(x,.759,.010),(.090,.157,.090),hip)
+  b.rod('Skin',(x,.712,.0),(x+side*.014,.371,.016),.074,hip,16,.067)
+  b.ellipsoid('Skin',(x+side*.014,.357,.016),(.069,.076,.069),knee)
+  b.ellipsoid('Skin',(x+side*.014,.366,.068),(.053,.045,.027),knee)
+  b.rod('Skin',(x+side*.015,.353,.016),(x+side*.004,.145,.028),.071,knee,18,.047)
+  b.ellipsoid('Skin',(x+side*.004,.147,.030),(.048,.068,.053),ankle)
+  # Thin rounded ballet flats: a low vamp, dark toe and ground-level sole.
+  b.ellipsoid('Shoe',(x,.051,.126),(.096,.051,.163),ankle,24)
+  b.rod('Ink',(x-.070,.091,.105),(x+.070,.091,.105),.008,ankle,8)
+ # Child shoulders remain narrow under short sleeves; rounded elbow transitions,
+ # tapered forearms and separately sculpted thumbs keep each hand readable.
+ b.ellipsoid('Skin',(-.240,1.758,0),(.065,.084,.067),'shoulder.L',18)
  b.rod('Dress_Dark',(-.223,1.777,0),(-.366,1.532,0),.109,'shoulder.L',16,.090)
- b.rod('Skin',(-.353,1.540,0),(-.510,1.354,.034),.083,'elbow.L',14,.061)
- b.rod('Skin',(-.505,1.351,.032),(-.205,1.287,.126),.061,'wrist.L',14,.043)
- # Left hand on hip with four curling fingers; not a disembodied mitten.
- b.ellipsoid('Skin',(-.193,1.295,.135),(.079,.055,.041),'hand.L',16)
+ b.ellipsoid('Skin',(-.359,1.535,.005),(.073,.074,.072),'elbow.L',16)
+ b.rod('Skin',(-.353,1.540,0),(-.510,1.354,.034),.072,'elbow.L',14,.056)
+ b.rod('Skin',(-.505,1.351,.032),(-.205,1.287,.126),.055,'wrist.L',14,.038)
+ # Four little fingers curve across her hip; thumb hooks over the waist.
+ b.ellipsoid('Skin',(-.193,1.295,.135),(.065,.050,.043),'hand.L',16)
  for k in range(4):
-  y=1.332-k*.031
-  b.rod('Skin',(-.189,y,.164),(-.125,y-.016,.180),.017,'hand.L',9,.013)
- # Right forearm hangs relaxed, carries small brown teddy by an ear.
+  y=1.333-k*.029
+  b.rod('Skin',(-.184,y,.169),(-.136,y-.014,.185),.012,'hand.L',9,.009)
+ b.rod('Skin',(-.236,1.307,.157),(-.205,1.271,.196),.015,'hand.L',10,.010)
+ b.ellipsoid('Skin',(.239,1.756,0),(.066,.083,.067),'shoulder.R',18)
  b.rod('Dress_Dark',(.223,1.776,0),(.292,1.571,.005),.098,'shoulder.R',16,.074)
- b.rod('Skin',(.290,1.571,.008),(.333,1.243,.016),.070,'elbow.R',15,.049)
- b.rod('Skin',(.333,1.242,.016),(.363,1.030,.055),.052,'wrist.R',14,.037)
- b.ellipsoid('Skin',(.366,1.013,.059),(.055,.087,.042),'hand.R',14)
+ b.ellipsoid('Skin',(.293,1.559,.008),(.065,.074,.066),'elbow.R',16)
+ b.rod('Skin',(.290,1.571,.008),(.333,1.243,.016),.063,'elbow.R',15,.045)
+ b.rod('Skin',(.333,1.242,.016),(.363,1.030,.055),.049,'wrist.R',14,.034)
+ b.ellipsoid('Skin',(.366,1.013,.059),(.053,.073,.041),'hand.R',14)
  for k in range(3):
-  x=.344+k*.019;b.rod('Skin',(x,.963,.083),(x+.008,.916,.075),.011,'hand.R',8)
+  x=.344+k*.019;b.rod('Skin',(x,.957,.083),(x+.007,.924,.081),.010,'hand.R',8)
+ b.rod('Skin',(.325,1.026,.068),(.329,.976,.122),.013,'hand.R',10,.010)
  # Bear hangs down at approximately skirt-hem height, angled slightly outward.
  x,y,z=.465,.777,.156
  b.ellipsoid('Bear',(x,y-.07,z),(.111,.167,.075),'bear',20)
