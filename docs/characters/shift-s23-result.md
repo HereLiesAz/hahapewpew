@@ -46,3 +46,10 @@ The raised white mesh is hidden. Only its matching raised black eye-frame triang
 The local production Chromium gate checks printed vertices against their actual source-shell vertices, confirms retired raised graphics are absent from the draw, and inspects the printed material mask. It also captures dedicated front and side eye close-ups and measures head-coordinate invariance during head motion. Node regressions cover fixed white/black/transparent mask probes, animated surface coincidence, exact preservation of the rim/body draw indices, and reversible resource disposal.
 
 Front, side and overhead renders were opened and inspected: the detached white/black edges are gone. These establish the S2.3 attachment/appearance gate for the existing artwork; they do not invent approval of a redesigned expression. Final artistic feedback remains the owner's.
+
+
+## Owner-directed eye redraw — angular printed panels
+
+The owner requested that Shift's eyes be redone. The live S29 dome, 16-joint rig, embedded GLB, skin weights, five clips, root scale and concealed gun are unchanged. The browser renderer now **reconstructs both eye panels from the two source-art frame placements**, rather than filling the previous tessellated eye contours. Each is a sharply angled white quadrilateral with a substantial fixed black perimeter, the left and right angles opposed. The existing shell-triangle print layer remains exactly coincident with the curved dome and rigidly follows the head. No protruding eyes, pupil, tracking, blink, sockets or eyelids are introduced.
+
+This is a production source change with a PR browser-render gate; do not infer owner approval or passed screenshots until that workflow's captures have been inspected. The S2.3 legacy candidate geometry is intentionally retained for reversible comparison. The source crop at `public/assets/art/shift.webp` remains the artistic authority.

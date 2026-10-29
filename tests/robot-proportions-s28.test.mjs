@@ -315,6 +315,10 @@ test('S2.3 printed eyes have white interiors, fixed black borders and a clear ex
   assert.deepEqual(pixel(.8,.55),[255,255,255,255]);
   assert.deepEqual(pixel(.8,.7),[0,0,0,255]);
   assert.deepEqual(pixel(.5,.5),[0,0,0,0]);
+  // Two independent white panels, separated by an unpainted part of the dome.
+  // Probes correspond to the reference-derived placements, not raster math.
+  assert.deepEqual(pixel(.2,.4),[255,255,255,255]);
+  assert.deepEqual(pixel(.8,.55),[255,255,255,255]);
   assert.deepEqual(pixel(0,0),[0,0,0,0]);
   assert.equal(material.type,'MeshBasicMaterial');
   assert.equal(material.toneMapped,false);
