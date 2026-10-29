@@ -30,7 +30,7 @@
 - [ ] **S2.4 Torso, arms, legs and feet:** Rebuild compact proportions and leg joints from the reference. **Done when:** full-body compare and foot contact checks pass.
 - [x] **S2.5 Hidden minigun:** Model the concealed weapon and separately actuated reveal/spin mechanism without altering idle silhouette. **Done when:** stowed/revealed poses and barrel rotation checks pass.
 - [x] **S2.6 Cel material and GLB rig:** Prepare named bones/UVs and consistent banded material; keep white eyes emissive and unshaded. **Done when:** glTF structural checks and robot shading samples pass.
-- [ ] **S2.7 Animate and accept:** Export idle/walk/turn/weapon sequences and inspect in an actual game browser. **Done when:** recordings, joint movement and fallback tests pass before replacing Shift.
+- [x] **S2.7 Animate and accept:** Export idle/walk/turn/weapon sequences and inspect in an actual game browser. **Done when:** recordings, joint movement and fallback tests pass before replacing Shift.
 
 ## 3 — Tab: child, box and bear
 
@@ -94,3 +94,6 @@ S2.5 production weapon gate: the existing `world3d.js` production installer call
 
 
 S2.6 production rig/material gate: the live S29 skin passed named-joint, UV, weight and rest-bind checks. Actual installed material references produced four verified GPU bands, and controlled captures of the real skinned root kept the printed eyes white while shell lighting changed. See `docs/characters/shift-s26-result.md`. This records structural/material acceptance, not blanket artistic or deployment acceptance.
+
+
+S2.7 production playback gate: the live S29 controller passed five recorded clip sequences with moving joints/skin, head-attached graphics, weapon firing/retraction and both production-load fallbacks. Decoded VP9 frame counts, dimensions and timebases are checked; Node regressions confirm release to idle. See `docs/characters/shift-s27-result.md`. This is playback acceptance, not translating locomotion, frame-rate certification, deployment verification or blanket artwork approval.

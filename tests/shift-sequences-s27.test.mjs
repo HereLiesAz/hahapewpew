@@ -8,8 +8,8 @@ import {createShiftSequenceRig} from '../public/shift-motion.js';
 const v26=readFileSync(new URL('../workbench/shift/Shift_S26.glb',import.meta.url));
 const v27=readFileSync(new URL('../workbench/shift/Shift_S27.glb',import.meta.url));
 const meta=raw=>JSON.parse(raw.toString('utf8',20,20+raw.readUInt32LE(12)));
-async function parsed(){
-  const bytes=v27.buffer.slice(v27.byteOffset,v27.byteOffset+v27.byteLength);
+async function parsed(raw=v27){
+  const bytes=raw.buffer.slice(raw.byteOffset,raw.byteOffset+raw.byteLength);
   return new Promise((ok,fail)=>new GLTFLoader().parse(bytes,'',ok,fail));
 }
 
@@ -123,4 +123,51 @@ test('S2.7 Chromium capture records in-game closeups without faking actor geomet
   assert.match(src,/measuredWorldHeight:extent\.y/);
   assert.match(src,/-closeup\.png/);
   assert.match(src,/record\.cases\[record\.cases\.length-1\]\.closeup=frame/);
+});
+
+
+test('S2.7 production clips move their skinned joints and release back to idle',async()=>{
+  const live=readFileSync(new URL('../public/assets/characters/Shift_Rigged.glb',import.meta.url));
+  const motion=createShiftSequenceRig(await parsed(live));
+  const names=['spine','hipL','kneeL','head','root','wristR'];
+  const bones=Object.fromEntries(names.map(n=>[n,motion.model.getObjectByName(n)]));
+  const rest=Object.fromEntries(names.map(n=>[n,bones[n].quaternion.clone()]));
+  const cases=[
+    ['Shift_Idle','spine',{walking:false}],
+    ['Shift_Walk','hipL',{walking:true}],
+    ['Shift_Talk','head',{walking:false,speaking:true}],
+    ['Shift_Turn','root',{walking:false,turning:true}],
+    ['Shift_Weapon','wristR',{walking:false,deploy:true}]
+  ];
+  for(const [clip,bone,options] of cases){
+    Object.values(motion.clips).forEach(a=>a.reset().play());
+    const samples=[];
+    let probe;
+    motion.model.traverse(n=>{
+      if(probe||!n.isSkinnedMesh)return;
+      const joints=n.geometry.attributes.skinIndex;
+      for(let i=0;i<joints.count;i++){
+        const p=n.geometry.attributes.position;
+        const influenced=bone==='root'?Boolean(bones.root.getObjectById(n.skeleton.bones[joints.getX(i)].id))&&Math.hypot(p.getX(i),p.getZ(i))>.1:n.skeleton.bones[joints.getX(i)]===bones[bone];
+        if(influenced){probe={mesh:n,index:i};break;}
+      }
+    });
+    assert.ok(probe,'missing skinned geometry for '+bone);
+    for(let frame=0;frame<24;frame++){
+      motion.update(motion.clips[clip].getClip().duration/24,options);
+      motion.model.updateMatrixWorld(true);probe.mesh.skeleton.update();
+      const point=probe.mesh.getVertexPosition(probe.index,new THREE.Vector3()).applyMatrix4(probe.mesh.matrixWorld);
+      assert.ok(point.toArray().every(Number.isFinite));
+      samples.push({point,angle:bones[bone].quaternion.angleTo(rest[bone])});
+    }
+    assert.ok(Math.max(...samples.map(s=>s.angle))>1e-3,clip+' joint did not animate');
+    assert.ok(samples.some(s=>s.point.distanceTo(samples[0].point)>1e-4),clip+' skin did not move');
+    for(let i=0;i<30;i++)motion.update(.05,{walking:false});
+    for(const n of ['hipL','kneeL','head','root','wristR'])
+      assert.ok(bones[n].quaternion.angleTo(rest[n])<1e-6,n+' remained stuck after '+clip);
+    assert.equal(motion.weapon.root.visible,false);
+    assert.equal(motion.weapon.barrelSpin,0);
+    assert.equal(motion.eyes[0].type,'MeshBasicMaterial');
+  }
+  motion.dispose();
 });
