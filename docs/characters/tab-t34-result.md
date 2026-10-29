@@ -34,3 +34,10 @@ Tests verify missing triangles and fray geometry, stains in exported embedded te
 ### Regeneration and visual gates
 
 The source-of-truth generator exports `public/assets/characters/Tab_Reference.glb` with `Dress_Main`, `Dress_Dark` and `Dress_Light` embedded dirt textures, a separate `Dress_Dirt` fray material, and the original two cardboard prints unchanged. PR CI must execute against the regenerated GLB commit rather than the preceding generator-only commit; comparing source and stale binary is not a valid test result. The actual scene captures (front, side, hem, grip and walk) remain the acceptance evidence. Absent a verified cold GLEE pass, do not represent its review as completed.
+
+
+## T3.4 verification — 2026-10-29
+
+The regenerated `Tab_Reference.glb` on PR #37 passed Node and Python regression suites and production Chromium [workflow 40941489489](https://github.com/HereLiesAz/hahapewpew/actions/runs/40941489489), including the same-scene animation/fallback and reference-trio captures. Persistent run evidence was uploaded as artifact [12927009046](https://github.com/HereLiesAz/hahapewpew/actions/runs/40941489489/artifacts/12927009046) (`shift-s27-browser-evidence`). The captures inspected were `robot-proportions/tab-dress-front.png`, `tab-dress-side.png`, `tab-bear-grip.png` and `production-trio-reference.png`.
+
+Front and side captures show mottled grime, genuine gaps, frayed threads, jagged torn hem and retained drape. The teddy is attached at its left ear and hangs outward; the original face and shipping text are unchanged. This closes the **T3.4 reference-driven dress/teddy correction**, not the open T3.1 cross-character scale, T3.2 mask fidelity, T3.5 skin/UV deformation, T3.6 acting or T3.7 broader browser-fidelity acceptance. The source does not depict the rear view, so no unseen backside matches are claimed. No separate cold GLEE run was available; this record must not be misrepresented as one.
