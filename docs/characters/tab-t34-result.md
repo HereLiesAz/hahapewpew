@@ -23,3 +23,10 @@ production steps. Its hollow box topology, head-joint bounds, printed image
 hashes and source-regeneration checks remain active.
 
 The original T3.2 composite GLB-metadata SHA included a skin accessor *index*, which legitimately moved when the teddy gained a previously unused material primitive. The test now checks the stable 20-joint hierarchy, bone names and three clips directly; print-image byte hashes remain enforced.
+
+
+## Owner correction — dirt and damage, not fashion asymmetry
+
+The dress in the original illustration is **dirty and torn**, with a worn, irregular hem. The previous cleaner high-low skirt was an inaccurate interpretation. The generator now bakes reproducible earth/soot smears, fading and abrasions into three independently UV-mapped cloth materials. Irregular ragged hem notches, two actual openings formed by removing mesh triangles and frayed threads are geometry, not painted tears. Cloth folds share the damaged profile rather than floating over it. The 20-joint skeleton, original cardboard images/printing, existing animations and anatomy remain unchanged. The teddy now slumps outward about its original ear grip; its eye ink lies flat.
+
+Tests verify missing triangles and fray geometry, stains in exported embedded textures, unchanged face/side texture bytes, bone and clip stability, and ear-to-hand proximity. The GLB must be regenerated and real production browser captures examined. Source reference remains the owner-provided image, not fabricated back views or aesthetic approval.

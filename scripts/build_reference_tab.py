@@ -283,8 +283,9 @@ def build():
   b.ellipsoid('Bear',(x+side*.117,y+.196,z),(.048,.056,.034),'bear',12)
   b.ellipsoid('Bear',(x+side*.124,y-.057,z),(.050,.105,.049),'bear',12)
   b.ellipsoid('Bear',(x+side*.072,y-.220+(side>0)*.018,z),(.045,.075,.045),'bear',12)
-  b.ellipsoid('Bear_Muzzle',(x+side*.052,y+.121,z+.084),(.035,.038,.01),'bear',12)
-  b.ellipsoid('Bear_Black',(x+side*.052,y+.128,z+.094),(.010,.013,.008),'bear',10)
+  # Flat ink eyes and tiny catchlights, not raised white beads.
+  b.ellipsoid('Bear_Black',(x+side*.052,y+.128,z+.093),(.021,.021,.005),'bear',12)
+  b.ellipsoid('Bear_Muzzle',(x+side*.057,y+.138,z+.098),(.004,.004,.002),'bear',8)
  b.ellipsoid('Bear_Muzzle',(x,y-.054,z+.069),(.078,.124,.016),'bear')
  b.ellipsoid('Bear_Muzzle',(x,y+.057,z+.087),(.067,.043,.014),'bear')
  b.ellipsoid('Bear_Black',(x,y+.066,z+.106),(.021,.015,.009),'bear',10)
@@ -294,6 +295,17 @@ def build():
                       (x-.075,y-.163,z+.055)],.006,'bear')
  b.path('Bear_Shadow',[(x-.144,y+.203,z-.010),(x-.137,y+.242,z+.008),
                       (x-.109,y+.239,z+.024)],.006,'bear')
+ # Entire teddy slumps outward about the same ear held by the right hand.
+ # Preserve bear-joint weights, local pivot and its existing swing clip.
+ tilt=.35
+ grip=np.array((.348,.973,.109),np.float32)
+ for material in ('Bear','Bear_Shadow','Bear_Muzzle','Bear_Black'):
+  for i,(verts,faces,tex,joint) in enumerate(b.parts[material]):
+   v=verts.copy()
+   dx=v[:,0]-grip[0];dy=v[:,1]-grip[1]
+   v[:,0]=grip[0]+C(tilt)*dx-S(tilt)*dy
+   v[:,1]=grip[1]+S(tilt)*dx+C(tilt)*dy
+   b.parts[material][i]=(v,faces,tex,joint)
  return b
 
 class Writer:

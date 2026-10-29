@@ -62,7 +62,7 @@ class TabAnatomy(unittest.TestCase):
         self.assertEqual(len(self.g['skins'][0]['joints']),20)
         self.assertEqual([a['name'] for a in self.g['animations']],
                          ['Tab_Walk','Tab_Idle','Tab_Bear_Swing'])
-        self.assertEqual(len(self.g['images']),2)
+        self.assertEqual(len(self.g['images']),5)
         for material in ['Tab/Dress_Dark','Tab/Dress_Main','Tab/Dress_Light',
                          'Tab/Dress_Shadow','Tab/Bear',
                          'Tab/Cardboard','Tab/Box_Face','Tab/Box_Side']:

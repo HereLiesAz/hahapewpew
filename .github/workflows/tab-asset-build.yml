@@ -4,6 +4,7 @@ on:
     branches:
       - feature/tab-t33-child-anatomy
       - feature/tab-t34-dress-teddy
+      - feature/tab-t34-worn-torn-fidelity
     paths:
       - scripts/build_reference_tab.py
       - .github/workflows/tab-asset-build.yml
