@@ -18,7 +18,7 @@
 <g stroke="#7ba8ff" stroke-width="2" fill="#7ba8ff" fill-opacity=".045" stroke-linejoin="round"><rect x="235" y="709" width="74" height="217" /></g>
 <g stroke="#fff8d3" stroke-width="2" fill="#fff8d3" fill-opacity=".045" stroke-linejoin="round"><rect x="133" y="901" width="67" height="53" /></g>
 <g stroke="#00e0c6" stroke-width="2" fill="#00e0c6" fill-opacity=".045" stroke-linejoin="round"><rect x="230" y="900" width="92" height="55" /></g>
-<g stroke="#f9c86e" stroke-width="2" fill="#f9c86e" fill-opacity=".045" stroke-linejoin="round"><rect x="338" y="526" width="106" height="208" /></g></g>
+<g stroke="#f9c86e" stroke-width="2" fill="#f9c86e" fill-opacity=".045" stroke-linejoin="round"><rect x="338" y="526" width="106" height="208" /></g><g data-figure-top-y="3" data-figure-sole-y="955" stroke="#00e0c6" stroke-width="1" stroke-dasharray="7 5"><line x1="0" y1="3" x2="454" y2="3"/><line x1="0" y1="955" x2="454" y2="955"/></g></g>
 <rect x="497" y="42" width="512" height="917" rx="10" fill="#25292e"/>
 <text x="514" y="67" fill="#fff" font-family="sans-serif" font-weight="bold" font-size="17">TRACED REGIONS · APPROXIMATE</text>
 <text x="514" y="85" fill="#00e0c6" font-family="sans-serif" font-size="15">01. cardboard Front</text><text x="514" y="104" fill="#d8dce0" font-family="sans-serif" font-size="12">front face: two uneven round eye prints, eyebrow lines, barred </text>
@@ -38,6 +38,8 @@
 <text x="514" y="715" fill="#fff8d3" font-family="sans-serif" font-size="15">15. left Dark Flat</text><text x="514" y="734" fill="#d8dce0" font-family="sans-serif" font-size="12">left flat rounded toe; not boot</text>
 <text x="514" y="760" fill="#00e0c6" font-family="sans-serif" font-size="15">16. right Dark Flat</text><text x="514" y="779" fill="#d8dce0" font-family="sans-serif" font-size="12">right flat rounded toe; not boot</text>
 <text x="514" y="805" fill="#f9c86e" font-family="sans-serif" font-size="15">17. teddy</text><text x="514" y="824" fill="#d8dce0" font-family="sans-serif" font-size="12">small ear-held brown teddy: two ears, head and hanging limbs</text>
+<text x="514" y="852" fill="#00e0c6" font-size="13" font-family="sans-serif">Normalization: top y=3; sole y=955.</text>
+<text x="514" y="874" fill="#d8dce0" font-size="13" font-family="sans-serif">952 px figure span, approximately traced.</text>
 <text x="514" y="900" fill="#ebba83" font-size="13" font-family="sans-serif">Measurement only — no new model, no redesign.</text>
 <text x="20" y="1018" fill="#b8bec3" font-family="monospace" font-size="12">Original source embedded unchanged. Pixel contour coordinates: tab-t31-trace.json.</text>
 </svg>

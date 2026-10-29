@@ -318,6 +318,21 @@
     "hands": "individual flesh fingers",
     "teddy": "hangs by one ear from right hand",
     "feet": "dark rounded flats with bare lower shins",
-    "scale": "source crop alone does not establish absolute child-to-robot ratio; use same-scale composition or calibrated browser comparison before finalizing"
+    "scale": "source crop alone does not establish absolute child-to-robot ratio; preserve provisional runtime sizes and require common-scale source art or an explicit owner ratio before final scale acceptance"
+  },
+  "normalizationBasis": {
+    "figureTopY": 3,
+    "figureSoleY": 955,
+    "status": "approximate source landmarks; independent of crop canvas height"
+  },
+  "scalePolicy": {
+    "status": "provisional runtime sizes preserved; owner-intended cross-character ratio unresolved",
+    "sourceAuthority": "Individual crops do not supply a common pixel scale. Browser comparison records existing models, not intended proportions.",
+    "rootScales": {
+      "Tab": 0.66,
+      "Qwerty": 0.27,
+      "Shift": 0.46
+    },
+    "shiftHeightPolicy": "Shallow inverted-wok profile; leave standing height wherever it ends up. The former 92 percent target is superseded."
   }
 }

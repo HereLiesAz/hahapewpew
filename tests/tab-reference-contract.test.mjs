@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 
 const ROOT=new URL('../',import.meta.url);
@@ -91,4 +92,40 @@ test('T3.1 annotation embeds the unchanged source art and lists every region',()
     assert.match(svg,new RegExp(name.replace(/[A-Z]/g,x=>' '+x)));
   const runtime=readFileSync(new URL('public/world3d.js',ROOT),'utf8');
   assert.match(runtime,/Tab_Reference\.glb/);
+});
+
+
+test('T3.1 source and embedded annotation have identical Git blob provenance',()=>{
+  const sha=createHash('sha1').update(Buffer.from('blob '+art.length+'\0')).update(art).digest('hex');
+  assert.equal(sha,trace.sourceSHA);
+  assert.equal(sha,'1f08d4b80c3b74874f964403587d88f89d5b11d7');
+  const svg=readFileSync(new URL('docs/evidence/tab-t31-reference.svg',ROOT),'utf8');
+  const embedded=svg.match(/href="data:image\/webp;base64,([^"]+)"/);
+  assert.ok(embedded);assert.deepEqual(Buffer.from(embedded[1],'base64'),art);
+});
+
+test('T3.1 normalized ratios are reproducible from explicit source landmarks',()=>{
+  const front=trace.regions.cardboardFront.poly;
+  const width=Math.max(...front.map(p=>p[0]))-Math.min(...front.map(p=>p[0]));
+  const height=Math.max(...front.map(p=>p[1]))-Math.min(...front.map(p=>p[1]));
+  const {figureTopY,figureSoleY}=trace.normalizationBasis;
+  assert.ok(figureTopY>=0&&figureSoleY<=trace.sourceSize[1]&&figureSoleY>figureTopY);
+  const svg=readFileSync(new URL('docs/evidence/tab-t31-reference.svg',ROOT),'utf8');
+  assert.ok(svg.includes('data-figure-top-y="'+figureTopY+'"'));
+  assert.ok(svg.includes('data-figure-sole-y="'+figureSoleY+'"'));
+  const figureHeight=figureSoleY-figureTopY;
+  const expected={canvasRatio:trace.sourceSize[0]/trace.sourceSize[1],
+    frontBoxWidthOverHeight:width/height,bearHeightOverFigureHeight:box('teddy').h/figureHeight,
+    largeEyeWidthOverSmall:box('largePrintedEye').w/box('smallPrintedEye').w,
+    boxFaceHeightOverFigureHeight:height/figureHeight};
+  for(const [key,value] of Object.entries(expected))assert.ok(Math.abs(trace.normalized[key]-value)<1e-12,key);
+});
+
+test('T3.1 preserves corrected runtime scales without claiming source-approved world heights',()=>{
+  const source=readFileSync(new URL('public/character-models.js',ROOT),'utf8');
+  for(const [name,scale] of Object.entries(trace.scalePolicy.rootScales))
+    assert.ok(source.includes("root.name='"+name+"';root.scale.setScalar("+String(scale).replace(/^0/, '')+")"),name);
+  assert.match(trace.scalePolicy.status,/unresolved/);
+  assert.match(trace.scalePolicy.sourceAuthority,/not intended proportions/);
+  assert.match(trace.scalePolicy.shiftHeightPolicy,/superseded/);
 });
