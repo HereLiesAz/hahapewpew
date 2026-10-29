@@ -64,8 +64,31 @@ export function attachShiftFaceGraphics(model){
       }
     }
   }
-  paint(inkPositions,INK_START,INK_STOP,0);
-  paint(whitePositions,0,1728,255);
+  // Reconstruct the two angular panels from the reference's left/right
+  // placements, rather than reusing the old curved decal triangulation.
+  // The XY masks are printed onto the existing skinned dome, never extruded.
+  for(const [side,first,stop] of [['left',INK_START,1152],['right',1152,INK_STOP]]){
+    let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity;
+    for(let i=first;i<stop;i++){
+      x0=Math.min(x0,inkPositions.getX(i));x1=Math.max(x1,inkPositions.getX(i));
+      y0=Math.min(y0,inkPositions.getY(i));y1=Math.max(y1,inkPositions.getY(i));
+    }
+    if(!(x1>x0&&y1>y0))throw Error('Invalid Shift eye frame');
+    // y increases upward in model space. The two panels lean in opposite
+    // directions, as in the original crop; the white is inset on every side.
+    const left=side==='left';
+    const outer=left
+      ? [[.05,.92],[.92,.80],[.94,.10],[.08,.19]]
+      : [[.08,.80],[.95,.92],[.92,.19],[.06,.10]];
+    const inner=left
+      ? [[.19,.75],[.79,.67],[.81,.27],[.22,.32]]
+      : [[.21,.67],[.82,.75],[.79,.32],[.19,.27]];
+    for(const [quad,value] of [[outer,0],[inner,255]]){
+      const [a,b,c,d]=quad.map(([u,v])=>[x0+u*(x1-x0),y0+v*(y1-y0),0]);
+      const points=new THREE.Float32BufferAttribute([...a,...b,...c,...a,...c,...d],3);
+      paint(points,0,6,value);
+    }
+  }
   const texture=new THREE.DataTexture(pixels,width,height,THREE.RGBAFormat);
   texture.colorSpace=THREE.SRGBColorSpace;
   texture.minFilter=texture.magFilter=THREE.LinearFilter;
