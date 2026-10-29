@@ -3,7 +3,7 @@
  * All captures use the real game scene; orthographic captures render synchronously
  * before the normal game camera resumes. No workbench model is substituted.
  */
-import {spawn} from 'node:child_process';
+import {spawn,spawnSync} from 'node:child_process';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import assert from 'node:assert/strict';
@@ -150,14 +150,14 @@ try {
     const result=await page.evaluate(({view,pair})=>{
       const {T,qa,q,s,bounds}=window.__productionQA;
       const eyes=view==='eyes'||view==='eyes-side',gun=view==='gun'||view==='gun-muzzle';
-      const box=gun?bounds(s.asset.weapon.root,view==='gun-muzzle'?'Shift/Control_Light':null):eyes?bounds(s.asset.model,'Shift/Dome_Side'):pair?bounds(q.asset.root).union(bounds(s.asset.model))
+      const box=view==='motion'?window.__productionQA.motionBox:gun?bounds(s.asset.weapon.root,view==='gun-muzzle'?'Shift/Control_Light':null):eyes?bounds(s.asset.model,'Shift/Dome_Side'):pair?bounds(q.asset.root).union(bounds(s.asset.model))
         :bounds(view==='qwerty'?q.asset.root:s.asset.model);
       const center=box.getCenter(new T.Vector3()),size=box.getSize(new T.Vector3());
       const aspect=innerWidth/innerHeight;
       const half=eyes?Math.max(size.y*.65,Math.max(size.x,size.z)*.55/aspect):Math.max(size.y,size.x,size.z)*.65;
       const cam=new T.OrthographicCamera(-half*aspect,half*aspect,half,-half,.01,30);
       let direction=view==='top'?new T.Vector3(0,1,0)
-        :(view==='side'||view==='eyes-side')?new T.Vector3(0,0,-1):view==='threequarter'?new T.Vector3(1,0,-1).normalize():new T.Vector3(1,0,0);
+        :(view==='side'||view==='eyes-side')?new T.Vector3(0,0,-1):(view==='threequarter'||view==='motion')?new T.Vector3(1,0,-1).normalize():new T.Vector3(1,0,0);
       if(gun){
         direction=new T.Vector3(1,0,0).transformDirection(s.asset.weapon.rotor.matrixWorld);
         if(view==='gun')direction.applyAxisAngle(new T.Vector3(0,1,0),Math.PI/3);
@@ -182,8 +182,11 @@ try {
         imageRange=high-low;
       }
       hidden.forEach(([root,visible])=>{root.visible=visible});
-      const top=new T.Vector3(center.x,box.max.y,center.z).project(cam);
-      const bottom=new T.Vector3(center.x,box.min.y,center.z).project(cam);
+      // A fixed camera envelope is not the actor's measured pixel height.
+      const measuredBox=view==='motion'?bounds(s.asset.model):box;
+      const measuredCenter=measuredBox.getCenter(new T.Vector3());
+      const top=new T.Vector3(measuredCenter.x,measuredBox.max.y,measuredCenter.z).project(cam);
+      const bottom=new T.Vector3(measuredCenter.x,measuredBox.min.y,measuredCenter.z).project(cam);
       let projectedSpan=null;
       if(gun){
         const pixels=window.__productionQA.points(s.asset.weapon.root).map(p=>p.project(cam));
@@ -193,7 +196,8 @@ try {
       }
       return {data,projection:cam.type,direction:direction.toArray(),projectedSpan,imageRange,
         projectedHeight:Math.abs(top.y-bottom.y)*innerHeight/2,
-        bounds:{min:box.min.toArray(),max:box.max.toArray()}};
+        bounds:{min:measuredBox.min.toArray(),max:measuredBox.max.toArray()},
+        cameraBounds:view==='motion'?{min:box.min.toArray(),max:box.max.toArray()}:null};
     },{view,pair});
     await writeFile(dir+'/'+mode+'.png',Buffer.from(result.data.split(',')[1],'base64'));
     delete result.data;report.results.push({mode,...result});
@@ -313,6 +317,68 @@ try {
   assert.ok(lighting.whitePixels>1000);assert.equal(lighting.whiteChanged,0);
   assert.ok(lighting.changedPixels>10000,'actual shell must respond to light');
   report.results.push({mode:'production-skinned-lighting',...lighting});
+
+  // Film production playback from deterministic rendered frames. The camera
+  // stays fixed across each sequence; video time follows simulated clip time.
+  const sequences=[
+    ['idle','Shift_Idle'],['walk','Shift_Walk'],['talk','Shift_Talk'],
+    ['turn','Shift_Turn'],['weapon','Shift_Weapon']
+  ];
+  for(const [mode,clip] of sequences){
+    const frameDir=dir+'/shift-motion-'+mode;
+    await mkdir(frameDir,{recursive:true});
+    const setup=await page.evaluate(({mode,clip})=>{
+      const {s,sb}=window.__productionQA,a=s.asset;
+      a.mixer.stopAllAction();a.model.traverse(n=>{if(n.isSkinnedMesh)n.pose()});
+      Object.values(a.clips).forEach(action=>action.reset().play());
+      a.weapon.pose(0,0);a.weapon.setDeployed(false);
+      window.__productionQA.motionBox=sb.clone().expandByScalar(.06);
+      return {duration:mode==='weapon'?3:a.clips[clip].getClip().duration,
+        frames:mode==='weapon'?60:24,
+        rest:Object.fromEntries(['spine','head','root','hipL','wristR'].map(n=>[n,(a.bones[n]||a.model.getObjectByName(n)).quaternion.toArray()]))};
+    },{mode,clip});
+    const samples=[];
+    for(let frame=0;frame<setup.frames;frame++){
+      const sample=await page.evaluate(({mode,frame,dt})=>{
+        const {T,qa,s,bounds,motionBox}=window.__productionQA,a=s.asset;
+        a.update(dt,{walking:mode==='walk',speaking:mode==='talk',turning:mode==='turn',
+          deploy:mode==='weapon'&&frame<20,firing:mode==='weapon'&&frame>=20&&frame<40});
+        const surfaces=[...qa.groups.values()].flatMap(g=>g.userData.walkSurfaces);
+        if(!a.ground(s.root,surfaces))throw Error('Motion frame lacks road contact');
+        qa.scene.updateMatrixWorld(true);
+        const actual=bounds(a.model);
+        if(!motionBox.containsBox(actual))throw Error('Motion escaped fixed camera bounds');
+        const layer=a.faceGraphics.layers[0],eyeIndex=0;
+        layer.mesh.skeleton.update();
+        const eye=layer.mesh.getVertexPosition(eyeIndex,new T.Vector3()).applyMatrix4(layer.mesh.matrixWorld);
+        eye.applyMatrix4(a.bones.head.matrixWorld.clone().invert());
+        return {joints:Object.fromEntries(['spine','head','root','hipL','wristR'].map(n=>[n,(a.bones[n]||a.model.getObjectByName(n)).quaternion.toArray()])),
+          eye:eye.toArray(),visible:a.weapon.root.visible,spin:a.weapon.barrelSpin};
+      },{mode,frame,dt:setup.duration/setup.frames});
+      samples.push(sample);
+      await capture('shift-motion-'+mode+'/frame-'+String(frame).padStart(3,'0'),'motion');
+    }
+    const joint=mode==='idle'?'spine':mode==='walk'?'hipL':mode==='talk'?'head':mode==='turn'?'root':'wristR';
+    if(joint)assert.ok(samples.some(s=>s.joints[joint].some((v,i)=>Math.abs(v-setup.rest[joint][i])>1e-4)),mode+' joint static');
+    for(const sample of samples)
+      assert.ok(Math.hypot(...sample.eye.map((v,i)=>v-samples[0].eye[i]))<2e-6,'eye moves independently of head');
+    if(mode==='weapon'){
+      assert.ok(samples.slice(20,40).some(s=>s.visible&&s.spin>1));
+      assert.equal(samples.at(-1).visible,false);assert.equal(samples.at(-1).spin,0);
+    }else assert.ok(samples.every(s=>!s.visible));
+    const encoded=spawnSync('ffmpeg',['-y','-loglevel','error','-framerate',String(setup.frames/setup.duration),
+      '-i',frameDir+'/frame-%03d.png','-c:v','libvpx-vp9','-pix_fmt','yuv420p',dir+'/shift-motion-'+mode+'.webm'],
+      {encoding:'utf8',timeout:60000});
+    assert.equal(encoded.status,0,encoded.error?.message||encoded.stderr);
+    const checked=spawnSync('ffprobe',['-v','error','-count_frames','-select_streams','v:0',
+      '-show_entries','stream=nb_read_frames,width,height,r_frame_rate','-of','json',dir+'/shift-motion-'+mode+'.webm'],{encoding:'utf8',timeout:15000});
+    assert.equal(checked.status,0,checked.error?.message||checked.stderr);
+    const video=JSON.parse(checked.stdout).streams[0];
+    assert.equal(Number(video.nb_read_frames),setup.frames);assert.equal(video.width,1600);assert.equal(video.height,1000);
+    const [numerator,denominator]=video.r_frame_rate.split('/').map(Number);
+    assert.ok(Math.abs(setup.frames/(numerator/denominator)-setup.duration)<.01,'encoded timebase differs from simulation');
+    report.results.push({mode:'production-motion-'+mode,duration:setup.duration,frames:setup.frames,video,samples});
+  }
 
   // Sample a complete authored walk cycle using the production controller and
   // actual road triangles. Inspect every skinned ankle vertex, not root height.

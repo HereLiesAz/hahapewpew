@@ -1,6 +1,26 @@
 # S2.7 — Shift sequences, in-game integration and acceptance evidence
 
-**Status:** candidate integrated behind localhost-only QA; production Shift remains unchanged. The PR can be merged per the owner's required commit/push/merge workflow, but the **S2.7 completion checkbox stays open** until actual browser QA, full automated regression results, and independent cold GLEE review support replacing the public asset.
+## Current production motion gate
+
+Production now loads the S29 shallow-wok asset through `createShiftSequenceRig`, including all five preserved clips and the separate concealed-gun actuator. The historical sections below describe how the earlier S27 preview was introduced; their candidate-only production statements are not current integration descriptions. This acceptance step changes no live character, asset, scale, joint, animation clip or gameplay behavior.
+
+The production Chromium harness now saves a deterministic PNG sequence and a VP9 WebM for each of idle, walk, talk, turn and weapon playback. The first four sequences sample one complete authored clip cycle in 24 phases. The weapon sequence records 60 phases over three simulated seconds: deploy, fire, then retract. Frames come from the actual installed S29 mesh in the real game scene, using a fixed three-quarter camera envelope derived from its measured neutral bounds. Each frame independently measures the current skinned mesh bounds for projected size and checks that it stays inside the fixed envelope; the envelope is not passed off as the actor's height.
+
+Each sequence records joint quaternions and head-local face vertices. The gate requires the intended joint to move, the face to remain fixed to the head, and the gun to stay hidden in non-weapon modes. The weapon sequence must spin while firing and finish fully hidden with zero spin. Existing actual-game combat, skin/road contact, Qwerty talk and both failed-production-request fallback gates remain in the same run.
+
+`ffmpeg` encodes the saved rendered frames at the simulation's timebase. `ffprobe` then decodes/counts frames and verifies the expected count, 1600×1000 dimensions and matching timebase. These are deterministic playback records, not wall-clock frame-rate measurements. CI explicitly installs the encoder and uploads the videos, frames and `results.json` through the existing evidence artifact.
+
+The live-GLB Node regression separately checks that every clip moves its intended joint and skinned geometry, then releases the hip, knee, head, root and wrist back to their rest rotations when returning to idle. The idle spine sway is intentionally retained. The concealed weapon must fully retract, stop spinning, and leave the white face material unchanged after each mode.
+
+Evidence files: `shift-motion-{idle,walk,talk,turn,weapon}.webm`, their numbered frame directories, and `production-motion-*` records in `results.json`. The production caller remains `world3d.js` → `createShiftSequenceRig` → `update(dt, options)`.
+
+All 89 Node tests, 50 Python tests and the full production Chromium run passed locally. The regenerated report has no browser errors. Representative source and decoded video frames were opened and inspected; the five decoded frame counts and timebases passed. Cold independent GLEE review covers this gate; merged-commit CI is checked separately after publication.
+
+**Acceptance boundary:** this establishes clip playback, joint/skin response, release to idle, fixed graphic attachment, weapon states and graceful loading fallback. It does not establish translating locomotion, planted-foot locking, slope articulation, a performance budget, public deployment, or the owner's final approval of the complete artwork. S2.2, S2.4 and M5 locomotion work remain open.
+
+## Historical S27 integration record
+
+**Original status:** candidate integrated behind localhost-only QA; production Shift remains unchanged. The PR can be merged per the owner's required commit/push/merge workflow, but the **S2.7 completion checkbox stays open** until actual browser QA, full automated regression results, and independent cold GLEE review support replacing the public asset.
 
 ## Source and exports
 
