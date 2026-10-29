@@ -183,10 +183,13 @@ try {
       const trio=view==='trio',tab=view.startsWith('tab');
       const tabBox=['tab-front','tab-side','tab-threequarter','tab-fold'].includes(view);
       const tabAnatomy=view.startsWith('tab-anatomy');
+      const tabDress=view.startsWith('tab-dress'),tabBear=view==='tab-bear-grip';
       const focus=tab?t:view==='qwerty'?q:s;
       const box=trio?bounds(t.asset.model).union(bounds(q.asset.root)).union(bounds(s.asset.model)):view==='motion'?window.__productionQA.motionBox:gun?bounds(s.asset.weapon.root,view==='gun-muzzle'?'Shift/Control_Light':null):eyes?bounds(s.asset.model,'Shift/Dome_Side'):pair?bounds(q.asset.root).union(bounds(s.asset.model))
         :bounds(focus===q?q.asset.root:focus.asset.model);
       if(tabAnatomy)box.copy(bounds(t.asset.model,'Tab/Skin')).union(bounds(t.asset.model,'Tab/Shoe'));
+      if(tabDress)box.copy(bounds(t.asset.model,'Tab/Dress_Main')).union(bounds(t.asset.model,'Tab/Dress_Dark'));
+      if(tabBear)box.copy(bounds(t.asset.model,'Tab/Bear')).union(bounds(t.asset.model,'Tab/Bear_Muzzle'));
       if(tabBox){
         box.copy(bounds(t.asset.model,'Tab/Cardboard'));
         for(const material of ['Tab/Cardboard_Light','Tab/Box_Face','Tab/Box_Side','Tab/Tape'])
@@ -198,7 +201,7 @@ try {
       const cam=new T.OrthographicCamera(-half*aspect,half*aspect,half,-half,.01,30);
       let direction=view==='top'?new T.Vector3(0,1,0)
         :(view==='side'||view==='eyes-side')?new T.Vector3(0,0,-1):(view==='threequarter'||view==='motion')?new T.Vector3(1,0,-1).normalize():new T.Vector3(1,0,0);
-      if(tabAnatomy&&view==='tab-anatomy-side')direction=new T.Vector3(0,0,1);
+      if((tabAnatomy&&view==='tab-anatomy-side')||view==='tab-dress-side')direction=new T.Vector3(0,0,1);
       if(tabBox)direction=view==='tab-side'?new T.Vector3(0,0,1)
         :view==='tab-fold'?new T.Vector3(1,-.45,1).normalize()
         :view==='tab-threequarter'?new T.Vector3(1,.25,1).normalize():new T.Vector3(1,0,0);
@@ -217,7 +220,7 @@ try {
       qa.renderer.render(qa.scene,cam);
       const data=qa.renderer.domElement.toDataURL('image/png');
       let imageRange=null,blackFraction=null;
-      if(gun||tabBox||tabAnatomy){
+      if(gun||tabBox||tabAnatomy||tabDress||tabBear){
         const probe=document.createElement('canvas');probe.width=160;probe.height=100;
         const ctx=probe.getContext('2d');ctx.drawImage(qa.renderer.domElement,0,0,160,100);
         const rgba=ctx.getImageData(0,0,160,100).data;
@@ -270,6 +273,8 @@ try {
   }
   await capture('tab-reference-front','tab');
   for(const view of ['tab-anatomy-front','tab-anatomy-side'])
+    await capture(view,view);
+  for(const view of ['tab-dress-front','tab-dress-side','tab-bear-grip'])
     await capture(view,view);
   for(const view of ['tab-front','tab-side','tab-threequarter','tab-fold'])
     await capture('tab-box-'+view.slice(4),view);
