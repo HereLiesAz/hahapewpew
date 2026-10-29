@@ -13,6 +13,8 @@ on:
       - 'scripts/shift_dome_s28.py'
       - 'tests/robot-proportions-s28.test.mjs'
       - 'tests/shift-materials-s26.test.mjs'
+      - 'tests/test_tab_box_t32.py'
+      - 'scripts/build_reference_tab.py'
       - 'tests/tab-reference-contract.test.mjs'
       - 'docs/characters/tab-t31-trace.json'
       - 'public/assets/characters/Tab_Reference.glb'
@@ -44,6 +46,8 @@ on:
       - 'scripts/shift_dome_s28.py'
       - 'tests/robot-proportions-s28.test.mjs'
       - 'tests/shift-materials-s26.test.mjs'
+      - 'tests/test_tab_box_t32.py'
+      - 'scripts/build_reference_tab.py'
       - 'tests/tab-reference-contract.test.mjs'
       - 'docs/characters/tab-t31-trace.json'
       - 'public/assets/characters/Tab_Reference.glb'
@@ -83,7 +87,7 @@ jobs:
       - name: Existing repository regression tests
         run: npm test
       - name: Python generator dependencies
-        run: python3 -m pip install numpy
+        run: python3 -m pip install numpy Pillow
       - name: Complete Python GLB generators and structure
         run: python3 -m unittest discover -s tests -p 'test_*.py'
       - name: Chromium browser setup

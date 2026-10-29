@@ -41,6 +41,12 @@ class Builder:
   self.parts[m].append((v,f,np.asarray(uv,np.float32),J[j]))
  def quad(self,m,v,j,uv=None):
   self.add(m,v,[(0,1,2),(0,2,3)],j,uv or [(0,0),(1,0),(1,1),(0,1)])
+ def panel(self,m,verts,j,thickness=.008):
+  # A closed thin slab, with its authored outer face left in place.
+  v=np.asarray(verts,float);normal=np.cross(v[1]-v[0],v[2]-v[0]);normal/=np.linalg.norm(normal)
+  self.add(m,np.concatenate((v,v-normal*thickness)),
+   [(0,1,2),(0,2,3),(4,6,5),(4,7,6),(0,4,5),(0,5,1),
+    (1,5,6),(1,6,2),(2,6,7),(2,7,3),(3,7,4),(3,4,0)],j)
  def prism(self,m,poly,front,back,j):
   n=len(poly);v=[[x,y,front] for x,y in poly]+[[x,y,back] for x,y in poly];f=[]
   for k in range(1,n-1):f.extend([(0,k,k+1),(n,n+k+1,n+k)])
@@ -104,7 +110,14 @@ def build():
  b=Builder();
  # Neck does not emerge from the cardboard: box rests on upper body.
  # Box is wider than shoulders, near-square viewed head-on, with thick defined edges.
- b.box('Cardboard',(0,2.216,0),(.349,.318,.261),'head')
+ # Five thin walls leave the underside open around the child's shoulders.
+ # Preserve the existing outside dimensions and printed surfaces.
+ for c,h in [((0,2.216,.257),(.349,.318,.004)),
+             ((0,2.216,-.257),(.349,.318,.004)),
+             ((-.345,2.216,0),(.004,.318,.253)),
+             ((.345,2.216,0),(.004,.318,.253)),
+             ((0,2.530,0),(.349,.004,.253))]:
+  b.box('Cardboard',c,h,'head')
  # Draw twelve thin ink contours on the box edges, never a black solid cube.
  for x in (-.350,.350):
   for z in (-.264,.264):b.rod('Ink',(x,1.895,z),(x,2.534,z),.007,'head',8)
@@ -123,9 +136,12 @@ def build():
  b.quad('Cardboard_Light',[[-.342,1.925,.260],[.342,1.925,.260],[.375,1.839,.687],[-.336,1.840,.687]],'head')
  # Left flap projects horizontally then droops at outer tip.
  flap=[[-.353,1.908,-.242],[-.625,1.820,-.220],[-.680,1.751,.112],[-.351,1.831,.250]]
- b.quad('Ink',flap,'head');b.quad('Cardboard_Light',[[x+.004,y+.012,z+.006]for x,y,z in flap],'head')
+ b.panel('Ink',flap,'head');b.quad('Cardboard_Light',[[x+.004,y+.012,z+.006]for x,y,z in flap],'head')
  # Rear opening flaps do not obscure the body from front.
- b.quad('Cardboard',[[-.34,1.907,-.25],[.34,1.907,-.25],[.34,1.857,-.46],[-.34,1.857,-.46]],'head')
+ b.panel('Cardboard',[[-.34,1.907,-.25],[.34,1.907,-.25],[.34,1.857,-.46],[-.34,1.857,-.46]],'head')
+ # Fourth flap opens to the right; it is not a sealed lower box face.
+ b.panel('Cardboard',[[.349,1.908,.250],[.349,1.908,-.250],
+                       [.570,1.800,-.230],[.600,1.770,.230]],'head')
  # Thin corrugated upper tape strip.
  b.box('Tape',(0,2.540,-.015),(.055,.005,.246),'head')
  # Dress: fitted dark bodice and asymmetrical draped full skirt, cut with broad fabric folds.

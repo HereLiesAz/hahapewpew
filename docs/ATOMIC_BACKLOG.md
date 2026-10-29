@@ -35,7 +35,7 @@
 ## 3 — Tab: child, box and bear
 
 - [ ] **T3.1 Reference measurements:** Lock child-to-robot scale, pose, dress hem, exposed limbs, hand shapes, bear and exact box proportion. **Done when:** annotated front reference checklist exists. Current source provenance, ratio derivations and neutral production-trio comparison are recorded in `docs/characters/tab-t31-result.md`; intended cross-character scale remains unresolved.
-- [ ] **T3.2 Box mask:** Model hollow cardboard panels, folds, flaps, printing and drawn expression; avoid introducing conventional facial animation. **Done when:** front/side and edge-fold views compare to the reference.
+- [ ] **T3.2 Box mask:** Model hollow cardboard panels, folds, flaps, printing and drawn expression; avoid introducing conventional facial animation. **Done when:** front/side and edge-fold views compare to the reference. Hollow walls, four thin flaps and production close-view capture are recorded in `docs/characters/tab-t32-box.md`; final shape and print fidelity remain open.
 - [ ] **T3.3 Human anatomy:** Sculpt believable *child* shoulders, knees, hands and feet under the box without adult proportions. **Done when:** anatomical silhouette and range-of-motion review pass.
 - [ ] **T3.4 Dress and teddy:** Build separate dress topology with correct drape and a faithfully shaped teddy carried at the hand. **Done when:** bear placement and dress silhouette match the source from several angles.
 - [ ] **T3.5 Rig, skinning and UVs:** Skin body/dress to a humanoid hierarchy, rig hand grip and export mapped assets. **Done when:** weight, deformation and glTF checks pass.
