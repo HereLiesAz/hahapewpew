@@ -1,6 +1,6 @@
 # T3.1 — Tab original-art reference contract (child, box and bear)
 
-**Status:** reference measurement candidate, not a model-acceptance claim. The canonical [Tab image](../../public/assets/art/tab.webp) is **454 × 959 pixels** (WebP VP8X, source blob `1f08d4b80c3b74874f964403587d88f89d5b11d7`). The art crop is the design authority. See [annotated drawing](../evidence/tab-t31-reference.svg) and machine-readable [17-region trace](tab-t31-trace.json).
+**Status:** source contract reconciled with current production; T3.1 remains open for the intended cross-character scale. This is not model acceptance. The canonical [Tab image](../../public/assets/art/tab.webp) is **454 × 959 pixels** (WebP VP8X, source blob `1f08d4b80c3b74874f964403587d88f89d5b11d7`). The art crop is the design authority. See [annotated drawing](../evidence/tab-t31-reference.svg) and machine-readable [17-region trace](tab-t31-trace.json).
 
 The bounding polygons are **approximate hand traces** (roughly ±5–15 source pixels for hairline contours and moving cloth folds). They are not a substitute for owner-approved side/rear designs, actual rig deformation inspection, or cross-character height calibration. This step records what the illustration shows; it does not invent missing views.
 
@@ -21,9 +21,9 @@ The bounding polygons are **approximate hand traces** (roughly ±5–15 source p
 
 ## Source-derived ratios
 
-The front box face is about **191px wide × 215px tall** (ratio ≈0.89). The large eye's traced width is ≈64px versus ≈53px for the small eye (ratio ≈1.21). The teddy is ≈208px tall against a ~952px standing figure (≈22%). Printed-face offsets, flap quadrilaterals, asymmetric skirt hem and independent hands/legs are higher-priority than chasing these approximate percentages to subpixel precision.
+The front box face is about **191px wide × 215px tall** (ratio ≈0.89). The large eye's traced width is ≈64px versus ≈53px for the small eye (ratio ≈1.21). The teddy is ≈208px tall against an explicitly traced ~952px standing span (top y=3 to sole y=955; ≈22%). The dashed guides in the annotation and `normalizationBasis` in the trace record that denominator. The front-face dimensions come from the polygon bounds, not an assumed square box. Printed-face offsets, flap quadrilaterals, asymmetric skirt hem and independent hands/legs are higher-priority than chasing these approximate percentages to subpixel precision.
 
-**Absolute Tab-to-Shift/Qwerty scale is not derivable from three individually cropped WebPs.** The existing composite/game framing currently depicts Tab as significantly taller than either robot, but that is a *runtime provisional relative scale*, not a source measurement. Preserve the existing runtime sizes until the original same-scale three-character composition or a deliberate calibrated in-game comparison determines the owner-intended ratio; do not silently normalize every character to the same height.
+**Absolute Tab-to-Shift/Qwerty scale is not derivable from three individually cropped WebPs.** The current game depicts Tab as taller than either robot, but this is a *provisional runtime scale*, not a source measurement. A calibrated browser comparison can record those existing models; it cannot establish the owner's intended proportions. Preserve their current sizes until common-scale source art or an explicit owner ratio supplies that missing authority. Do not normalize the characters to equal height or revive Shift's superseded 92% height target.
 
 ## Required implementation tests in later steps
 
@@ -37,6 +37,30 @@ The front box face is about **191px wide × 215px tall** (ratio ≈0.89). The la
 
 **Evidence limitations:** This trace covers one illustrated camera angle. Rear box printing, hidden torso anatomy, clothing back seams, bear rear geometry and absolute world dimensions are not established. The separate reference-bound 20-bone Tab GLB at [`Tab_Reference.glb`](../../public/assets/characters/Tab_Reference.glb) is an implementation **candidate**, not automatically accepted because of this documentation.
 
-The Node test `tests/tab-reference-contract.test.mjs` verifies the exact source WebP dimensions, contract bounds, basic spatial relationships, and source-art provenance. It cannot establish aesthetic approval of a rendered model.
+The Node test `tests/tab-reference-contract.test.mjs` verifies the source Git blob hash, exact original bytes embedded in the annotation, dimensions, contract bounds, basic spatial relationships, explicit ratio derivations and preserved runtime scales. It cannot establish aesthetic approval of a rendered model.
 
 **Workflow:** This T3.1 contract is a separately committed, pushed and merged numbered step, as required. Mark `T3.1` complete only once the source tracing, review and unresolved cross-scale limitation are explicitly reconciled; the model's other backlog steps remain unchanged.
+
+
+## Current production reconciliation
+
+Qwerty remains uniformly scaled to 0.27, Shift to 0.46 and Tab to 0.66. Shift's shallow inverted-wok profile and resultant standing height supersede the old 92% target. This step changes no live model, root scale, animation, material or gameplay behavior.
+
+The production browser harness waits for the actual Tab, Qwerty and Shift assets, stops their mixers and resets their skins to neutral pose. It places their roots at equal camera depth and aligns their measured visible-mesh minima to one common road-derived plane for QA only. It then captures `production-trio-reference.png` through one orthographic camera and `tab-reference-front.png` as a close-up. Heights come from actual visible skinned vertices; projected height ratios must match the world-space ratios. This is comparison placement, not a change to production grounding or a claim that the reference art establishes those sizes.
+
+The original combined drawing was not located in repository history or the available file search. The three separate crops therefore remain the available source evidence. The current trace supplies source-bound box, expression, dress, hands, legs and bear landmarks; it does not supply a shared pixel scale, unseen side/back details or a physical height in metres. The scale policy is machine-readable and preserves existing runtime values without calling them source-approved.
+
+**Remaining T3.1 acceptance issue:** lock the intended child-to-robot scale from common-scale source evidence or an explicit owner ratio. The checkbox stays open. T3.2 and later model gates remain separate; this contract does not accept the current Tab model's anatomy, drapery, hands or bear geometry.
+
+
+### Recorded neutral-pose comparison
+
+Measured from the production assets at `caccdbc112283d232a15a1cbf71e739207367cc7`, using visible skinned vertices. World units are implementation units, not dimensions established by the drawing. These numbers are observations, not modelling targets.
+
+| Character | Uniform root scale | Measured standing height | Height / Qwerty |
+| --- | ---: | ---: | ---: |
+| Tab | 0.66 | 1.67970 | 2.35648 |
+| Qwerty | 0.27 | 0.71280 | 1.00000 |
+| Shift | 0.46 | 0.40896 | 0.57374 |
+
+The trio image uses a single orthographic +X view with all three root X positions at zero and a shared QA minimum Y of −0.0455. The projected heights reproduce the measured world-height ratios. The source annotation, trio frame and Tab close-up were opened and inspected; 92 Node tests, 50 Python tests and the full production Chromium run passed locally. Cold independent GLEE found no remaining defect in this reconciliation. Merged-commit CI is checked separately after publication.

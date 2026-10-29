@@ -4,12 +4,13 @@
  * before the normal game camera resumes. No workbench model is substituted.
  */
 import {spawn,spawnSync} from 'node:child_process';
-import {mkdir,writeFile} from 'node:fs/promises';
+import {mkdir,writeFile,readFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
 
 const dir=resolve(process.argv[2]||'artifacts/robot-proportions');
+const tabContract=JSON.parse(await readFile(new URL('../docs/characters/tab-t31-trace.json',import.meta.url),'utf8'));
 await mkdir(dir,{recursive:true});
 const server=spawn('python3',['scripts/serve_shift_qa.py'],{stdio:'pipe'});
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -33,22 +34,22 @@ try {
                   {waitUntil:'domcontentloaded',timeout:25000});
   await page.waitForFunction(()=>{
     const q=window.__qwertyQA?.crew,c=document.querySelector('#world');
-    return c?.dataset.qwertyModel==='glb-q16' && c.dataset.shiftModel==='glb'
+    return c?.dataset.qwertyModel==='glb-q16' && c.dataset.shiftModel==='glb' && c.dataset.tabModel==='glb'
       && q?.Qwerty?.asset?.root && q?.Shift?.asset?.s27;
   },null,{timeout:30000});
   await page.screenshot({path:dir+'/production-wide.png'});
   const measured=await page.evaluate(async()=>{
     const T=await import('/vendor/three.module.js');
-    const qa=window.__qwertyQA,q=qa.crew.Qwerty,s=qa.crew.Shift;
+    const qa=window.__qwertyQA,q=qa.crew.Qwerty,s=qa.crew.Shift,t=qa.crew.Tab;
     if(document.querySelector('#pause').getAttribute('aria-pressed')!=='true')
       document.querySelector('#pause').click();
     // Reset both loaded skeletons to their authored standing pose. Animated
     // heights are recorded separately; a walking pose is not a standing ruler.
-    for(const rig of [q,s]){
+    for(const rig of [q,s,t]){
       rig.asset.mixer.stopAllAction();
       const model=rig.asset.model||rig.asset.root;
       model.traverse(n=>{if(n.isSkinnedMesh)n.pose()});
-      rig.root.position.set(0,0,rig===q?-.5:.5);
+      rig.root.position.set(0,0,rig===q?-.5:rig===s?.5:-1.7);
       rig.root.rotation.set(0,Math.PI/2,0);
     }
     function points(model,material=null){
@@ -70,7 +71,8 @@ try {
     // Put the neutral Qwerty comparison on the same support plane. This is
     // QA placement only; production Qwerty motion remains unchanged.
     q.root.position.y+=contact.surfaceY-bounds(q.asset.root).min.y;
-    const qb=bounds(q.asset.root),sb=bounds(s.asset.model);
+    t.root.position.y+=contact.surfaceY-bounds(t.asset.model).min.y;
+    const qb=bounds(q.asset.root),sb=bounds(s.asset.model),tb=bounds(t.asset.model);
     const qTorso=bounds(q.asset.root,'Qwerty/Body_Graphite').getSize(new T.Vector3()).y;
     const sTorso=bounds(s.asset.model,'Shift/Body_Graphite').getSize(new T.Vector3()).y;
     const dome=points(s.asset.model,'Shift/Dome_Side');
@@ -116,8 +118,12 @@ try {
     });
     const mask=face.texture.image.data;
     for(let i=0;i<mask.length;i+=4)if(mask[i+3]===255){if(mask[i]===255)whitePixels++;else blackPixels++;}
-    window.__productionQA={T,qa,q,s,points,bounds,qb,sb};
+    window.__productionQA={T,qa,q,s,t,points,bounds,qb,sb};
     return {qScale:q.root.scale.toArray(),sScale:s.root.scale.toArray(),
+      trio:{rootScales:{Tab:t.root.scale.toArray(),Qwerty:q.root.scale.toArray(),Shift:s.root.scale.toArray()},
+        heights:{Tab:tb.max.y-tb.min.y,Qwerty:qb.max.y-qb.min.y,Shift:sb.max.y-sb.min.y},
+        minima:{Tab:tb.min.y,Qwerty:qb.min.y,Shift:sb.min.y},groundY:contact.surfaceY,
+        rootDepths:[t.root.position.x,q.root.position.x,s.root.position.x],models:[document.querySelector('#world').dataset.tabModel,document.querySelector('#world').dataset.qwertyModel,document.querySelector('#world').dataset.shiftModel]},
       qHeight:qb.max.y-qb.min.y,shiftHeight:sb.max.y-sb.min.y,
       eyeSurfaceGap,printedEyeLayers:face.layers.length,visibleRaisedEyes,raisedInkIndices,whitePixels,blackPixels,
       relativeHeight:(sb.max.y-sb.min.y)/(qb.max.y-qb.min.y),qTorso,sTorso,
@@ -127,6 +133,12 @@ try {
       models:[document.querySelector('#world').dataset.qwertyModel,document.querySelector('#world').dataset.shiftModel]};
   });
   report.results.push({mode:'neutral-production',...measured});
+  for(const [name,scale] of Object.entries(tabContract.scalePolicy.rootScales)){
+    assert.deepEqual(measured.trio.rootScales[name],[scale,scale,scale]);
+    assert.ok(Math.abs(measured.trio.minima[name]-measured.trio.groundY)<1e-6);
+  }
+  assert.deepEqual(measured.trio.models,['glb','glb-q16','glb']);
+  assert.deepEqual(measured.trio.rootDepths,[0,0,0]);
   assert.deepEqual(measured.qScale,[.27,.27,.27]);
   assert.deepEqual(measured.sScale,[.46,.46,.46]);
   assert.ok(Number.isFinite(measured.relativeHeight)&&measured.relativeHeight>0);
@@ -148,13 +160,14 @@ try {
 
   async function capture(mode,view='front',pair=false){
     const result=await page.evaluate(({view,pair})=>{
-      const {T,qa,q,s,bounds}=window.__productionQA;
+      const {T,qa,q,s,t,bounds}=window.__productionQA;
       const eyes=view==='eyes'||view==='eyes-side',gun=view==='gun'||view==='gun-muzzle';
-      const box=view==='motion'?window.__productionQA.motionBox:gun?bounds(s.asset.weapon.root,view==='gun-muzzle'?'Shift/Control_Light':null):eyes?bounds(s.asset.model,'Shift/Dome_Side'):pair?bounds(q.asset.root).union(bounds(s.asset.model))
-        :bounds(view==='qwerty'?q.asset.root:s.asset.model);
+      const trio=view==='trio',focus=view==='tab'?t:view==='qwerty'?q:s;
+      const box=trio?bounds(t.asset.model).union(bounds(q.asset.root)).union(bounds(s.asset.model)):view==='motion'?window.__productionQA.motionBox:gun?bounds(s.asset.weapon.root,view==='gun-muzzle'?'Shift/Control_Light':null):eyes?bounds(s.asset.model,'Shift/Dome_Side'):pair?bounds(q.asset.root).union(bounds(s.asset.model))
+        :bounds(focus===q?q.asset.root:focus.asset.model);
       const center=box.getCenter(new T.Vector3()),size=box.getSize(new T.Vector3());
       const aspect=innerWidth/innerHeight;
-      const half=eyes?Math.max(size.y*.65,Math.max(size.x,size.z)*.55/aspect):Math.max(size.y,size.x,size.z)*.65;
+      const half=trio?Math.max(size.y,size.z/aspect)*.6:eyes?Math.max(size.y*.65,Math.max(size.x,size.z)*.55/aspect):Math.max(size.y,size.x,size.z)*.65;
       const cam=new T.OrthographicCamera(-half*aspect,half*aspect,half,-half,.01,30);
       let direction=view==='top'?new T.Vector3(0,1,0)
         :(view==='side'||view==='eyes-side')?new T.Vector3(0,0,-1):(view==='threequarter'||view==='motion')?new T.Vector3(1,0,-1).normalize():new T.Vector3(1,0,0);
@@ -167,7 +180,7 @@ try {
       cam.lookAt(center);cam.updateMatrixWorld(true);
       // Prevent the other actor occluding single-character side views.
       const hidden=[];
-      for(const rig of [qa.crew.Tab,q,s])if(rig===qa.crew.Tab||(!pair&&rig!==(view==='qwerty'?q:s))){
+      for(const rig of [t,q,s])if(!trio&&(rig===t&&focus!==t||!pair&&rig!==focus)){
         hidden.push([rig.root,rig.root.visible]);rig.root.visible=false;
       }
       qa.renderer.render(qa.scene,cam);
@@ -194,7 +207,13 @@ try {
           (Math.max(...pixels.map(p=>p.x))-Math.min(...pixels.map(p=>p.x)))*innerWidth/2,
           (Math.max(...pixels.map(p=>p.y))-Math.min(...pixels.map(p=>p.y)))*innerHeight/2);
       }
-      return {data,projection:cam.type,direction:direction.toArray(),projectedSpan,imageRange,
+      let trioPixels=null;
+      if(trio)trioPixels=Object.fromEntries([['Tab',t.asset.model],['Qwerty',q.asset.root],['Shift',s.asset.model]].map(([name,model])=>{
+        const b=bounds(model),c=b.getCenter(new T.Vector3());
+        const top=new T.Vector3(c.x,b.max.y,c.z).project(cam),bottom=new T.Vector3(c.x,b.min.y,c.z).project(cam);
+        return [name,Math.abs(top.y-bottom.y)*innerHeight/2];
+      }));
+      return {data,projection:cam.type,direction:direction.toArray(),projectedSpan,imageRange,trioPixels,
         projectedHeight:Math.abs(top.y-bottom.y)*innerHeight/2,
         bounds:{min:measuredBox.min.toArray(),max:measuredBox.max.toArray()},
         cameraBounds:view==='motion'?{min:box.min.toArray(),max:box.max.toArray()}:null};
@@ -207,6 +226,13 @@ try {
     else if(view!=='top')assert.ok(result.projectedHeight>300);
     return result;
   }
+  const trioView=await capture('production-trio-reference','trio');
+  assert.equal(trioView.projection,'OrthographicCamera');
+  for(const [name,pixels] of Object.entries(trioView.trioPixels)){
+    assert.ok(pixels>120,name+' too small for a scale comparison');
+    assert.ok(Math.abs(pixels/trioView.trioPixels.Qwerty-measured.trio.heights[name]/measured.trio.heights.Qwerty)<1e-6);
+  }
+  await capture('tab-reference-front','tab');
   await capture('production-pair','front',true);
   await capture('shift-front');
   await capture('shift-side','side');
