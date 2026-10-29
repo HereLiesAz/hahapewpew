@@ -24,10 +24,14 @@ test('Tab is UV-mapped, rigged, and has separate walk, idle and bear clips',()=>
 test('Tab cardboard face and reversed shipping text are embedded images, separate from body',()=>{
  const g=asset(), mats=g.materials.map(x=>x.name);
  for(const key of ['Tab/Box_Face','Tab/Box_Side','Tab/Cardboard_Light','Tab/Dress_Main','Tab/Dress_Light','Tab/Skin','Tab/Bear','Tab/Shoe'])assert.ok(mats.includes(key),key);
- assert.equal(g.images.length,2);assert.equal(g.textures.length,2);
+ assert.deepEqual(g.images.map(x=>x.name),
+   ['Box_Face','Box_Side','Dress_Main','Dress_Dark','Dress_Light']);
+ assert.equal(g.textures.length,5);
  assert.ok(g.images.every(x=>x.mimeType==='image/png'&&Number.isInteger(x.bufferView)));
  assert.ok(g.materials.find(x=>x.name==='Tab/Box_Face').pbrMetallicRoughness.baseColorTexture);
  assert.ok(g.materials.find(x=>x.name==='Tab/Box_Side').pbrMetallicRoughness.baseColorTexture);
+ for(const n of ['Tab/Dress_Main','Tab/Dress_Dark','Tab/Dress_Light'])
+   assert.ok(g.materials.find(x=>x.name===n).pbrMetallicRoughness.baseColorTexture,n);
 });
 test('world loads Tab asynchronously with legacy fallback and attached skeletal movement',()=>{
  const source=readFileSync(new URL('../public/world3d.js',import.meta.url),'utf8');
