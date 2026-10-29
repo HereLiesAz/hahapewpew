@@ -48,6 +48,16 @@ class TabAnatomy(unittest.TestCase):
             self.assertLess(np.ptp(shoe[:,0]),.21)
             self.assertGreater(shoe[:,2].max(),.25)
 
+    def test_each_flat_has_a_rigged_instep_strap(self):
+        ink=self.parts['Tab/Ink']
+        joints=np.asarray(attribute(self.g,self.data,ink,'JOINTS_0'))
+        positions=np.asarray(attribute(self.g,self.data,ink,'POSITION'))
+        for side in ('L','R'):
+            strap=positions[joints[:,0]==J['ankle.'+side]]
+            self.assertEqual(len(strap),96)
+            self.assertTrue(np.all(strap[:,1]>.05))
+            self.assertLess(np.ptp(strap[:,0]),.15)
+
     def test_existing_rig_and_print_materials_retained(self):
         self.assertEqual(len(self.g['skins'][0]['joints']),20)
         self.assertEqual([a['name'] for a in self.g['animations']],

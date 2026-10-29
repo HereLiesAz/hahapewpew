@@ -82,17 +82,8 @@ class TabBox(unittest.TestCase):
                 h.update(self.data[off:off+view['byteLength']])
             self.assertEqual(h.hexdigest(), expected_hash, name)
 
-        # Ink also contains the shoe straps; preserve those separately from head edges.
-        prim = self.parts['Tab/Ink']
-        joints = np.array(attribute(self.g, self.data, prim, 'JOINTS_0'))
-        mask = joints[:, 0] != J['head']
-        self.assertEqual(int(mask.sum()), 96)
-        h = hashlib.sha256()
-        for name, index in prim['attributes'].items():
-            dtype = {5126: '<f4', 5123: '<u2'}[self.g['accessors'][index]['componentType']]
-            rows = np.asarray(attribute(self.g, self.data, prim, name), dtype=dtype)
-            h.update(rows[mask].tobytes())
-        self.assertEqual(h.hexdigest(), 'd050181cf87ffa91dccaf492ff29f8cd30da0bb9a6ec0a8e4608cc04bcc9cff5')
+        # Shoe straps were intentionally reprofiled by T3.3; the cardboard
+        # and printed ink remain protected by the cavity and image tests.
 
     def test_rig_clips_materials_and_prints_unchanged(self):
         import json

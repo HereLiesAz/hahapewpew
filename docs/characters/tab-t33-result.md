@@ -9,3 +9,5 @@ cardboard image data and all dress/bear meshes remain unchanged. No extra face p
 `tests/test_tab_anatomy_t33.py` checks exported joint-attached mesh geometry.
 The production Chromium QA script captures full front/side anatomy at game scale.
 The check box should only be closed once this binary and images pass and are inspected.
+
+T3.3 deliberately changes both shoe-strap triangles in the shared `Tab/Ink` material, so the obsolete T3.2 checksum of **non-head** ink is replaced by explicit ankle-joint strap tests. The box’s face/edge tests and original printed image hashes remain in force.
