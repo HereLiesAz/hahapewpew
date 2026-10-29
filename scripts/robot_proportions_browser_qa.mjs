@@ -162,20 +162,29 @@ try {
     const result=await page.evaluate(({view,pair})=>{
       const {T,qa,q,s,t,bounds}=window.__productionQA;
       const eyes=view==='eyes'||view==='eyes-side',gun=view==='gun'||view==='gun-muzzle';
-      const trio=view==='trio',focus=view==='tab'?t:view==='qwerty'?q:s;
+      const trio=view==='trio',tab=view.startsWith('tab'),tabBox=tab&&view!=='tab';
+      const focus=tab?t:view==='qwerty'?q:s;
       const box=trio?bounds(t.asset.model).union(bounds(q.asset.root)).union(bounds(s.asset.model)):view==='motion'?window.__productionQA.motionBox:gun?bounds(s.asset.weapon.root,view==='gun-muzzle'?'Shift/Control_Light':null):eyes?bounds(s.asset.model,'Shift/Dome_Side'):pair?bounds(q.asset.root).union(bounds(s.asset.model))
         :bounds(focus===q?q.asset.root:focus.asset.model);
+      if(tabBox){
+        box.copy(bounds(t.asset.model,'Tab/Cardboard'));
+        for(const material of ['Tab/Cardboard_Light','Tab/Box_Face','Tab/Box_Side','Tab/Tape'])
+          box.union(bounds(t.asset.model,material));
+      }
       const center=box.getCenter(new T.Vector3()),size=box.getSize(new T.Vector3());
       const aspect=innerWidth/innerHeight;
       const half=trio?Math.max(size.y,size.z/aspect)*.6:eyes?Math.max(size.y*.65,Math.max(size.x,size.z)*.55/aspect):Math.max(size.y,size.x,size.z)*.65;
       const cam=new T.OrthographicCamera(-half*aspect,half*aspect,half,-half,.01,30);
       let direction=view==='top'?new T.Vector3(0,1,0)
         :(view==='side'||view==='eyes-side')?new T.Vector3(0,0,-1):(view==='threequarter'||view==='motion')?new T.Vector3(1,0,-1).normalize():new T.Vector3(1,0,0);
+      if(tabBox)direction=view==='tab-side'?new T.Vector3(0,0,1)
+        :view==='tab-fold'?new T.Vector3(1,-.45,1).normalize()
+        :view==='tab-threequarter'?new T.Vector3(1,.25,1).normalize():new T.Vector3(1,0,0);
       if(gun){
         direction=new T.Vector3(1,0,0).transformDirection(s.asset.weapon.rotor.matrixWorld);
         if(view==='gun')direction.applyAxisAngle(new T.Vector3(0,1,0),Math.PI/3);
       }
-      cam.position.copy(center).addScaledVector(direction,gun?Math.max(size.x,size.y,size.z)*1.5+.02:5);
+      cam.position.copy(center).addScaledVector(direction,gun||tabBox?Math.max(size.x,size.y,size.z)*1.5+.02:5);
       cam.up.set(0,view==='top'?0:1,view==='top'?-1:0);
       cam.lookAt(center);cam.updateMatrixWorld(true);
       // Prevent the other actor occluding single-character side views.
@@ -185,14 +194,15 @@ try {
       }
       qa.renderer.render(qa.scene,cam);
       const data=qa.renderer.domElement.toDataURL('image/png');
-      let imageRange=null;
-      if(gun){
+      let imageRange=null,blackFraction=null;
+      if(gun||tabBox){
         const probe=document.createElement('canvas');probe.width=160;probe.height=100;
         const ctx=probe.getContext('2d');ctx.drawImage(qa.renderer.domElement,0,0,160,100);
         const rgba=ctx.getImageData(0,0,160,100).data;
-        let low=255,high=0;
-        for(let i=0;i<rgba.length;i+=4){low=Math.min(low,rgba[i],rgba[i+1],rgba[i+2]);high=Math.max(high,rgba[i],rgba[i+1],rgba[i+2]);}
-        imageRange=high-low;
+        let low=255,high=0,black=0;
+        for(let i=0;i<rgba.length;i+=4){low=Math.min(low,rgba[i],rgba[i+1],rgba[i+2]);high=Math.max(high,rgba[i],rgba[i+1],rgba[i+2]);
+          if(Math.max(rgba[i],rgba[i+1],rgba[i+2])<3)black++;}
+        imageRange=high-low;blackFraction=black/(rgba.length/4);
       }
       hidden.forEach(([root,visible])=>{root.visible=visible});
       // A fixed camera envelope is not the actor's measured pixel height.
@@ -213,7 +223,7 @@ try {
         const top=new T.Vector3(c.x,b.max.y,c.z).project(cam),bottom=new T.Vector3(c.x,b.min.y,c.z).project(cam);
         return [name,Math.abs(top.y-bottom.y)*innerHeight/2];
       }));
-      return {data,projection:cam.type,direction:direction.toArray(),projectedSpan,imageRange,trioPixels,
+      return {data,projection:cam.type,direction:direction.toArray(),projectedSpan,imageRange,blackFraction,trioPixels,
         projectedHeight:Math.abs(top.y-bottom.y)*innerHeight/2,
         bounds:{min:measuredBox.min.toArray(),max:measuredBox.max.toArray()},
         cameraBounds:view==='motion'?{min:box.min.toArray(),max:box.max.toArray()}:null};
@@ -224,6 +234,10 @@ try {
       assert.ok(result.projectedSpan>300);assert.ok(result.imageRange>20,'weapon close-up is blank');
     }
     else if(view!=='top')assert.ok(result.projectedHeight>300);
+    if(view.startsWith('tab-')){
+      assert.ok(result.imageRange>20,'Tab close-up is blank');
+      assert.ok(result.blackFraction<.25,'Tab close-up is obscured by black geometry');
+    }
     return result;
   }
   const trioView=await capture('production-trio-reference','trio');
@@ -233,6 +247,8 @@ try {
     assert.ok(Math.abs(pixels/trioView.trioPixels.Qwerty-measured.trio.heights[name]/measured.trio.heights.Qwerty)<1e-6);
   }
   await capture('tab-reference-front','tab');
+  for(const view of ['tab-front','tab-side','tab-threequarter','tab-fold'])
+    await capture('tab-box-'+view.slice(4),view);
   await capture('production-pair','front',true);
   await capture('shift-front');
   await capture('shift-side','side');
