@@ -15,3 +15,8 @@ Independent PR review checks verified three legitimate T3.5 concerns: upper-arm 
 ## GLTFLoader source-name handling
 
 A separate PR reviewer identified a real runtime mismatch: this repository's Three.js GLTFLoader sanitizes periods from `Object3D.name` in `createUniqueName()` while retaining the original glTF node label in `bone.userData.name`. The browser weight sampler now reads the unsanitized `userData.name`; the posed elbow/knee/hip Object3D lookups use verified runtime names (`elbowR`, `kneeL`, `hipL`). This is a browser QA correction, not a change to the exported 20-joint glTF naming contract.
+
+
+## Export synchronization and verification
+
+The asset workflow committed the new GLB on the feature branch after the generator changed. The intermediate PR check that started before this binary update tested an older GLB and correctly failed source-versus-export and cuff gates. The next PR run must test the regenerated artifact. All 20 joints and the original printed cardboard materials remain unchanged; the right short sleeve's weighting radius is larger because its authored cuff lies farther from its elbow than the bent left sleeve's cuff. Renderer support is pinned to Ubuntu 24.04 for Playwright 1.56.1, which cannot install Chromium dependencies on the newer ubuntu-latest image.
