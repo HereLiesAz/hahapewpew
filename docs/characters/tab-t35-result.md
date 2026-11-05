@@ -10,3 +10,8 @@ The T3.5 acceptance box stays open until the freshly regenerated GLB passes all 
 
 
 Independent PR review checks verified three legitimate T3.5 concerns: upper-arm sleeve cuffs need secondary elbow weights, the rigid shoes must be tested against **both actual ankle indices**, and right/left skirt influence must be checked separately rather than by combined hip weights. Added tests and distal sleeve blending; live browser QA now saves explicit flexed front/side and restored shots for visual deformation review. Existing dirty/torn fabric and original box ink remain untouched.
+
+
+## GLTFLoader source-name handling
+
+A separate PR reviewer identified a real runtime mismatch: this repository's Three.js GLTFLoader sanitizes periods from `Object3D.name` in `createUniqueName()` while retaining the original glTF node label in `bone.userData.name`. The browser weight sampler now reads the unsanitized `userData.name`; the posed elbow/knee/hip Object3D lookups use verified runtime names (`elbowR`, `kneeL`, `hipL`). This is a browser QA correction, not a change to the exported 20-joint glTF naming contract.

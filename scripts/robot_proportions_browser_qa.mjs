@@ -290,7 +290,7 @@ try {
     const sample=(mesh,boneName,minSecondary)=>{
       const ids=mesh.geometry.getAttribute('skinIndex');
       const w=mesh.geometry.getAttribute('skinWeight');
-      const index=mesh.skeleton.bones.findIndex(b=>b.name===boneName);
+      const index=mesh.skeleton.bones.findIndex(b=>b.userData.name===boneName);
       for(let i=0;i<ids.count;i++)
         if(ids.getX(i)===index&&w.getY(i)>minSecondary&&w.getX(i)>.45)return i;
       throw Error('No weighted deformation vertex on '+boneName);
@@ -302,7 +302,7 @@ try {
       return mesh.getVertexPosition(i,new T.Vector3()).applyMatrix4(mesh.matrixWorld);
     };
     const a=worldPoint(skin[0],elbow),b=worldPoint(dress[0],skirt);
-    const e=model.getObjectByName('elbow.R'),h=model.getObjectByName('hip.L');
+    const e=model.getObjectByName('elbowR'),h=model.getObjectByName('hipL');
     const er=e.rotation.z,hr=h.rotation.x;
     e.rotation.z=er+.55;h.rotation.x=hr+.40;
     const c=worldPoint(skin[0],elbow),d=worldPoint(dress[0],skirt);
@@ -324,15 +324,15 @@ try {
   // visible as well as numerically tested.
   await page.evaluate(()=>{
     const {t}=window.__productionQA;
-    t.asset.model.getObjectByName('elbow.R').rotation.z=.55;
-    t.asset.model.getObjectByName('knee.L').rotation.x=.40;
+    t.asset.model.getObjectByName('elbowR').rotation.z=.55;
+    t.asset.model.getObjectByName('kneeL').rotation.x=.40;
   });
   await capture('tab-t35-flexed-elbow-knee','tab-anatomy-front');
   await capture('tab-t35-flexed-elbow-knee-side','tab-anatomy-side');
   await page.evaluate(()=>{
     const {t}=window.__productionQA;
-    t.asset.model.getObjectByName('elbow.R').rotation.z=0;
-    t.asset.model.getObjectByName('knee.L').rotation.x=0;
+    t.asset.model.getObjectByName('elbowR').rotation.z=0;
+    t.asset.model.getObjectByName('kneeL').rotation.x=0;
   });
   await capture('tab-t35-skin-restored','tab-anatomy-front');
   for(const view of ['tab-front','tab-side','tab-threequarter','tab-fold'])
