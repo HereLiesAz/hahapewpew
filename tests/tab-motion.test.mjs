@@ -15,7 +15,7 @@ const parts={
   'hip.R':['root',[.135,1.19,0]],'knee.R':['hip.R',[.005,-.527,.023]],
   'ankle.R':['knee.R',[-.005,-.518,.011]]
 };
-function fixture(){
+function fixture({animated=false}={}){
   const scene=new THREE.Group(),character=new THREE.Group();character.add(scene);
   character.rotation.y=Math.PI/2;
   const names=new Map();
@@ -26,7 +26,16 @@ function fixture(){
   }
   const dummy=new THREE.Group();dummy.isSkinnedMesh=true;scene.add(dummy);
   const animations=['Tab_Walk','Tab_Idle','Tab_Bear_Swing']
-    .map(n=>new THREE.AnimationClip(n,1,[]));
+    .map(n=>{
+      const tracks=animated&&n==='Tab_Idle'
+        ?[new THREE.QuaternionKeyframeTrack('spine.quaternion',[0,1],
+          [0,0,0,1,0,0,.19866933,.98006658])]
+        :animated&&n==='Tab_Bear_Swing'
+        ?[new THREE.QuaternionKeyframeTrack('bear.quaternion',[0,1],
+          [0,0,0,1,0,0,.19866933,.98006658])]
+        :[];
+      return new THREE.AnimationClip(n,1,tracks);
+    });
   const motion=createTabMotionRig({scene,animations},character);
   return {scene,character,names,motion};
 }
@@ -110,6 +119,38 @@ test('idle look, a deliberate turn, teddy grip and a planted pause are independe
   f.motion.update(.2,{walking:false,heading:0});
   assert.ok(f.character.rotation.y<yaw-.3,'turn must interpolate, not snap');
   assert.ok(f.character.rotation.y>0,'turn must be progressive');
+});
+
+test('curved root path rebases each foot plant without exhausting leg reach',()=>{
+  const f=fixture();
+  f.character.scale.setScalar(.66);
+  let previous=new THREE.Vector3();
+  let observations=0;
+  for(let n=1;n<=80;n++){
+    const t=n*.05;
+    const pos=new THREE.Vector3(1.22*t,0,.16*Math.sin(t*.7));
+    f.character.position.copy(pos);
+    const dx=pos.x-previous.x,dz=pos.z-previous.z;
+    const state=f.motion.update(.05,{walking:true,heading:Math.atan2(dx,dz)});
+    assert.ok(state.footSlip.every(v=>v<.035),
+      'world-space targets should remain reachable on a curved path');
+    previous=pos;observations++;
+  }
+  assert.equal(observations,80);
+  assert.ok(f.motion.debug().travel>4.8);
+});
+
+test('authored idle and bear clips resume after a neutral QA reset',()=>{
+  const f=fixture({animated:true});
+  f.motion.reset();
+  assert.equal(f.motion.idle.isRunning(),false);
+  f.motion.update(.5,{walking:false,heading:Math.PI/2});
+  assert.equal(f.motion.idle.isRunning(),true);
+  assert.equal(f.motion.bear.isRunning(),true);
+  assert.ok(Math.abs(f.names.get('spine').quaternion.z)>.01,
+    'authored spine track must animate after reset');
+  assert.ok(Math.abs(f.names.get('bear').quaternion.z)>.001,
+    'authored bear track must animate after reset');
 });
 
 test('reinitializing for a neutral reference capture restores authored bind pose',()=>{
