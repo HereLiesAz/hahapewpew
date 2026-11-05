@@ -64,6 +64,21 @@ test('child stance translates the world root without sliding a planted ankle',()
   assert.ok(f.names.get('knee.L').rotation.x>0,'stance leg should bend anatomically');
 });
 
+test('production 0.66 root scale preserves true world ankle contact and sole clearance',()=>{
+  const f=fixture();
+  f.character.scale.setScalar(.66);
+  const observed=[];
+  for(const distance of [.08,.18,.29]){
+    f.character.position.x=distance;
+    const state=f.motion.update(.1,{walking:true,heading:Math.PI/2});
+    observed.push(ankle(f,'L'));
+    assert.ok(state.footSlip[0]<.009,'anchor must include actual root scale');
+  }
+  for(const point of observed.slice(1))
+    assert.ok(point.distanceTo(observed[0])<.012,'foot must remain planted at production scale');
+  close(observed[0].y,.0957,.003);
+});
+
 test('opposite leg advances on alternating half-strides, never sinks below ground',()=>{
   const f=fixture();let lifted=false,grounded=false;
   for(let n=1;n<=11;n++){
