@@ -634,7 +634,7 @@ if(shiftS27Qa){
   cameraControl.yaw=shiftQaView==='front'?Math.PI/2
     :shiftQaView==='side'?0:shiftQaView==='back'?-Math.PI/2:.85;
 }
-if(qwertyQaMode)window.__qwertyQA={crew,camera,cameraControl,scene,renderer,fireAt,updateActors,temporary,groups};
+if(qwertyQaMode)window.__qwertyQA={crew,camera,cameraControl,scene,renderer,fireAt,updateActors,advanceActors,temporary,groups};
 if(shiftQaMode)window.__shiftQA={crew,camera,cameraControl,scene,renderer};
 const camModes=[{zoom:6.25,pitch:.20},{zoom:17,pitch:.35},{zoom:42,pitch:.66}];
 function updateCamera(dt){
@@ -782,14 +782,19 @@ updateChunks();
 crew.Tab.root.position.x=0;crew.Tab.root.position.z=.4; // start Tab on her authored walking lane
 crew.Shift.root.position.x=-2.6;crew.Qwerty.root.position.x=2.5;
 camera.position.set(-7.5,3.1,4.5);camera.lookAt(0,1.25,0);
+// Drive the production clock and actor movement together, including in paused browser QA.
+function advanceActors(dt){
+  seconds+=dt;
+  if(dt>0)updateActors(dt);
+  return seconds;
+}
 const clock=new THREE.Clock();let hasRendered=false;
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 function frame(){
   requestAnimationFrame(frame);
   const delta=Math.min(clock.getDelta(),.05);
   const dt=paused?0:delta*(reducedMotion?.55:1);
-  seconds+=dt;
-  if(dt){updateActors(dt);updateAsh(dt);scheduleDialogue();}
+  if(dt){advanceActors(dt);updateAsh(dt);scheduleDialogue();}
   updateCamera(delta);
   updateSpeech();
   renderer.render(scene,camera);
