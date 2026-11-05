@@ -380,7 +380,7 @@ try {
     const swingLift=Math.max(...samples.flatMap(s=>[s.left[1],s.right[1]]));
     // Pause during left stance, without moving the root; both ankles may settle
     // but must not slide sideways.
-    actor.reset();t.root.position.set(0,0,-1.7);
+    t.root.position.set(0,0,-1.7);actor.reset();
     for(let i=1;i<=4;i++){
       t.root.position.x=i*.085;
       actor.update(.085,{walking:true,heading:Math.PI/2});
@@ -396,10 +396,10 @@ try {
     const bear=actor.joints.bear.getWorldPosition(new T.Vector3());
     const gripDistance=hand.distanceTo(bear);
     const parentAttached=actor.joints.bear.parent===actor.joints.handR;
-    actor.reset();t.root.position.set(0,0,-1.7);t.root.rotation.y=Math.PI/2;
+    t.root.position.set(0,0,-1.7);actor.reset();t.root.rotation.y=Math.PI/2;
     actor.update(1,{walking:false,heading:Math.PI/2});
     const idleLook=actor.joints.neck.rotation.y;
-    actor.reset();t.root.position.set(0,0,-1.7);t.root.rotation.y=Math.PI/2;
+    t.root.position.set(0,0,-1.7);actor.reset();t.root.rotation.y=Math.PI/2;
     return {clips:actor.actionNames,leftSlide,rightSlide,footReach,swingLift,
       pauseSlide,turnRadians:beforeHeading-afterHeading,gripDistance,parentAttached,idleLook,
       samples};
@@ -420,7 +420,7 @@ try {
   // Production WebGL stills for visual review, not fabricated render targets.
   await page.evaluate(()=>{
     const {t}=window.__productionQA;
-    t.asset.reset();t.root.position.set(0,0,-1.7);t.root.rotation.y=Math.PI/2;
+    t.root.position.set(0,0,-1.7);t.asset.reset();t.root.rotation.y=Math.PI/2;
     t.root.position.x=.28;t.asset.update(.2,{walking:true,heading:Math.PI/2});
   });
   await capture('tab-t36-walk-front','tab-victoria-front');
@@ -436,13 +436,13 @@ try {
   await capture('tab-t36-turn','tab-victoria-side');
   await page.evaluate(()=>{
     const {t}=window.__productionQA;
-    t.asset.reset();t.root.position.set(0,0,-1.7);t.root.rotation.y=Math.PI/2;
+    t.root.position.set(0,0,-1.7);t.asset.reset();t.root.rotation.y=Math.PI/2;
     t.asset.update(.92,{walking:false,heading:Math.PI/2});
   });
   await capture('tab-t36-idle-look','tab-victoria-front');
   await page.evaluate(()=>{
     const {t}=window.__productionQA;
-    t.asset.reset();t.root.position.set(0,0,-1.7);t.root.rotation.y=Math.PI/2;
+    t.root.position.set(0,0,-1.7);t.asset.reset();t.root.rotation.y=Math.PI/2;
   });
   for(const view of ['tab-front','tab-side','tab-threequarter','tab-fold'])
     await capture('tab-box-'+view.slice(4),view);
