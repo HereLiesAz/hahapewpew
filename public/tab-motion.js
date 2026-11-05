@@ -11,12 +11,15 @@ const HIP_DROP=0.10; // gives the near-straight rest legs room to step
 function angleDelta(from,to){return Math.atan2(Math.sin(to-from),Math.cos(to-from));}
 function approach(current,target,rate,dt){return current+(target-current)*(1-Math.exp(-rate*dt));}
 
-// The two authored joints are not exactly axial: preserve their slight Z
-// offsets instead of assuming that the legs are identical vertical rods.
-function solveLeg(hip,knee,ankle,z,y){
+// Preserve the authored knee offsets and solve the lateral foot target during
+// a planted turn. Hip abduction about Z follows sagittal flexion about X.
+function solveLeg(hip,knee,ankle,x,z,y){
   const upper=knee.position,lower=ankle.position;
   const a=Math.hypot(upper.y,upper.z),b=Math.hypot(lower.y,lower.z);
-  const dz=z-hip.position.z,dy=y-hip.position.y;
+  const lateral=x-hip.position.x,vertical=hip.position.y-y;
+  hip.rotation.order='ZXY';
+  hip.rotation.z=Math.atan2(lateral,vertical);
+  const dz=z-hip.position.z,dy=-Math.hypot(lateral,vertical);
   const dist=Math.hypot(dz,dy);
   if(!Number.isFinite(dist))throw new RangeError('Invalid Tab ankle target');
   // Real turns and load-time lane alignment can briefly exceed a planted
@@ -31,6 +34,10 @@ function solveLeg(hip,knee,ankle,z,y){
   hip.rotation.x=upperRest-thigh;
   knee.rotation.x=fold+lowerRest-upperRest;
   ankle.rotation.x=-hip.rotation.x-knee.rotation.x;
+  // Cancelling only X leaves the sole banked by the hip's lateral abduction.
+  // XYZ composes ankle X flexion before inverse Z roll, undoing both rotations.
+  ankle.rotation.order='XYZ';
+  ankle.rotation.z=-hip.rotation.z;
   return Math.abs(dist-d);
 }
 
@@ -150,7 +157,7 @@ export function createTabMotionRig(gltf,root){
         }
         root.updateWorldMatrix(true,false);
         p0.copy(world);root.worldToLocal(p0);
-        const excess=solveLeg(limb.hip,limb.knee,limb.ankle,p0.z,p0.y);
+        const excess=solveLeg(limb.hip,limb.knee,limb.ankle,p0.x,p0.z,p0.y);
         if(excess>.001)reachCorrections++;
         // Compare actual ankle contact with the stationary world anchor. The
         // browser QA measures this too, using the *real* loaded skeleton.
@@ -174,7 +181,7 @@ export function createTabMotionRig(gltf,root){
           p0.copy(contact);
           p0.y=floor+approach(Math.max(0,contact.y-floor),0,18,dt);
           world.copy(p0);root.worldToLocal(p0);
-          const excess=solveLeg(limb.hip,limb.knee,limb.ankle,p0.z,p0.y);
+          const excess=solveLeg(limb.hip,limb.knee,limb.ankle,p0.x,p0.z,p0.y);
           if(excess>.001)reachCorrections++;
           root.updateWorldMatrix(true,true);
           const actual=limb.ankle.getWorldPosition(new THREE.Vector3());
@@ -183,8 +190,10 @@ export function createTabMotionRig(gltf,root){
         }else{
           limb.hip.position.y=restHip.y;
           limb.hip.rotation.x=0;
+          limb.hip.rotation.z=0;
           limb.knee.rotation.x=0;
           limb.ankle.rotation.x=0;
+          limb.ankle.rotation.z=0;
           act.footSlip.push(0);
         }
         act.stance.push(true);

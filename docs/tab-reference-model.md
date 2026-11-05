@@ -45,3 +45,20 @@ Regenerate via `.github/workflows/tab-victoria-source.yml`; verify `tests/test_t
 ## T3.6 authored locomotion controller (pending browser acceptance)
 
 A runtime `createTabMotionRig` controller in `public/tab-motion.js` preserves the three shipped GLB clips without rebuilding the reference mesh. The old loop advanced `Tab_Walk` constantly while the independent root traversed the street, which could not maintain planted feet. The new motion computes stride phase from actual root distance, uses short child steps with a grounded stance and two-joint knee solving, keeps the bear on the right-hand joint, lets the rigid cardboard box look around, gradually turns the character, and briefly pauses Tab independently of the robots. Original dress, dirt/rips, textures, GLB skin and props are unmodified. Real world-space ankle contact, swing clearance, reference-frame restoration and posed front/side screenshots form the acceptance gate. The separate M5.5 threat/reaction behavior is intentionally not conflated with this animation pass.
+
+
+### T3.6 planted-turn lateral IK correction (verification pending)
+
+The first two-bone controller converted each world contact to Tab-root coordinates but
+solved only its vertical and forward components. When the root turned during a
+pause, the solver ignored the contact's lateral offset and the shoes followed
+the body sideways. The existing solver now rotates each hip laterally before
+resolving knee flexion, accounting for the complete local contact vector;
+`ZXY` applies hip abduction after sagittal bending. World anchors and the
+separate interrupted-swing settling behavior remain in place. A contact beyond
+anatomical reach may still be replanted rather than extending the leg through
+its joint limits. The ankle counter-rotates hip roll after knee flexion so the shoes do not
+bank away from the ground. Production-scale fixture and Chromium GLB QA
+measure actual left/right ankle positions and world-space sole-up vectors
+through a planted turn. This change is not final T3.6 acceptance until those
+checks and rendered captures pass.

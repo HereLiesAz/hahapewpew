@@ -122,6 +122,43 @@ test('idle look, a deliberate turn, teddy grip and a planted pause are independe
 });
 
 
+test('planted pause turns retain lateral world contact at production scale',()=>{
+  const f=fixture();
+  f.character.scale.setScalar(.66);
+  f.character.position.x=.13;
+  f.motion.update(.10,{walking:true,heading:Math.PI/2});
+  const planted=['L','R'].map(side=>ankle(f,side));
+  const initialYaw=f.character.rotation.y;
+  const state=f.motion.update(.28,{walking:false,heading:0});
+  assert.ok(f.character.rotation.y<initialYaw-.3,'fixture must turn substantially');
+  assert.ok(state.turning,'paused heading change must be a real turn');
+  for(let side=0;side<2;side++){
+    const foot=ankle(f,side?'R':'L'),start=planted[side];
+    assert.ok(Math.hypot(foot.x-start.x,foot.z-start.z)<.015,
+      'turn must retain the planted shoe horizontal position');
+    assert.ok(state.footSlip[side]<.017,'IK must reach the fixed world contact');
+    const up=new THREE.Vector3(0,1,0).applyQuaternion(
+      f.names.get(side?'ankle.R':'ankle.L').getWorldQuaternion(new THREE.Quaternion()));
+    assert.ok(up.y>.995,'planted shoe sole must remain level during hip abduction');
+  }
+  assert.ok(Math.abs(f.names.get('hip.L').rotation.z)>.03,
+    'the hip must compensate lateral displacement, not discard it');
+  for(let frame=0;frame<8;frame++){
+    const next=f.motion.update(.05,{walking:false,heading:0});
+    for(let side=0;side<2;side++){
+      const foot=ankle(f,side?'R':'L'),start=planted[side];
+      assert.ok(Math.hypot(foot.x-start.x,foot.z-start.z)<.02,
+        'repeated turn frames must not accumulate lateral foot drift');
+      assert.ok(next.footSlip[side]<.022);
+      const up=new THREE.Vector3(0,1,0).applyQuaternion(
+        f.names.get(side?'ankle.R':'ankle.L').getWorldQuaternion(new THREE.Quaternion()));
+      assert.ok(up.y>.995,'repeated turn frames must not roll the sole sideways');
+    }
+  }
+  f.motion.reset();
+  close(f.names.get('hip.L').rotation.z,0,1e-9);
+});
+
 test('a mid-swing hesitation settles and resumes without a one-frame shoe jump',()=>{
   const f=fixture();
   f.character.scale.setScalar(.66);
