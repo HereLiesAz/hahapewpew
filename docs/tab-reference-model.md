@@ -11,3 +11,18 @@ T3.2 replaces the solid box core with an open-bottom shell and four thin flaps; 
 The original Tab GLB geometry was bound entirely to single joints, leaving elbow, knee and sleeve boundaries rigid even though named bones and glTF weights existed. The T3.5 generator now exports normalized two-joint blends near shoulders, elbows, wrists and knees, with a chest-to-spine transition and a *small* three-joint spine/left-hip/right-hip influence near the damaged skirt's lower edge. The original vertices and UV coordinates are not modified. Both cardboard prints and panels stay rigid on `head`; shoes remain rigid on ankle bones, and plush geometry stays on `bear` (child of `hand.R`), preserving the ear grip and existing swing clip. Preserve the deterministic dirt and tears added in T3.4.
 
 The `test_tab_rig_t35.py` suite validates glTF weights/joint indices, inverse binds, UV bounds, printed masks, rigid attachments and multi-joint deformation under controlled bends. `robot_proportions_browser_qa.mjs` captures and measures the live GLTFLoader skinned geometry under knee/elbow pose and after rest-pose restoration. Completion requires that evidence and passing workflow; do not infer owner sign-off for the still-open full fidelity items.
+
+## Replacement decision: Victoria child base
+
+Owner selection (2026-11-05): **Victoria Character Rigged**, by **Rex Mun** on Blendkit:
+https://www.blendkit.com/asset-gallery-detail/1fcc4446-1992-48ec-a160-9cd73ee35158/
+
+Use Victoria's professionally modeled, UV-unwrapped and rigged child anatomy **instead of** the current procedural child body. Retain Tab's *existing* dirty, torn gray dress, cardboard-box mask and printing, flaps, bear carried at the ear, and established root scale unless the owner explicitly requests changes. Preserve their art and make the dress fit Victoria's skeleton rather than reconstructing it. Do not substitute another character coincidentally named Victoria.
+
+**Source and distribution gate:** The listing labels the 19,654-polygon, approximately 6.5 MiB model free under Blendkit's **Royalty Free**, **not CC0**, license. Official licensing guidance permits inclusion in games only when the asset is not easily extracted:
+https://www.blendkit.com/docs/licenses/
+https://www.blendkit.com/docs/licenses/licensing-faq/
+
+This project is a public web app and GitHub repository. A shipped GLB in `public/assets/characters/` is directly retrievable by users. **Do not commit, bundle, host or publish Victoria's raw or repacked geometry under this license without explicit redistribution permission from the rights holder.** Also do not claim the free download is redistribution authorization. The official download is via the Blendkit Blender add-on, not an independently verified unrestricted direct file URL.
+
+**Pending prerequisites:** Obtain the actual Victoria source file through the authorized provider; inspect bone names, bind pose, mesh partition and shape; secure permission covering extractable public web-game delivery and source distribution (or a separate distribution arrangement that legally satisfies Blendkit's terms). Only then create a distinct feature branch, retarget the preserved dress/box/bear, add source-based tests, inspect front/side/motion captures, and swap the production loader after acceptance. Until then leave `Tab_Reference.glb`, `build_reference_tab.py`, existing animations and the T3.6 checklist unchanged. This is a sourcing decision, **not** a completed integration.
