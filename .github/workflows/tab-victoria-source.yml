@@ -4,17 +4,21 @@ on:
     branches: [feature/tab-victoria-body]
     paths:
       - .github/workflows/tab-victoria-source.yml
+      - scripts/assemble_victoria_tab.py
+      - tests/test_tab_victoria_integration.py
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   source:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
       - name: Decode Draco mesh dependency
-        run: python3 -m pip install 'numpy>=2,<3' DracoPy
+        run: python3 -m pip install 'numpy>=2,<3' DracoPy Pillow
       - name: Fetch exact public Rex Mun asset from official API
         shell: bash
         run: |
@@ -79,6 +83,22 @@ jobs:
               'skins':gltf.get('skins',[]),'animations':[a.get('name') for a in gltf.get('animations',[])]
           },indent=2))
           PY
+      - name: Assemble intact Tab costume over Victoria's rigged body
+        run: |
+          python3 scripts/assemble_victoria_tab.py \
+            --source artifacts/victoria/Victoria_RexMun_Source.glb \
+            --decoded artifacts/victoria/source-body-decoded.npz \
+            --tab public/assets/characters/Tab_Reference.glb \
+            --out public/assets/characters/Tab_Victoria.glb
+          python3 -m unittest discover -s tests -p test_tab_victoria_integration.py
+          cp public/assets/characters/Tab_Victoria.glb artifacts/victoria/Tab_Victoria.glb
+      - name: Commit generated candidate on feature branch only
+        run: |
+          git add public/assets/characters/Tab_Victoria.glb
+          if ! git diff --cached --quiet; then
+            git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'Regenerate Victoria child body with original Tab outfit'
+            git push origin 'HEAD:feature/tab-victoria-body'
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
