@@ -121,6 +121,26 @@ test('idle look, a deliberate turn, teddy grip and a planted pause are independe
   assert.ok(f.character.rotation.y>0,'turn must be progressive');
 });
 
+
+test('a mid-swing hesitation settles and resumes without a one-frame shoe jump',()=>{
+  const f=fixture();
+  f.character.scale.setScalar(.66);
+  f.character.position.x=.13;
+  f.motion.update(.016,{walking:true,heading:Math.PI/2});
+  const airborne=ankle(f,'R').y;
+  const grounded=.0957;
+  assert.ok(airborne>grounded+.01,'fixture must interrupt an airborne right foot');
+  f.motion.update(.016,{walking:false,heading:Math.PI/2});
+  const firstPause=ankle(f,'R').y;
+  assert.ok(Math.abs(firstPause-airborne)<.02,'pause must not drop the shoe in one frame');
+  for(let n=0;n<25;n++)f.motion.update(.016,{walking:false,heading:Math.PI/2});
+  const settled=ankle(f,'R').y;
+  assert.ok(Math.abs(settled-grounded)<.009,'swinging foot must eventually reach the road');
+  f.motion.update(.016,{walking:true,heading:Math.PI/2});
+  assert.ok(Math.abs(ankle(f,'R').y-settled)<.02,
+    'resuming the interrupted swing must not pop the shoe upward');
+});
+
 test('curved root path rebases each foot plant without exhausting leg reach',()=>{
   const f=fixture();
   f.character.scale.setScalar(.66);
