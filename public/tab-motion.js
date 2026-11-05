@@ -18,9 +18,11 @@ function solveLeg(hip,knee,ankle,z,y){
   const a=Math.hypot(upper.y,upper.z),b=Math.hypot(lower.y,lower.z);
   const dz=z-hip.position.z,dy=y-hip.position.y;
   const dist=Math.hypot(dz,dy);
-  if(!Number.isFinite(dist)||dist<Math.abs(a-b)+1e-4||dist>a+b+1e-4)
-    throw new RangeError('Tab foot exceeds her knee/ankle reach');
-  const d=Math.min(a+b,Math.max(Math.abs(a-b)+1e-6,dist));
+  if(!Number.isFinite(dist))throw new RangeError('Invalid Tab ankle target');
+  // Real turns and load-time lane alignment can briefly exceed a planted
+  // leg's radius. Preserve the rendered game and shorten the target to the
+  // anatomical reach; the controller will establish a new contact next step.
+  const d=Math.min(a+b-1e-5,Math.max(Math.abs(a-b)+1e-5,dist));
   const fold=Math.acos(THREE.MathUtils.clamp((d*d-a*a-b*b)/(2*a*b),-1,1));
   const upperRest=Math.atan2(upper.z,-upper.y);
   const lowerRest=Math.atan2(lower.z,-lower.y);
@@ -29,6 +31,7 @@ function solveLeg(hip,knee,ankle,z,y){
   hip.rotation.x=upperRest-thigh;
   knee.rotation.x=fold+lowerRest-upperRest;
   ankle.rotation.x=-hip.rotation.x-knee.rotation.x;
+  return Math.abs(dist-d);
 }
 
 export function createTabMotionRig(gltf,root){
@@ -62,14 +65,14 @@ export function createTabMotionRig(gltf,root){
   ];
   const rest=new Map(Object.values(joints).map(j=>[j,{p:j.position.clone(),q:j.quaternion.clone()}]));
   const lastPosition=root.position.clone();
-  let travel=0,time=0,motion=0;
+  let travel=0,time=0,motion=0,reachCorrections=0;
   const anchors=new Map(),footprint=new Map();
   const p0=new THREE.Vector3(),world=new THREE.Vector3();
 
   function reset(){
     mixer.stopAllAction();
     for(const [j,v] of rest){j.position.copy(v.p);j.quaternion.copy(v.q);}
-    travel=0;time=0;motion=0;
+    travel=0;time=0;motion=0;reachCorrections=0;
     lastPosition.copy(root.position);
     anchors.clear();footprint.clear();
   }
@@ -143,12 +146,14 @@ export function createTabMotionRig(gltf,root){
         }
         root.updateWorldMatrix(true,false);
         p0.copy(world);root.worldToLocal(p0);
-        solveLeg(limb.hip,limb.knee,limb.ankle,p0.z,p0.y);
+        const excess=solveLeg(limb.hip,limb.knee,limb.ankle,p0.z,p0.y);
+        if(excess>.001)reachCorrections++;
         // Compare actual ankle contact with the stationary world anchor. The
         // browser QA measures this too, using the *real* loaded skeleton.
         root.updateWorldMatrix(true,true);
         const actual=limb.ankle.getWorldPosition(new THREE.Vector3());
         const error=Math.hypot(actual.x-world.x,actual.z-world.z,actual.y-world.y);
+        if(excess>.001&&phase<=STANCE)anchors.get(limb.name).point.copy(actual);
         act.footSlip.push(error);
         act.stance.push(phase<=STANCE);
         footprint.set(limb.name,world.clone());
@@ -161,11 +166,12 @@ export function createTabMotionRig(gltf,root){
           root.updateWorldMatrix(true,false);
           p0.copy(contact);p0.y=root.position.y+restAnkleY*root.scale.y;
           world.copy(p0);root.worldToLocal(p0);
-          solveLeg(limb.hip,limb.knee,limb.ankle,p0.z,p0.y);
+          const excess=solveLeg(limb.hip,limb.knee,limb.ankle,p0.z,p0.y);
+          if(excess>.001)reachCorrections++;
           root.updateWorldMatrix(true,true);
           const actual=limb.ankle.getWorldPosition(new THREE.Vector3());
           act.footSlip.push(actual.distanceTo(world));
-          footprint.set(limb.name,world.clone());
+          footprint.set(limb.name,excess>.001?actual.clone():world.clone());
         }else{
           limb.hip.position.y=restHip.y;
           limb.hip.rotation.x=0;
@@ -179,5 +185,5 @@ export function createTabMotionRig(gltf,root){
     return act;
   }
   return {model:gltf.scene,mixer,walk,idle,bear,update,reset,joints,
-    actionNames:CLIPS,debug:()=>({travel,time,motion,footprint:[...footprint.entries()].map(([k,v])=>[k,v.toArray()])})};
+    actionNames:CLIPS,debug:()=>({travel,time,motion,reachCorrections,footprint:[...footprint.entries()].map(([k,v])=>[k,v.toArray()])})};
 }

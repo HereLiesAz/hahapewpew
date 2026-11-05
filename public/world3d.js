@@ -779,7 +779,8 @@ function updateAsh(dt){
   ashGeo.attributes.position.needsUpdate=true;
 }
 updateChunks();
-crew.Tab.root.position.x=0;crew.Shift.root.position.x=-2.6;crew.Qwerty.root.position.x=2.5;
+crew.Tab.root.position.x=0;crew.Tab.root.position.z=.4; // start Tab on her authored walking lane
+crew.Shift.root.position.x=-2.6;crew.Qwerty.root.position.x=2.5;
 camera.position.set(-7.5,3.1,4.5);camera.lookAt(0,1.25,0);
 const clock=new THREE.Clock();let hasRendered=false;
 const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
