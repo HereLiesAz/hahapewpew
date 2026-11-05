@@ -17,8 +17,8 @@ jobs:
         run: |
           mkdir -p artifacts/victoria
           python3 - <<'PY'
-          import json,urllib.request,pathlib,hashlib
-          from urllib.parse import quote
+          import json,urllib.request,pathlib,hashlib,uuid
+          from urllib.parse import quote,urlencode
           uuid='1fcc4446-1992-48ec-a160-9cd73ee35158'
           endpoint='https://www.blenderkit.com/api/v1/search/?query='+quote('Victoria Character Rigged')+'&asset_type=model'
           req=urllib.request.Request(endpoint,headers={'User-Agent':'HahaPewPew-Character-Importer/1.0','Accept':'application/json'})
@@ -28,7 +28,7 @@ jobs:
           assert len(choices)==1, 'exact Victoria revision not found'
           meta=choices[0]
           source=next(f for f in meta['files'] if f.get('fileType')=='gltf')
-          url=source['downloadUrl']
+          url=source['downloadUrl']+'?'+urlencode({'scene_uuid':str(uuid.uuid4())})
           print('Found',meta['name'],'revision',meta['id'],'GLB bytes',source['fileUploadSize'])
           req=urllib.request.Request(url,headers={'User-Agent':'HahaPewPew-Character-Importer/1.0','Accept':'application/json'})
           with urllib.request.urlopen(req,timeout=35) as r:
