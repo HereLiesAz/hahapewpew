@@ -137,6 +137,9 @@ test('planted pause turns retain lateral world contact at production scale',()=>
     assert.ok(Math.hypot(foot.x-start.x,foot.z-start.z)<.015,
       'turn must retain the planted shoe horizontal position');
     assert.ok(state.footSlip[side]<.017,'IK must reach the fixed world contact');
+    const up=new THREE.Vector3(0,1,0).applyQuaternion(
+      f.names.get(side?'ankle.R':'ankle.L').getWorldQuaternion(new THREE.Quaternion()));
+    assert.ok(up.y>.995,'planted shoe sole must remain level during hip abduction');
   }
   assert.ok(Math.abs(f.names.get('hip.L').rotation.z)>.03,
     'the hip must compensate lateral displacement, not discard it');
@@ -147,6 +150,9 @@ test('planted pause turns retain lateral world contact at production scale',()=>
       assert.ok(Math.hypot(foot.x-start.x,foot.z-start.z)<.02,
         'repeated turn frames must not accumulate lateral foot drift');
       assert.ok(next.footSlip[side]<.022);
+      const up=new THREE.Vector3(0,1,0).applyQuaternion(
+        f.names.get(side?'ankle.R':'ankle.L').getWorldQuaternion(new THREE.Quaternion()));
+      assert.ok(up.y>.995,'repeated turn frames must not roll the sole sideways');
     }
   }
   f.motion.reset();
