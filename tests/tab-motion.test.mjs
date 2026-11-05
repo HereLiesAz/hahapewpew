@@ -140,6 +140,28 @@ test('curved root path rebases each foot plant without exhausting leg reach',()=
   assert.ok(f.motion.debug().travel>4.8);
 });
 
+test('production startup gait does not overreach while converging onto a curved lane',()=>{
+  const f=fixture();
+  f.character.scale.setScalar(.66);
+  f.character.position.z=.4;
+  f.motion.reset();
+  let worldX=0,clock=0,lastX=0,lastZ=.4;
+  for(let i=0;i<120;i++){
+    const dt=.05;clock+=dt;worldX+=dt*1.22;
+    const desiredX=worldX+Math.sin(clock*.15)*.26;
+    const desiredZ=.4+Math.sin(clock*.19)*.21;
+    f.character.position.x=THREE.MathUtils.damp(f.character.position.x,desiredX,4,dt);
+    f.character.position.z=THREE.MathUtils.damp(f.character.position.z,desiredZ,4,dt);
+    const dx=f.character.position.x-lastX,dz=f.character.position.z-lastZ;
+    f.motion.update(dt,{walking:Math.hypot(dx,dz)>dt*.08,
+      heading:Math.atan2(dx,dz)});
+    lastX=f.character.position.x;lastZ=f.character.position.z;
+  }
+  assert.ok(f.motion.debug().travel>4);
+  assert.equal(f.motion.debug().reachCorrections,0,
+    'a normal production lane must not require corrective foot sliding');
+});
+
 test('authored idle and bear clips resume after a neutral QA reset',()=>{
   const f=fixture({animated:true});
   f.motion.reset();

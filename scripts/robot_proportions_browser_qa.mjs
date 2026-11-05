@@ -808,6 +808,7 @@ try {
   // real roadway curved away from a permanently frozen starting heading.
   const liveTabWalk=await page.evaluate(()=>{
     const {qa,t}=window.__productionQA;
+    t.root.position.z=.4;t.root.rotation.y=Math.PI/2;
     t.asset.reset();
     const start=t.root.position.clone();
     for(let i=0;i<120;i++)qa.updateActors(.05);
@@ -815,13 +816,16 @@ try {
     const state=t.asset.debug();
     return {travel:state.travel,rootMotion:Math.hypot(pos.x-start.x,pos.z-start.z),
       model:document.querySelector('#world').dataset.tabSource,
-      joints:t.asset.actionNames,footContacts:state.footprint.length};
+      joints:t.asset.actionNames,footContacts:state.footprint.length,
+      reachCorrections:state.reachCorrections};
   });
   report.results.push({mode:'tab-t36-live-curved-world',...liveTabWalk});
   assert.equal(liveTabWalk.model,'victoria');
   assert.ok(liveTabWalk.travel>4&&liveTabWalk.rootMotion>4,
     'Tab must survive at least six simulated seconds of live street walking');
   assert.equal(liveTabWalk.footContacts,2,'Both feet should still have ground targets');
+  assert.equal(liveTabWalk.reachCorrections,0,
+    'Production lane should not need emergency foot contact adjustments');
   await capture('tab-t36-production-world-walk','tab-victoria-front');
   // Abort the actual production URLs, rather than switching to a QA candidate.
   await page.close();
