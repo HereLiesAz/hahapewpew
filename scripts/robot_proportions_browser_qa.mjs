@@ -392,6 +392,17 @@ try {
     const beforeHeading=t.root.rotation.y;
     actor.update(.28,{walking:false,heading:0});
     const afterHeading=t.root.rotation.y;
+    // Check the *rendered* Victoria joints during a separate production-scale
+    // planted turn; an x-only knee solution previously dragged both shoes.
+    t.root.position.set(0,0,-1.7);t.root.rotation.y=Math.PI/2;actor.reset();
+    t.root.position.x=.13;actor.update(.10,{walking:true,heading:Math.PI/2});
+    const beforeTurn=[point('L'),point('R')];
+    const turning=actor.update(.28,{walking:false,heading:0});
+    const afterTurn=[point('L'),point('R')];
+    const turnLateralSlip=Math.max(...beforeTurn.map((p,i)=>
+      Math.hypot(afterTurn[i][0]-p[0],afterTurn[i][2]-p[2])));
+    const turnFootReach=Math.max(...turning.footSlip);
+    const turnHipAbduction=Math.abs(actor.joints.hipL.rotation.z);
     const hand=actor.joints.handR.getWorldPosition(new T.Vector3());
     const bear=actor.joints.bear.getWorldPosition(new T.Vector3());
     const gripDistance=hand.distanceTo(bear);
@@ -401,8 +412,9 @@ try {
     const idleLook=actor.joints.neck.rotation.y;
     t.root.position.set(0,0,-1.7);actor.reset();t.root.rotation.y=Math.PI/2;
     return {clips:actor.actionNames,leftSlide,rightSlide,footReach,swingLift,
-      pauseSlide,turnRadians:beforeHeading-afterHeading,gripDistance,parentAttached,idleLook,
-      samples};
+      pauseSlide,turnRadians:beforeHeading-afterHeading,
+      turnLateralSlip,turnFootReach,turnHipAbduction,
+      gripDistance,parentAttached,idleLook,samples};
   });
   report.results.push({mode:'tab-t36-anchored-locomotion',...tabMotion});
   assert.deepEqual(tabMotion.clips,['Tab_Walk','Tab_Idle','Tab_Bear_Swing']);
@@ -413,6 +425,10 @@ try {
     'Tab must lift feet while walking, without skidding during a pause');
   assert.ok(tabMotion.turnRadians>.3&&tabMotion.turnRadians<1.3,
     'Tab must turn progressively rather than snapping orientation');
+  assert.ok(tabMotion.turnLateralSlip<.02&&tabMotion.turnFootReach<.022,
+    'Actual Victoria ankles must remain planted laterally during a turn');
+  assert.ok(tabMotion.turnHipAbduction>.03,
+    'Victoria hip must solve the lateral foot target, not silently discard it');
   assert.ok(tabMotion.parentAttached&&tabMotion.gripDistance<.25,
     'Tab teddy must remain attached to her right-hand ear grip');
   assert.ok(Math.abs(tabMotion.idleLook)>.03,
