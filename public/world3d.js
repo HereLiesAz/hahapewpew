@@ -193,7 +193,25 @@ installShiftAsset();
 async function installTabAsset() {
   const rig=crew.Tab;
   try {
-    const gltf=await new GLTFLoader().loadAsync('/assets/characters/Tab_Reference.glb');
+    // Prefer Victoria's real child anatomy, while retaining the exact
+    // original Tab as a complete offline/source-unavailable fallback.
+    let gltf=null,source='reference';
+    for(const candidate of [
+      {url:'/assets/characters/Tab_Victoria.glb',name:'victoria'},
+      {url:'/assets/characters/Tab_Reference.glb',name:'reference'}
+    ]) {
+      try {
+        const asset=await new GLTFLoader().loadAsync(candidate.url);
+        const available=new Set(asset.animations.map(a=>a.name));
+        if(!asset.scene.getObjectByName('head')||!asset.scene.getObjectByName('bear')||
+           !['Tab_Walk','Tab_Idle','Tab_Bear_Swing'].every(n=>available.has(n)))
+          throw new Error('Incomplete Tab joints or acting clips');
+        gltf=asset;source=candidate.name;break;
+      } catch(error) {
+        console.warn('Tab body candidate unavailable: '+candidate.url,error);
+      }
+    }
+    if(!gltf)throw new Error('No valid Tab character GLB available');
     const clips=Object.fromEntries(gltf.animations.map(a=>[a.name,a]));
     let meshes=0;
     gltf.scene.traverse(node=>{if(node.isSkinnedMesh)meshes++;});
@@ -211,6 +229,7 @@ async function installTabAsset() {
     walk.play();idle.play();idle.setEffectiveWeight(.24);bear.play();
     rig.asset={model:gltf.scene,mixer,walk,idle,bear,loaded:true};
     rig.anchor=1.74;
+    canvas.dataset.tabSource=source;
     canvas.dataset.tabModel='glb';
   } catch(error) {
     console.warn('Tab GLB unavailable; retaining legacy character:',error);
