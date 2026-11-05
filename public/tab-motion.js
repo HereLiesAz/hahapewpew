@@ -141,11 +141,11 @@ export function createTabMotionRig(gltf,root){
             .addScaledVector(right,legX);
           landing.y=floor;
           world.lerp(landing,smooth);
-          // Match the previous rendered foot height when a pause ends mid-swing.
-          // Otherwise the unfinished stride snaps upward on its first frame.
+          // Bound only upward jumps when walking resumes mid-swing. Never
+          // delay the descending arc: the shoe must reach ground by stance.
           const previousHeight=footprint.get(limb.name)?.y??floor;
           const desiredHeight=.075*Math.sin(Math.PI*fraction);
-          raised=approach(Math.max(0,previousHeight-floor),desiredHeight,18,dt);
+          raised=Math.min(desiredHeight,Math.max(0,previousHeight-floor)+.9*dt);
           world.y=floor+raised;
         }
         root.updateWorldMatrix(true,false);
