@@ -5,6 +5,7 @@ import { GLTFLoader } from './vendor/GLTFLoader.js';
 import { celShadeRobot } from './cel-robots.js';
 import { createQwertyMotionRig } from './qwerty-motion.js';
 import { createShiftSequenceRig } from './shift-motion.js';
+import { createTabMotionRig } from './tab-motion.js';
 import { dialoguePages, visibleDialoguePage } from './dialogue-pages.js';
 import { buildNeighborhoodBuilding, dressDistrict, isNolaSharedResource } from './nola-world.js';
 
@@ -222,12 +223,8 @@ async function installTabAsset() {
     const legacy=[...rig.root.children];
     rig.root.add(gltf.scene);
     for(const node of legacy)node.visible=false;
-    const mixer=new THREE.AnimationMixer(gltf.scene);
-    const walk=mixer.clipAction(clips.Tab_Walk);
-    const idle=mixer.clipAction(clips.Tab_Idle);
-    const bear=mixer.clipAction(clips.Tab_Bear_Swing);
-    walk.play();idle.play();idle.setEffectiveWeight(.24);bear.play();
-    rig.asset={model:gltf.scene,mixer,walk,idle,bear,loaded:true};
+    const motion=createTabMotionRig(gltf,rig.root);
+    rig.asset={...motion,loaded:true};
     rig.anchor=1.74;
     canvas.dataset.tabSource=source;
     canvas.dataset.tabModel='glb';
@@ -521,16 +518,25 @@ function updateActors(dt){
     const t=seconds;
     const targetX=crewX+along+Math.sin(t*.15+along)*.26;
     const targetZ=lane+Math.sin(t*.19+along)*.21;
-    rig.root.position.x=THREE.MathUtils.damp(rig.root.position.x,targetX,4,dt);
-    rig.root.position.z=THREE.MathUtils.damp(rig.root.position.z,targetZ,4,dt);
-    // Rig fronts face +Z in local coordinates; the group travels world +X.
-    rig.root.rotation.y=Math.PI/2;
+    const previousX=rig.root.position.x,previousZ=rig.root.position.z;
+    // Child-sized hesitation: Tab pauses briefly, then catches up with her
+    // original group position. The remaining actors keep their own movement.
+    const tabPause=name==='Tab'&&t%12.4>8.7&&t%12.4<9.25;
+    if(!tabPause){
+      rig.root.position.x=THREE.MathUtils.damp(rig.root.position.x,targetX,4,dt);
+      rig.root.position.z=THREE.MathUtils.damp(rig.root.position.z,targetZ,4,dt);
+    }
+    // Other rigs face +X in world; Tab's motion owns its gradual turns.
+    if(name!=='Tab'||!rig.asset?.loaded)rig.root.rotation.y=Math.PI/2;
     const qwertySpeaking=name==='Qwerty'&&(bubbleState.Qwerty?.until>seconds||qwertyQaMode==='talk');
     if(name==='Shift'&&rig.asset?.s27)rig.root.position.y=0;
+    else if(name==='Tab'&&rig.asset?.loaded)rig.root.position.y=0;
     else articulateWalk(rig,t+along,5.2,1,qwertySpeaking);
-    if(name==='Tab'&&rig.asset?.loaded) {
-      // Face graphics do not animate or distort. Only body, arms and bear move.
-      rig.asset.mixer.update(dt);
+    if(name==='Tab'&&rig.asset?.loaded){
+      const dx=rig.root.position.x-previousX,dz=rig.root.position.z-previousZ;
+      const moving=!tabPause&&Math.hypot(dx,dz)>dt*.08;
+      rig.asset.update(dt,{walking:moving,
+        heading:moving?Math.atan2(dx,dz):rig.root.rotation.y});
     }
     if(name==='Shift'&&rig.asset?.s27){
       const qa=shiftQaMode||'';

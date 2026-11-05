@@ -35,5 +35,5 @@ test('Tab cardboard face and reversed shipping text are embedded images, separat
 });
 test('world loads Tab asynchronously with legacy fallback and attached skeletal movement',()=>{
  const source=readFileSync(new URL('../public/world3d.js',import.meta.url),'utf8');
- for(const token of ['function installTabAsset()',"/assets/characters/Tab_Reference.glb","canvas.dataset.tabModel='legacy'","canvas.dataset.tabModel='glb'","rig.asset.mixer.update(dt)"])assert.ok(source.includes(token),token);
+ for(const token of ['function installTabAsset()',"/assets/characters/Tab_Reference.glb","canvas.dataset.tabModel='legacy'","canvas.dataset.tabModel='glb'","rig.asset.update(dt,"])assert.ok(source.includes(token),token);
 });
