@@ -12,6 +12,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
+      - uses: actions/checkout@v4
+      - name: Decode Draco mesh dependency
+        run: python3 -m pip install 'numpy>=2,<3' DracoPy
       - name: Fetch exact public Rex Mun asset from official API
         shell: bash
         run: |
@@ -52,6 +55,22 @@ jobs:
           size=int.from_bytes(payload[12:16],'little')
           gltf=json.loads(payload[20:20+size])
           print('GLB skeletons',len(gltf.get('skins',[])),'nodes',len(gltf.get('nodes',[])),'meshes',len(gltf.get('meshes',[])))
+          # Draco compression retains the exact material UVs and source weights.
+          import DracoPy,numpy as np,shutil
+          prim=gltf['meshes'][0]['primitives'][0]
+          ext=prim['extensions']['KHR_draco_mesh_compression']
+          view=gltf['bufferViews'][ext['bufferView']]
+          start=view.get('byteOffset',0)
+          binary_start=28+size
+          mesh=DracoPy.decode(payload[binary_start+start:binary_start+start+view['byteLength']])
+          decoded={}
+          for key,identifier in ext['attributes'].items():
+              attr=mesh.get_attribute_by_unique_id(identifier)
+              decoded[key]=attr['data']
+              print('draco',key,np.asarray(attr['data']).shape,str(np.asarray(attr['data']).dtype))
+          decoded['faces']=mesh.faces
+          np.savez_compressed('artifacts/victoria/source-body-decoded.npz',**decoded)
+          shutil.copy2('public/assets/characters/Tab_Reference.glb','artifacts/victoria/Tab_Before_Victoria.glb')
           pathlib.Path('artifacts/victoria/manifest.json').write_text(json.dumps({
               'sourceAssetBaseId':uuid,'revisionId':meta['id'],'author':'Rex Mun',
               'license':meta['license'],'sha256':hashlib.sha256(payload).hexdigest(),
