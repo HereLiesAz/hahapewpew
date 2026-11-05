@@ -141,6 +141,33 @@ test('a mid-swing hesitation settles and resumes without a one-frame shoe jump',
     'resuming the interrupted swing must not pop the shoe upward');
 });
 
+test('uninterrupted 60 FPS walking touches down without a delayed shoe drop',()=>{
+  const f=fixture();
+  f.character.scale.setScalar(.66);
+  const dt=1/60;
+  const floor=.0957; // Independent joint fixture world-space neutral ankle height.
+  let priorHeights=null,priorStances=null,landings=0;
+  for(let frame=1;frame<=160;frame++){
+    f.character.position.x=frame*1.22*dt;
+    const result=f.motion.update(dt,{walking:true,heading:Math.PI/2});
+    const heights=['L','R'].map(side=>ankle(f,side).y);
+    if(priorHeights){
+      for(let side=0;side<2;side++){
+        if(priorStances[side]===false&&result.stance[side]){
+          landings++;
+          assert.ok(priorHeights[side]-heights[side]<.017,
+            'ordinary touchdown must not drop an airborne shoe in one frame');
+          assert.ok(Math.abs(heights[side]-floor)<.007,
+            'touchdown must reach the ground plane');
+        }
+      }
+    }
+    priorHeights=heights;
+    priorStances=result.stance;
+  }
+  assert.ok(landings>=6,'check several completed steps from both legs');
+});
+
 test('curved root path rebases each foot plant without exhausting leg reach',()=>{
   const f=fixture();
   f.character.scale.setScalar(.66);
