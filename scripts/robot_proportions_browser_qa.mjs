@@ -320,6 +320,20 @@ try {
   assert.ok(tabSkinCheck.elbowRestError<.00001&&tabSkinCheck.dressRestError<.00001,
     'Tab must return to rest without deformation drift');
   assert.ok(tabSkinCheck.skinBlendCount>100&&tabSkinCheck.dressBlendCount>200);
+  // Save posed and restored frames through the real renderer so seams are
+  // visible as well as numerically tested.
+  await page.evaluate(()=>{
+    const {t}=window.__productionQA;
+    t.asset.model.getObjectByName('elbow.R').rotation.z=.55;
+    t.asset.model.getObjectByName('knee.L').rotation.x=.40;
+  });
+  await capture('tab-t35-flexed-elbow-knee','tab-anatomy-front');
+  await capture('tab-t35-flexed-elbow-knee-side','tab-anatomy-side');
+  await page.evaluate(()=>{
+    const {t}=window.__productionQA;
+    t.asset.model.getObjectByName('elbow.R').rotation.z=0;
+    t.asset.model.getObjectByName('knee.L').rotation.x=0;
+  });
   await capture('tab-t35-skin-restored','tab-anatomy-front');
   for(const view of ['tab-front','tab-side','tab-threequarter','tab-fold'])
     await capture('tab-box-'+view.slice(4),view);

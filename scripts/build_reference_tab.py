@@ -359,6 +359,17 @@ class Writer:
      mix=(limit*np.clip(1-distance/radius,0,1)).astype(np.float32)
      joint_ids[mask,1]=J[parent]
      weights[mask,0]=1-mix;weights[mask,1]=mix
+   if material=='Dress_Dark':
+    # The sewn sleeve follows both its shoulder at the upper arm and the
+    # elbow at the cuff; the skin underneath already uses the same hinge.
+    for side in ('L','R'):
+     mask=j==J['shoulder.'+side]
+     if not np.any(mask):continue
+     distance=np.linalg.norm(e[mask]-REST['elbow.'+side],axis=1)
+     cuff=(.48*np.clip(1-distance/.19,0,1)).astype(np.float32)
+     joint_ids[mask,2]=J['elbow.'+side]
+     weights[mask,0]-=cuff
+     weights[mask,2]=cuff
    if material.startswith('Dress_'):
     # Allow the bodice to bend through the waist without a rigid chest seam.
     mask=j==J['chest']

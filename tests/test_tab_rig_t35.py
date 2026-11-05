@@ -64,6 +64,14 @@ class TabSkinAndUV(unittest.TestCase):
         self.assertGreater(np.mean(w[low,1]+w[low,2]),.08)
         self.assertLess(np.max(w[low,1]+w[low,2]),.141)
         self.assertTrue(np.all(w[high,0]>.995))
+        left=low&(xyz[:,0]<-.22)
+        right=low&(xyz[:,0]>.22)
+        self.assertGreater(np.sum(left),100)
+        self.assertGreater(np.sum(right),100)
+        self.assertGreater(np.mean(w[left,1]),np.mean(w[left,2])+.01)
+        self.assertGreater(np.mean(w[right,2]),np.mean(w[right,1])+.01)
+        self.assertGreater(np.mean(w[left,2]),.005)
+        self.assertGreater(np.mean(w[right,1]),.005)
 
     def test_cardboard_bear_flats_and_hand_remain_rigid(self):
         for material,bone in [('Cardboard','head'),('Box_Face','head'),
@@ -75,12 +83,29 @@ class TabSkinAndUV(unittest.TestCase):
             self.assertTrue(np.allclose(w[:,0],1),material)
             self.assertTrue(np.allclose(w[:,1:],0),material)
             if material!='Shoe':self.assertTrue(np.all(ids[:,0]==self.index[bone]),material)
+        # Both footwear components must follow their own ankles, not head or
+        # an unrelated joint. This also rejects a one-ankle-only shoe export.
+        shoe=self.rows('Shoe','JOINTS_0')
+        self.assertEqual(set(np.unique(shoe[:,0])),
+                         {self.index['ankle.L'],self.index['ankle.R']})
+        for side in ('L','R'):
+            self.assertGreater(np.sum(shoe[:,0]==self.index['ankle.'+side]),1000)
         ids=self.rows('Skin','JOINTS_0')
         w=self.rows('Skin','WEIGHTS_0')
         for side in ('L','R'):
             mask=ids[:,0]==self.index['hand.'+side]
             self.assertGreater(np.sum(mask),200)
             self.assertTrue(np.allclose(w[mask,0],1),side)
+
+    def test_sleeves_follow_the_elbow_hinges(self):
+        ids=self.rows('Dress_Dark','JOINTS_0')
+        weights=self.rows('Dress_Dark','WEIGHTS_0')
+        for side in ('L','R'):
+            mask=(ids[:,0]==self.index['shoulder.'+side])
+            mask&=(ids[:,2]==self.index['elbow.'+side])
+            self.assertGreater(np.sum(mask&(weights[:,2]>.05)),8,side)
+            self.assertGreater(np.max(weights[mask,2]),.10,side)
+            self.assertTrue(np.all(weights[mask].sum(axis=1)>1-1e-5),side)
 
     def test_inverse_bind_rest_matrices_cancel_joint_translations(self):
         g=self.g
