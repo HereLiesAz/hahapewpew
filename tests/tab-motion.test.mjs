@@ -40,7 +40,7 @@ test('runtime requires the real Tab clip and weighted-rig contract',()=>{
   const f=fixture();
   assert.deepEqual(f.motion.actionNames,['Tab_Walk','Tab_Idle','Tab_Bear_Swing']);
   assert.throws(()=>createTabMotionRig({scene:f.scene,animations:[]},f.character),/Tab missing clip/);
-  f.names.get('bear').removeFromParent();
+  f.names.get('bear').removeFromParent();f.names.get('root').add(f.names.get('bear'));
   assert.throws(()=>createTabMotionRig({scene:f.scene,animations:['Tab_Walk','Tab_Idle','Tab_Bear_Swing'].map(n=>new THREE.AnimationClip(n,1,[]))},f.character),/Teddy must remain/);
 });
 
