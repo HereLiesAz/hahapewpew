@@ -141,7 +141,11 @@ export function createTabMotionRig(gltf,root){
             .addScaledVector(right,legX);
           landing.y=floor;
           world.lerp(landing,smooth);
-          raised=.075*Math.sin(Math.PI*fraction);
+          // Match the previous rendered foot height when a pause ends mid-swing.
+          // Otherwise the unfinished stride snaps upward on its first frame.
+          const previousHeight=footprint.get(limb.name)?.y??floor;
+          const desiredHeight=.075*Math.sin(Math.PI*fraction);
+          raised=approach(Math.max(0,previousHeight-floor),desiredHeight,18,dt);
           world.y=floor+raised;
         }
         root.updateWorldMatrix(true,false);
@@ -164,7 +168,11 @@ export function createTabMotionRig(gltf,root){
         if(contact){
           limb.hip.position.y=restHip.y-HIP_DROP;
           root.updateWorldMatrix(true,false);
-          p0.copy(contact);p0.y=root.position.y+restAnkleY*root.scale.y;
+          const floor=root.position.y+restAnkleY*root.scale.y;
+          // Ease the airborne foot down instead of teleporting it to the road
+          // in one frame when a scheduled hesitation interrupts its swing.
+          p0.copy(contact);
+          p0.y=floor+approach(Math.max(0,contact.y-floor),0,18,dt);
           world.copy(p0);root.worldToLocal(p0);
           const excess=solveLeg(limb.hip,limb.knee,limb.ankle,p0.z,p0.y);
           if(excess>.001)reachCorrections++;
