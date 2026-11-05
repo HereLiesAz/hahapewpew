@@ -346,6 +346,104 @@ try {
     t.asset.model.getObjectByName('kneeL').rotation.x=0;
   });
   await capture('tab-t35-skin-restored','tab-anatomy-front');
+  // T3.6: measure actual ankle world-space contact under root translation.
+  // Nominal three GLB clips alone do not prove that a moving child is walking.
+  const tabMotion=await page.evaluate(()=>{
+    const {T,qa,t}=window.__productionQA;
+    const actor=t.asset;
+    if(!actor.update||!actor.reset||!actor.joints)throw Error('Tab motion controller missing');
+    actor.reset();
+    t.root.position.set(0,0,-1.7);
+    t.root.rotation.y=Math.PI/2;
+    const point=side=>{
+      qa.scene.updateMatrixWorld(true);
+      return actor.joints['ankle'+side].getWorldPosition(new T.Vector3()).toArray();
+    };
+    const samples=[];
+    for(let i=1;i<=13;i++){
+      t.root.position.x=i*.085;
+      const step=actor.update(.085,{walking:true,heading:Math.PI/2});
+      samples.push({distance:i*.085,stance:step.stance,slip:step.footSlip,
+        left:point('L'),right:point('R')});
+    }
+    // A planted shoe should stay in the world as the actor's root passes it.
+    const contacts=(side,index,first,last)=>{
+      const planted=samples.slice(first,last).filter(s=>s.stance[index]);
+      if(planted.length<2)throw Error('Tab has insufficient '+side+' ground contacts');
+      const base=planted[0][side];
+      return Math.max(...planted.map(sample=>
+        Math.hypot(...sample[side].map((v,j)=>v-base[j]))));
+    };
+    const leftSlide=contacts('left',0,0,5);
+    const rightSlide=contacts('right',1,5,11);
+    const footReach=Math.max(...samples.flatMap(s=>s.slip));
+    const swingLift=Math.max(...samples.flatMap(s=>[s.left[1],s.right[1]]));
+    // Pause during left stance, without moving the root; both ankles may settle
+    // but must not slide sideways.
+    actor.reset();t.root.position.set(0,0,-1.7);
+    for(let i=1;i<=4;i++){
+      t.root.position.x=i*.085;
+      actor.update(.085,{walking:true,heading:Math.PI/2});
+    }
+    const before=point('L');
+    actor.update(.12,{walking:false,heading:Math.PI/2});
+    const after=point('L');
+    const pauseSlide=Math.hypot(after[0]-before[0],after[2]-before[2]);
+    const beforeHeading=t.root.rotation.y;
+    actor.update(.28,{walking:false,heading:0});
+    const afterHeading=t.root.rotation.y;
+    const hand=actor.joints.handR.getWorldPosition(new T.Vector3());
+    const bear=actor.joints.bear.getWorldPosition(new T.Vector3());
+    const gripDistance=hand.distanceTo(bear);
+    const parentAttached=actor.joints.bear.parent===actor.joints.handR;
+    actor.reset();t.root.position.set(0,0,-1.7);t.root.rotation.y=Math.PI/2;
+    actor.update(1,{walking:false,heading:Math.PI/2});
+    const idleLook=actor.joints.neck.rotation.y;
+    actor.reset();t.root.position.set(0,0,-1.7);t.root.rotation.y=Math.PI/2;
+    return {clips:actor.actionNames,leftSlide,rightSlide,footReach,swingLift,
+      pauseSlide,turnRadians:beforeHeading-afterHeading,gripDistance,parentAttached,idleLook,
+      samples};
+  });
+  report.results.push({mode:'tab-t36-anchored-locomotion',...tabMotion});
+  assert.deepEqual(tabMotion.clips,['Tab_Walk','Tab_Idle','Tab_Bear_Swing']);
+  assert.ok(tabMotion.leftSlide<.02&&tabMotion.rightSlide<.02,
+    'Tab stance feet must stay planted while root translates');
+  assert.ok(tabMotion.footReach<.03,'Tab ankles must reach their world contact targets');
+  assert.ok(tabMotion.swingLift>.16&&tabMotion.pauseSlide<.02,
+    'Tab must lift feet while walking, without skidding during a pause');
+  assert.ok(tabMotion.turnRadians>.3&&tabMotion.turnRadians<1.3,
+    'Tab must turn progressively rather than snapping orientation');
+  assert.ok(tabMotion.parentAttached&&tabMotion.gripDistance<.25,
+    'Tab teddy must remain attached to her right-hand ear grip');
+  assert.ok(Math.abs(tabMotion.idleLook)>.03,
+    'Tab must have an independent idle look');
+  // Production WebGL stills for visual review, not fabricated render targets.
+  await page.evaluate(()=>{
+    const {t}=window.__productionQA;
+    t.asset.reset();t.root.position.set(0,0,-1.7);t.root.rotation.y=Math.PI/2;
+    t.root.position.x=.28;t.asset.update(.2,{walking:true,heading:Math.PI/2});
+  });
+  await capture('tab-t36-walk-front','tab-victoria-front');
+  await capture('tab-t36-walk-side','tab-victoria-side');
+  await page.evaluate(()=>{
+    const {t}=window.__productionQA;
+    t.asset.update(.13,{walking:false,heading:Math.PI/2});
+  });
+  await capture('tab-t36-pause','tab-victoria-front');
+  await page.evaluate(()=>{
+    const {t}=window.__productionQA;t.asset.update(.29,{walking:false,heading:0});
+  });
+  await capture('tab-t36-turn','tab-victoria-side');
+  await page.evaluate(()=>{
+    const {t}=window.__productionQA;
+    t.asset.reset();t.root.position.set(0,0,-1.7);t.root.rotation.y=Math.PI/2;
+    t.asset.update(.92,{walking:false,heading:Math.PI/2});
+  });
+  await capture('tab-t36-idle-look','tab-victoria-front');
+  await page.evaluate(()=>{
+    const {t}=window.__productionQA;
+    t.asset.reset();t.root.position.set(0,0,-1.7);t.root.rotation.y=Math.PI/2;
+  });
   for(const view of ['tab-front','tab-side','tab-threequarter','tab-fold'])
     await capture('tab-box-'+view.slice(4),view);
   await capture('production-pair','front',true);
