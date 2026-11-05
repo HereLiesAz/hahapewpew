@@ -4,3 +4,10 @@ The separate self-contained file `public/assets/characters/Tab_Reference.glb` in
 The asset has been reviewed in standalone render; this feature branch is not an assertion of in-game visual approval. Before merging, inspect the game browser from front and left, check embedded box art orientation and bear hand position, and verify there are no WebGL or animation errors.
 
 T3.2 replaces the solid box core with an open-bottom shell and four thin flaps; see `docs/characters/tab-t32-box.md` for preservation gates and production close-view evidence. This does not grant final model acceptance.
+
+
+## T3.5 weighted skinning and UV/export
+
+The original Tab GLB geometry was bound entirely to single joints, leaving elbow, knee and sleeve boundaries rigid even though named bones and glTF weights existed. The T3.5 generator now exports normalized two-joint blends near shoulders, elbows, wrists and knees, with a chest-to-spine transition and a *small* three-joint spine/left-hip/right-hip influence near the damaged skirt's lower edge. The original vertices and UV coordinates are not modified. Both cardboard prints and panels stay rigid on `head`; shoes remain rigid on ankle bones, and plush geometry stays on `bear` (child of `hand.R`), preserving the ear grip and existing swing clip. Preserve the deterministic dirt and tears added in T3.4.
+
+The `test_tab_rig_t35.py` suite validates glTF weights/joint indices, inverse binds, UV bounds, printed masks, rigid attachments and multi-joint deformation under controlled bends. `robot_proportions_browser_qa.mjs` captures and measures the live GLTFLoader skinned geometry under knee/elbow pose and after rest-pose restoration. Completion requires that evidence and passing workflow; do not infer owner sign-off for the still-open full fidelity items.
