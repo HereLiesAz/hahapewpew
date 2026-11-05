@@ -276,6 +276,65 @@ try {
     await capture(view,view);
   for(const view of ['tab-dress-front','tab-dress-side','tab-bear-grip'])
     await capture(view,view);
+  // Exercise the live skinned GLB instead of accepting nonzero weights alone.
+  const tabSkinCheck=await page.evaluate(()=>{
+    const {T,qa,t}=window.__productionQA;
+    const model=t.asset.model;
+    const skin=[],dress=[];
+    model.traverse(n=>{
+      if(!n.isSkinnedMesh)return;
+      if(n.material.name==='Tab/Skin')skin.push(n);
+      if(n.material.name==='Tab/Dress_Main')dress.push(n);
+    });
+    if(skin.length!==1||dress.length!==1)throw Error('Tab skinned material partitions missing');
+    const sample=(mesh,boneName,minSecondary)=>{
+      const ids=mesh.geometry.getAttribute('skinIndex');
+      const w=mesh.geometry.getAttribute('skinWeight');
+      const index=mesh.skeleton.bones.findIndex(b=>b.userData.name===boneName);
+      for(let i=0;i<ids.count;i++)
+        if(ids.getX(i)===index&&w.getY(i)>minSecondary&&w.getX(i)>.45)return i;
+      throw Error('No weighted deformation vertex on '+boneName);
+    };
+    const elbow=sample(skin[0],'elbow.R',.08);
+    const skirt=sample(dress[0],'spine',.025);
+    const worldPoint=(mesh,i)=>{
+      qa.scene.updateMatrixWorld(true);mesh.skeleton.update();
+      return mesh.getVertexPosition(i,new T.Vector3()).applyMatrix4(mesh.matrixWorld);
+    };
+    const a=worldPoint(skin[0],elbow),b=worldPoint(dress[0],skirt);
+    const e=model.getObjectByName('elbowR'),h=model.getObjectByName('hipL');
+    const er=e.rotation.z,hr=h.rotation.x;
+    e.rotation.z=er+.55;h.rotation.x=hr+.40;
+    const c=worldPoint(skin[0],elbow),d=worldPoint(dress[0],skirt);
+    const elbowMotion=c.distanceTo(a),skirtMotion=d.distanceTo(b);
+    e.rotation.z=er;h.rotation.x=hr;
+    const elbowRestError=worldPoint(skin[0],elbow).distanceTo(a);
+    const dressRestError=worldPoint(dress[0],skirt).distanceTo(b);
+    return {elbowMotion,skirtMotion,elbowRestError,dressRestError,
+      skinBlendCount:skin[0].geometry.getAttribute('skinWeight').array.filter((v,i)=>i%4===1&&v>.05).length,
+      dressBlendCount:dress[0].geometry.getAttribute('skinWeight').array.filter((v,i)=>i%4===1&&v>.01).length};
+  });
+  report.results.push({mode:'tab-t35-weighted-deformation',...tabSkinCheck});
+  assert.ok(tabSkinCheck.elbowMotion>.001,'Tab elbow must deform in the loaded actor');
+  assert.ok(tabSkinCheck.skirtMotion>.0005,'Tab skirt must follow a moving hip');
+  assert.ok(tabSkinCheck.elbowRestError<.00001&&tabSkinCheck.dressRestError<.00001,
+    'Tab must return to rest without deformation drift');
+  assert.ok(tabSkinCheck.skinBlendCount>100&&tabSkinCheck.dressBlendCount>200);
+  // Save posed and restored frames through the real renderer so seams are
+  // visible as well as numerically tested.
+  await page.evaluate(()=>{
+    const {t}=window.__productionQA;
+    t.asset.model.getObjectByName('elbowR').rotation.z=.55;
+    t.asset.model.getObjectByName('kneeL').rotation.x=.40;
+  });
+  await capture('tab-t35-flexed-elbow-knee','tab-anatomy-front');
+  await capture('tab-t35-flexed-elbow-knee-side','tab-anatomy-side');
+  await page.evaluate(()=>{
+    const {t}=window.__productionQA;
+    t.asset.model.getObjectByName('elbowR').rotation.z=0;
+    t.asset.model.getObjectByName('kneeL').rotation.x=0;
+  });
+  await capture('tab-t35-skin-restored','tab-anatomy-front');
   for(const view of ['tab-front','tab-side','tab-threequarter','tab-fold'])
     await capture('tab-box-'+view.slice(4),view);
   await capture('production-pair','front',true);

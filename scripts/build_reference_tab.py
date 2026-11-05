@@ -336,10 +336,65 @@ class Writer:
     np.add.at(source_normals,f.reshape(-1),normals)
     source_normals/=np.maximum(np.linalg.norm(source_normals,axis=1,keepdims=True),1.e-8)
     normals=source_normals[f].astype(np.float32)
+   # Smooth weights are authored on exported triangles, with no changes to
+   # mesh coordinates or UVs. Parent blending at bends prevents hard hinge
+   # seams; stiff props remain rigidly attached to their own joints.
+   joint_ids=np.zeros((len(e),4),dtype=np.uint16)
+   joint_ids[:,0]=j
+   weights=np.zeros((len(e),4),dtype=np.float32)
+   weights[:,0]=1.
+   if material=='Skin' or material=='Dress_Dark':
+    joints_to_blend={
+     'shoulder.L':('chest',.40,.17),'shoulder.R':('chest',.40,.17),
+     'elbow.L':('shoulder.L',.72,.21),'elbow.R':('shoulder.R',.72,.21),
+     'wrist.L':('elbow.L',.55,.14),'wrist.R':('elbow.R',.55,.14),
+     'hip.L':('root',.35,.18),'hip.R':('root',.35,.18),
+     'knee.L':('hip.L',.70,.20),'knee.R':('hip.R',.70,.20),
+     'ankle.L':('knee.L',.25,.13),'ankle.R':('knee.R',.25,.13)}
+    for name,(parent,limit,radius) in joints_to_blend.items():
+     if material=='Dress_Dark' and not name.startswith('shoulder.'):continue
+     mask=j==J[name]
+     if not np.any(mask):continue
+     distance=np.linalg.norm(e[mask]-REST[name],axis=1)
+     mix=(limit*np.clip(1-distance/radius,0,1)).astype(np.float32)
+     joint_ids[mask,1]=J[parent]
+     weights[mask,0]=1-mix;weights[mask,1]=mix
+   if material=='Dress_Dark':
+    # The sewn sleeve follows both its shoulder at the upper arm and the
+    # elbow at the cuff; the skin underneath already uses the same hinge.
+    for side in ('L','R'):
+     mask=j==J['shoulder.'+side]
+     if not np.any(mask):continue
+     distance=np.linalg.norm(e[mask]-REST['elbow.'+side],axis=1)
+     # Her right sleeve ends well above its elbow; use a wider falloff
+     # there so the short cuff still responds to the bend without moving
+     # the upper bodice. The bent left sleeve reaches closer to its elbow.
+     radius=.33 if side=='R' else .19
+     cuff=(.48*np.clip(1-distance/radius,0,1)).astype(np.float32)
+     joint_ids[mask,2]=J['elbow.'+side]
+     weights[mask,0]-=cuff
+     weights[mask,2]=cuff
+   if material.startswith('Dress_'):
+    # Allow the bodice to bend through the waist without a rigid chest seam.
+    mask=j==J['chest']
+    if np.any(mask):
+     mix=(.70*np.clip((1.74-e[mask,1])/.40,0,1)).astype(np.float32)
+     joint_ids[mask,1]=J['spine']
+     weights[mask,0]=1-mix;weights[mask,1]=mix
+    # Minor left/right hip influence at the lower skirt: enough to follow
+    # walking, but not enough to split the torn cloth along the thighs.
+    mask=j==J['spine']
+    if np.any(mask):
+     influence=(.14*np.clip((1.31-e[mask,1])/.65,0,1)).astype(np.float32)
+     left=np.clip(.5-e[mask,0]/1.2,.15,.85).astype(np.float32)
+     joint_ids[mask,1]=J['hip.L'];joint_ids[mask,2]=J['hip.R']
+     weights[mask,0]=1-influence
+     weights[mask,1]=influence*left
+     weights[mask,2]=influence-weights[mask,1]
    attrs={'POSITION':self.accessor(e.astype(np.float32),5126,'VEC3',34962,True),
      'NORMAL':self.accessor(normals,5126,'VEC3',34962),'TEXCOORD_0':self.accessor(t.astype(np.float32),5126,'VEC2',34962),
-     'JOINTS_0':self.accessor(np.stack((j,np.zeros_like(j),np.zeros_like(j),np.zeros_like(j)),1),5123,'VEC4',34962),
-     'WEIGHTS_0':self.accessor(np.tile(np.array([1,0,0,0],np.float32),(len(e),1)),5126,'VEC4',34962)}
+     'JOINTS_0':self.accessor(joint_ids,5123,'VEC4',34962),
+     'WEIGHTS_0':self.accessor(weights,5126,'VEC4',34962)}
    prims.append({'attributes':attrs,'material':list(P).index(material),'mode':4})
   nodes=[{'name':'Tab.mesh','mesh':0,'skin':0}]
   for name,parent,rel in BONES:
