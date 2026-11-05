@@ -811,16 +811,27 @@ try {
     t.root.position.z=.4;t.root.rotation.y=Math.PI/2;
     t.asset.reset();
     const start=t.root.position.clone();
-    for(let i=0;i<120;i++)qa.updateActors(.05);
+    const initialTime=qa.advanceActors(0);
+    let minLane=t.root.position.z,maxLane=minLane,finalTime=initialTime;
+    for(let i=0;i<120;i++){
+      finalTime=qa.advanceActors(.05);
+      minLane=Math.min(minLane,t.root.position.z);
+      maxLane=Math.max(maxLane,t.root.position.z);
+    }
     const pos=t.root.position;
     const state=t.asset.debug();
-    return {travel:state.travel,rootMotion:Math.hypot(pos.x-start.x,pos.z-start.z),
+    return {simulationSeconds:finalTime-initialTime,lateralTravel:maxLane-minLane,
+      travel:state.travel,rootMotion:Math.hypot(pos.x-start.x,pos.z-start.z),
       model:document.querySelector('#world').dataset.tabSource,
       joints:t.asset.actionNames,footContacts:state.footprint.length,
       reachCorrections:state.reachCorrections};
   });
   report.results.push({mode:'tab-t36-live-curved-world',...liveTabWalk});
   assert.equal(liveTabWalk.model,'victoria');
+  assert.ok(Math.abs(liveTabWalk.simulationSeconds-6)<1e-6,
+    'Live street QA must advance the same world clock as production');
+  assert.ok(liveTabWalk.lateralTravel>.03,
+    'Live street QA must encounter an actual changing lateral lane');
   assert.ok(liveTabWalk.travel>4&&liveTabWalk.rootMotion>4,
     'Tab must survive at least six simulated seconds of live street walking');
   assert.equal(liveTabWalk.footContacts,2,'Both feet should still have ground targets');
