@@ -84,6 +84,12 @@ def retarget_body(points, normals, joints, weights, source_names, target_indices
             C = np.array([-.193, 1.295, .135])
         transformations[(source_side,'upper')] = align(a, b, A, B)
         transformations[(source_side,'lower')] = align(b, c, B, C)
+        # The forearm may need stretching to reach the authored bear grip,
+        # but the palm and fingers must retain their child-size proportions.
+        lower_matrix = transformations[(source_side,'lower')][0]
+        orientation, _, axes = np.linalg.svd(lower_matrix)
+        hand_matrix = .94 * (orientation @ axes)
+        transformations[(source_side,'hand')] = (hand_matrix, C-hand_matrix@c)
         transformations[(source_side,'leg')] = (np.eye(3), np.array([direction*.030,0,.012]))
     body = np.diag([.91, 1., .92])
     transformations['body'] = (body, np.zeros(3))
@@ -96,9 +102,10 @@ def retarget_body(points, normals, joints, weights, source_names, target_indices
         target_side = {'L':'R','R':'L'}.get(source_side)
         if key.startswith(('upper_arm','shoulder')) and source_side:
             return ('shoulder.'+target_side,(source_side,'upper'))
-        if key.startswith(('forearm','hand','thumb','palm','f_index','f_middle','f_ring','f_pinky')) and source_side:
-            part = ('hand.' if key.startswith(('hand','thumb','palm','f_')) else
-                    'wrist.' if '.001' in key else 'elbow.')
+        if key.startswith(('hand','thumb','palm','f_')) and source_side:
+            return ('hand.'+target_side,(source_side,'hand'))
+        if key.startswith('forearm') and source_side:
+            part = 'wrist.' if '.001' in key else 'elbow.'
             return (part+target_side,(source_side,'lower'))
         if key.startswith(('thigh','pelvis')) and source_side:
             return ('hip.'+target_side,(source_side,'leg'))
@@ -233,6 +240,17 @@ def main(source, decoded, tab, target):
                                         upstream,joint_names)
     uv=source_arrays['TEXCOORD_0'].astype(np.float32)
     faces=source_arrays['faces'].astype(np.uint32)
+    # Covered anatomy must not bleed through the owner's intact dress or box.
+    # Preserve authored hands, exposed forearms, shins and shoes as geometry;
+    # remove only the original child's hidden scalp/torso/upper-thigh faces.
+    binding=np.argmax(weight,axis=1)
+    dominant=joint[np.arange(len(joint)),binding]
+    name_by_joint=[g['nodes'][i]['name'] for i in g['skins'][0]['joints']]
+    covered=np.array([name_by_joint[int(j)] in {'spine','chest','neck','head'} or
+        (name_by_joint[int(j)] in {'hip.L','hip.R'} and pos[i,1]>1.12)
+        for i,j in enumerate(dominant)],dtype=bool)
+    # Face-level culling avoids splitting UVs or touching original Tab dress.
+    faces=faces[~np.all(covered[faces],axis=1)]
     if np.any(faces>=len(pos)) or np.any(uv<0) or np.any(uv>1):
         raise ValueError('Source face index or UV out of bounds')
     attrs={

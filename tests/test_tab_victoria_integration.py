@@ -86,7 +86,12 @@ class TabVictoria(unittest.TestCase):
         faces = accessor(g, self.after, body['indices']).ravel()
         self.assertEqual(p.shape, (6438, 3))
         self.assertEqual(uv.shape, (6438, 2))
-        self.assertEqual(faces.size, 11252*3)
+        # Covered scalp and bodice must not intersect Tab's cardboard and dress.
+        # Original Victoria source has 11,252 triangles; exposed child geometry
+        # must be substantially less while preserving the forearms and legs.
+        self.assertGreater(faces.size, 6500*3)
+        self.assertLess(faces.size, 10500*3)
+        self.assertGreater(p[:,1].max(), 2.05)  # source vertices remain available
         self.assertLess(faces.max(), len(p))
         self.assertTrue(np.isfinite(p).all())
         self.assertTrue((uv >= 0).all() and (uv <= 1).all())
