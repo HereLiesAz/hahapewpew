@@ -803,6 +803,26 @@ try {
   assert.ok(combat.projectileVisible && combat.weaponVisible);
   assert.ok(Math.abs(combat.groundGap)<1e-6);
   await capture('shift-production-combat','side');
+  // The generated actor must also survive the actual world movement function,
+  // not only our isolated straight-line fixture. This used to fail after the
+  // real roadway curved away from a permanently frozen starting heading.
+  const liveTabWalk=await page.evaluate(()=>{
+    const {qa,t}=window.__productionQA;
+    t.asset.reset();
+    const start=t.root.position.clone();
+    for(let i=0;i<120;i++)qa.updateActors(.05);
+    const pos=t.root.position;
+    const state=t.asset.debug();
+    return {travel:state.travel,rootMotion:Math.hypot(pos.x-start.x,pos.z-start.z),
+      model:document.querySelector('#world').dataset.tabSource,
+      joints:t.asset.actionNames,footContacts:state.footprint.length};
+  });
+  report.results.push({mode:'tab-t36-live-curved-world',...liveTabWalk});
+  assert.equal(liveTabWalk.model,'victoria');
+  assert.ok(liveTabWalk.travel>4&&liveTabWalk.rootMotion>4,
+    'Tab must survive at least six simulated seconds of live street walking');
+  assert.equal(liveTabWalk.footContacts,2,'Both feet should still have ground targets');
+  await capture('tab-t36-production-world-walk','tab-victoria-front');
   // Abort the actual production URLs, rather than switching to a QA candidate.
   await page.close();
   for(const name of ['Shift','Qwerty']){
