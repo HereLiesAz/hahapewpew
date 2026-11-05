@@ -123,8 +123,8 @@ export function createTabMotionRig(gltf,root){
         const direction=new THREE.Vector3(Math.sin(trackHeading),0,Math.cos(trackHeading));
         const right=new THREE.Vector3(Math.cos(trackHeading),0,-Math.sin(trackHeading));
         const legX=restHip.x+limb.knee.position.x+limb.ankle.position.x;
-        world.copy(origin).addScaledVector(direction,contactDistance).addScaledVector(right,legX);
-        world.y=root.position.y+restAnkleY+raised;
+        world.copy(origin).addScaledVector(direction,contactDistance).addScaledVector(right,legX*root.scale.x);
+        world.y=root.position.y+restAnkleY*root.scale.y+raised;
         root.updateWorldMatrix(true,false);
         p0.copy(world);root.worldToLocal(p0);
         solveLeg(limb.hip,limb.knee,limb.ankle,p0.z,p0.y);
@@ -143,7 +143,7 @@ export function createTabMotionRig(gltf,root){
         if(contact){
           limb.hip.position.y=restHip.y-HIP_DROP;
           root.updateWorldMatrix(true,false);
-          p0.copy(contact);p0.y=root.position.y+restAnkleY;
+          p0.copy(contact);p0.y=root.position.y+restAnkleY*root.scale.y;
           world.copy(p0);root.worldToLocal(p0);
           solveLeg(limb.hip,limb.knee,limb.ankle,p0.z,p0.y);
           root.updateWorldMatrix(true,true);
