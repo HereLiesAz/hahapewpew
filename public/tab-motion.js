@@ -34,6 +34,10 @@ function solveLeg(hip,knee,ankle,x,z,y){
   hip.rotation.x=upperRest-thigh;
   knee.rotation.x=fold+lowerRest-upperRest;
   ankle.rotation.x=-hip.rotation.x-knee.rotation.x;
+  // Cancelling only X leaves the sole banked by the hip's lateral abduction.
+  // XYZ composes ankle X flexion before inverse Z roll, undoing both rotations.
+  ankle.rotation.order='XYZ';
+  ankle.rotation.z=-hip.rotation.z;
   return Math.abs(dist-d);
 }
 
@@ -189,6 +193,7 @@ export function createTabMotionRig(gltf,root){
           limb.hip.rotation.z=0;
           limb.knee.rotation.x=0;
           limb.ankle.rotation.x=0;
+          limb.ankle.rotation.z=0;
           act.footSlip.push(0);
         }
         act.stance.push(true);
