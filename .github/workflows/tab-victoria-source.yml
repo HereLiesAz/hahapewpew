@@ -1,0 +1,39 @@
+name: Inspect Victoria upstream file
+on:
+  push:
+    branches: [feature/tab-victoria-body]
+    paths: ['.github/workflows/tab-victoria-source.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  metadata:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Inspect Blendkit's public asset metadata
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, urllib.request, urllib.error
+          from urllib.parse import quote
+          ident='1fcc4446-1992-48ec-a160-9cd73ee35158'
+          paths=[f'/api/v1/assets/{ident}/',f'/api/v1/search/?query={quote("Victoria Character Rigged")}&asset_type=model',f'/api/v1/search/?query=asset_id:{ident}']
+          for host in ['https://www.blendkit.com','https://www.blenderkit.com']:
+              for path in paths:
+                  try:
+                      req=urllib.request.Request(host+path,headers={'User-Agent':'HahaPewPew-Source-Inspection/1.0','Accept':'application/json'})
+                      with urllib.request.urlopen(req,timeout=15) as r:
+                          data=r.read(1000000)
+                      try:
+                          parsed=json.loads(data)
+                          if isinstance(parsed,dict):
+                              items=parsed.get('results',[])
+                              matches=[x for x in items if x.get('id')==ident or x.get('assetBaseId')==ident or 'victoria' in str(x.get('name','')).lower()]
+                              for x in matches[:2]: print('MATCH',json.dumps({k:v for k,v in x.items() if k in ['name','id','assetBaseId','author','files','license','assetType']},default=str)[:5000])
+                              print('OK',host,path,'keys',list(parsed)[:20],'count',parsed.get('count'))
+                          else: print('OK',host,path,'array length',len(parsed))
+                      except ValueError: print('NON_JSON',host,path,data[:250])
+                  except Exception as e:
+                      print('UNAVAILABLE',host,path,type(e).__name__,str(e)[:250])
+          PY
