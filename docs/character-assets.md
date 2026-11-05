@@ -17,3 +17,7 @@ The project remains an autonomous web-based 3D fishbowl. GTA-like realism is a q
 - `tests/qwerty-asset.test.mjs` and `tests/shift-eyes.test.mjs` enforce the binary asset and the eye-specific geometry contract.
 
 **This pass is not approval of full visual fidelity.** The final reference-fidelity gate requires front, side, three-quarter, and full-body browser renders, plus movement/eyelid tests. Tab, Shift, adult NPCs, environmental animation and New Orleans fidelity remain unfinished.
+
+## Tab child anatomy replacement
+
+**Victoria Character Rigged**, Rex Mun, [Blenderkit](https://www.blenderkit.com/asset-gallery-detail/1fcc4446-1992-48ec-a160-9cd73ee35158/) (royalty-free, source id `1fcc4446-1992-48ec-a160-9cd73ee35158`) supplies Tab's child anatomy in `public/assets/characters/Tab_Victoria.glb`. This candidate intentionally retains the owner's original worn/torn dress, box mask and teddy; fallback `Tab_Reference.glb` remains intact. See `docs/tab-reference-model.md` and `tests/test_tab_victoria_integration.py`. No other character was replaced.
