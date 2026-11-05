@@ -366,7 +366,11 @@ class Writer:
      mask=j==J['shoulder.'+side]
      if not np.any(mask):continue
      distance=np.linalg.norm(e[mask]-REST['elbow.'+side],axis=1)
-     cuff=(.48*np.clip(1-distance/.19,0,1)).astype(np.float32)
+     # Her right sleeve ends well above its elbow; use a wider falloff
+     # there so the short cuff still responds to the bend without moving
+     # the upper bodice. The bent left sleeve reaches closer to its elbow.
+     radius=.33 if side=='R' else .19
+     cuff=(.48*np.clip(1-distance/radius,0,1)).astype(np.float32)
      joint_ids[mask,2]=J['elbow.'+side]
      weights[mask,0]-=cuff
      weights[mask,2]=cuff
