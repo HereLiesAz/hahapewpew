@@ -57,6 +57,8 @@ resolving knee flexion, accounting for the complete local contact vector;
 `ZXY` applies hip abduction after sagittal bending. World anchors and the
 separate interrupted-swing settling behavior remain in place. A contact beyond
 anatomical reach may still be replanted rather than extending the leg through
-its joint limits. The production-scale fixture and Chromium GLB QA measure
-actual left/right ankle positions through a planted turn. This change is not
-final T3.6 acceptance until those checks and rendered captures pass.
+its joint limits. The ankle counter-rotates hip roll after knee flexion so the shoes do not
+bank away from the ground. Production-scale fixture and Chromium GLB QA
+measure actual left/right ankle positions and world-space sole-up vectors
+through a planted turn. This change is not final T3.6 acceptance until those
+checks and rendered captures pass.
