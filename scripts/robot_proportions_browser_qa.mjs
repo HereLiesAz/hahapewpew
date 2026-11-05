@@ -440,6 +440,37 @@ try {
     t.asset.update(.92,{walking:false,heading:Math.PI/2});
   });
   await capture('tab-t36-idle-look','tab-victoria-front');
+  // A deterministic real-WebGL movie, not a concept render or clip-name check.
+  // Record the walking, pause and turn on the same actor, with the camera
+  // following Tab while her step rate comes from actual distance traveled.
+  await page.evaluate(()=>{
+    const {t}=window.__productionQA;
+    t.root.position.set(0,0,-1.7);t.root.rotation.y=Math.PI/2;t.asset.reset();
+  });
+  const movieFrames=42;
+  for(let frame=0;frame<movieFrames;frame++){
+    await page.evaluate(frame=>{
+      const {t}=window.__productionQA;
+      if(frame<26){
+        t.root.position.x=(frame+1)*.05;
+        t.asset.update(.05,{walking:true,heading:Math.PI/2});
+      }else if(frame<32){
+        t.asset.update(.085,{walking:false,heading:Math.PI/2});
+      }else{
+        t.asset.update(.085,{walking:false,heading:0});
+      }
+    },frame);
+    await capture('tab-t36-motion-'+String(frame).padStart(2,'0'),'tab-victoria-front');
+  }
+  const movie=spawnSync('ffmpeg',[
+    '-nostdin','-v','error','-y','-framerate','12',
+    '-i',dir+'/tab-t36-motion-%02d.png',
+    '-vf','scale=960:-2','-c:v','libx264','-pix_fmt','yuv420p',
+    dir+'/tab-t36-walk-pause-turn.mp4'
+  ],{encoding:'utf8',timeout:120000});
+  assert.equal(movie.status,0,'Tab production animation clip encoding failed: '+movie.stderr);
+  report.results.push({mode:'tab-t36-webgl-movie',frames:movieFrames,fps:12,
+    file:'tab-t36-walk-pause-turn.mp4'});
   await page.evaluate(()=>{
     const {t}=window.__productionQA;
     t.root.position.set(0,0,-1.7);t.asset.reset();t.root.rotation.y=Math.PI/2;
