@@ -61,17 +61,17 @@ export function createTabMotionRig(gltf,root){
     {name:'R',hip:joints.hipR,knee:joints.kneeR,ankle:joints.ankleR,offset:STEP}
   ];
   const rest=new Map(Object.values(joints).map(j=>[j,{p:j.position.clone(),q:j.quaternion.clone()}]));
-  const origin=root.position.clone(),lastPosition=root.position.clone();
-  let travel=0,time=0,motion=0,trackHeading=root.rotation.y,started=false;
-  const footprint=new Map();
+  const lastPosition=root.position.clone();
+  let travel=0,time=0,motion=0;
+  const anchors=new Map(),footprint=new Map();
   const p0=new THREE.Vector3(),world=new THREE.Vector3();
 
   function reset(){
     mixer.stopAllAction();
     for(const [j,v] of rest){j.position.copy(v.p);j.quaternion.copy(v.q);}
-    travel=0;time=0;motion=0;trackHeading=root.rotation.y;
-    origin.copy(root.position);lastPosition.copy(root.position);
-    footprint.clear();started=false;
+    travel=0;time=0;motion=0;
+    lastPosition.copy(root.position);
+    anchors.clear();footprint.clear();
   }
   function update(dt,{walking,heading}={}){
     if(!Number.isFinite(dt)||dt<0)throw new RangeError('Invalid Tab animation delta');
@@ -80,14 +80,16 @@ export function createTabMotionRig(gltf,root){
     const dx=root.position.x-lastPosition.x,dz=root.position.z-lastPosition.z;
     const moved=Math.hypot(dx,dz);
     const moving=walking??moved/dt>0.08;
-    if(!started){origin.copy(lastPosition);trackHeading=root.rotation.y;started=true;}
     lastPosition.copy(root.position);
     if(moving)travel+=moved;
     const aimed=Number.isFinite(heading)?heading:moved>1e-5?Math.atan2(dx,dz):root.rotation.y;
     const yawError=angleDelta(root.rotation.y,aimed);
     root.rotation.y+=yawError*(1-Math.exp(-3.0*dt));
-    if(moving&&travel<STEP*0.35)trackHeading=root.rotation.y;
     motion=approach(motion,moving?1:0,9,dt);
+    // A neutral QA reset stops mixer actions; reactivate authored idle,
+    // shoulder and bear tracks on the first subsequent update.
+    if(!walk.isRunning()||!idle.isRunning()||!bear.isRunning())
+      for(const action of [walk,idle,bear])action.reset().play();
     walk.setEffectiveWeight(motion*0.24); // shoulders only; legs use foot locks
     idle.setEffectiveWeight(moving?0.18:0.72);
     bear.setEffectiveWeight(moving?0.18:0.035);
@@ -107,24 +109,38 @@ export function createTabMotionRig(gltf,root){
       const phaseTravel=travel+limb.offset;
       const cycle=Math.floor(phaseTravel/cycleLength);
       const phase=(phaseTravel-cycle*cycleLength)/cycleLength;
-      const cycleStart=cycle*cycleLength-limb.offset;
-      const stanceDistance=cycleStart+cycleLength*STANCE/2;
-      let contactDistance=stanceDistance,raised=0;
-      if(phase>STANCE){
-        const fraction=(phase-STANCE)/(1-STANCE);
-        const smooth=fraction*fraction*(3-2*fraction);
-        contactDistance+=cycleLength*smooth;
-        raised=0.075*Math.sin(Math.PI*fraction);
-      }
+      let raised=0;
       const restHip=rest.get(limb.hip).p;
       const restAnkleY=restHip.y+limb.knee.position.y+limb.ankle.position.y;
       if(moving){
         limb.hip.position.y=restHip.y-HIP_DROP;
-        const direction=new THREE.Vector3(Math.sin(trackHeading),0,Math.cos(trackHeading));
-        const right=new THREE.Vector3(Math.cos(trackHeading),0,-Math.sin(trackHeading));
-        const legX=restHip.x+limb.knee.position.x+limb.ankle.position.x;
-        world.copy(origin).addScaledVector(direction,contactDistance).addScaledVector(right,legX*root.scale.x);
-        world.y=root.position.y+restAnkleY*root.scale.y+raised;
+        // Never extrapolate a step from the start of the journey: Tab's
+        // actual path curves, and a stale heading eventually makes the
+        // planted foot unreachable. Latch the anchor *where each foot lands*.
+        const direction=new THREE.Vector3(Math.sin(aimed),0,Math.cos(aimed));
+        const right=new THREE.Vector3(Math.cos(aimed),0,-Math.sin(aimed));
+        const legX=(restHip.x+limb.knee.position.x+limb.ankle.position.x)*root.scale.x;
+        const floor=root.position.y+restAnkleY*root.scale.y;
+        let contact=anchors.get(limb.name);
+        if(!contact||contact.cycle!==cycle){
+          const point=root.position.clone()
+            .addScaledVector(direction,cycleLength*(STANCE/2-phase))
+            .addScaledVector(right,legX);
+          point.y=floor;
+          contact={cycle,point};anchors.set(limb.name,contact);
+        }
+        world.copy(contact.point);
+        if(phase>STANCE){
+          const fraction=(phase-STANCE)/(1-STANCE);
+          const smooth=fraction*fraction*(3-2*fraction);
+          const landing=root.position.clone()
+            .addScaledVector(direction,cycleLength*(1+STANCE/2-phase))
+            .addScaledVector(right,legX);
+          landing.y=floor;
+          world.lerp(landing,smooth);
+          raised=.075*Math.sin(Math.PI*fraction);
+          world.y=floor+raised;
+        }
         root.updateWorldMatrix(true,false);
         p0.copy(world);root.worldToLocal(p0);
         solveLeg(limb.hip,limb.knee,limb.ankle,p0.z,p0.y);
