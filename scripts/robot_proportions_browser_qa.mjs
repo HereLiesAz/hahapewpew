@@ -403,6 +403,9 @@ try {
       Math.hypot(afterTurn[i][0]-p[0],afterTurn[i][2]-p[2])));
     const turnFootReach=Math.max(...turning.footSlip);
     const turnHipAbduction=Math.abs(actor.joints.hipL.rotation.z);
+    const turnSoleUp=Math.min(...['ankleL','ankleR'].map(name=>
+      new T.Vector3(0,1,0).applyQuaternion(
+        actor.joints[name].getWorldQuaternion(new T.Quaternion())).y));
     const hand=actor.joints.handR.getWorldPosition(new T.Vector3());
     const bear=actor.joints.bear.getWorldPosition(new T.Vector3());
     const gripDistance=hand.distanceTo(bear);
@@ -413,7 +416,7 @@ try {
     t.root.position.set(0,0,-1.7);actor.reset();t.root.rotation.y=Math.PI/2;
     return {clips:actor.actionNames,leftSlide,rightSlide,footReach,swingLift,
       pauseSlide,turnRadians:beforeHeading-afterHeading,
-      turnLateralSlip,turnFootReach,turnHipAbduction,
+      turnLateralSlip,turnFootReach,turnHipAbduction,turnSoleUp,
       gripDistance,parentAttached,idleLook,samples};
   });
   report.results.push({mode:'tab-t36-anchored-locomotion',...tabMotion});
@@ -429,6 +432,8 @@ try {
     'Actual Victoria ankles must remain planted laterally during a turn');
   assert.ok(tabMotion.turnHipAbduction>.03,
     'Victoria hip must solve the lateral foot target, not silently discard it');
+  assert.ok(tabMotion.turnSoleUp>.995,
+    'Both Victoria shoe soles must remain level during hip abduction');
   assert.ok(tabMotion.parentAttached&&tabMotion.gripDistance<.25,
     'Tab teddy must remain attached to her right-hand ear grip');
   assert.ok(Math.abs(tabMotion.idleLook)>.03,
