@@ -131,12 +131,18 @@ try {
     });
     const mask=face.texture.image.data;
     for(let i=0;i<mask.length;i+=4)if(mask[i+3]===255){if(mask[i]===255)whitePixels++;else blackPixels++;}
+    const childMeshes=[];
+    t.asset.model.traverse(n=>{if(n.isSkinnedMesh&&n.material?.name==='Tab/Skin')childMeshes.push(n)});
+    if(childMeshes.length!==1)throw Error('Missing singular Victoria body material');
     window.__productionQA={T,qa,q,s,t,points,bounds,qb,sb};
     return {qScale:q.root.scale.toArray(),sScale:s.root.scale.toArray(),
       trio:{rootScales:{Tab:t.root.scale.toArray(),Qwerty:q.root.scale.toArray(),Shift:s.root.scale.toArray()},
         heights:{Tab:tb.max.y-tb.min.y,Qwerty:qb.max.y-qb.min.y,Shift:sb.max.y-sb.min.y},
         minima:{Tab:tb.min.y,Qwerty:qb.min.y,Shift:sb.min.y},groundY:contact.surfaceY,
-        rootDepths:[t.root.position.x,q.root.position.x,s.root.position.x],models:[document.querySelector('#world').dataset.tabModel,document.querySelector('#world').dataset.qwertyModel,document.querySelector('#world').dataset.shiftModel]},
+        rootDepths:[t.root.position.x,q.root.position.x,s.root.position.x],models:[document.querySelector('#world').dataset.tabModel,document.querySelector('#world').dataset.qwertyModel,document.querySelector('#world').dataset.shiftModel],
+        tabSource:document.querySelector('#world').dataset.tabSource,
+        skinVertices:childMeshes[0].geometry.attributes.position.count,
+        skinTextures:{base:!!childMeshes[0].material.map,normal:!!childMeshes[0].material.normalMap}},
       qHeight:qb.max.y-qb.min.y,shiftHeight:sb.max.y-sb.min.y,
       eyeSurfaceGap,printedEyeLayers:face.layers.length,visibleRaisedEyes,raisedInkIndices,whitePixels,blackPixels,
       relativeHeight:(sb.max.y-sb.min.y)/(qb.max.y-qb.min.y),qTorso,sTorso,hipTop,bodyBottom,
@@ -151,6 +157,9 @@ try {
     assert.ok(Math.abs(measured.trio.minima[name]-measured.trio.groundY)<1e-6);
   }
   assert.deepEqual(measured.trio.models,['glb','glb-q16','glb']);
+  assert.equal(measured.trio.tabSource,'victoria','production must load Victoria, not original fallback');
+  assert.equal(measured.trio.skinVertices,6438,'Victoria authored child mesh is missing');
+  assert.deepEqual(measured.trio.skinTextures,{base:true,normal:true});
   assert.deepEqual(measured.trio.rootDepths,[0,0,0]);
   assert.deepEqual(measured.qScale,[.27,.27,.27]);
   assert.deepEqual(measured.sScale,[.46,.46,.46]);
@@ -201,7 +210,7 @@ try {
       const cam=new T.OrthographicCamera(-half*aspect,half*aspect,half,-half,.01,30);
       let direction=view==='top'?new T.Vector3(0,1,0)
         :(view==='side'||view==='eyes-side')?new T.Vector3(0,0,-1):(view==='threequarter'||view==='motion')?new T.Vector3(1,0,-1).normalize():new T.Vector3(1,0,0);
-      if((tabAnatomy&&view==='tab-anatomy-side')||view==='tab-dress-side')direction=new T.Vector3(0,0,1);
+      if((tabAnatomy&&view==='tab-anatomy-side')||view==='tab-dress-side'||view==='tab-victoria-side')direction=new T.Vector3(0,0,1);
       if(tabBox)direction=view==='tab-side'?new T.Vector3(0,0,1)
         :view==='tab-fold'?new T.Vector3(1,-.45,1).normalize()
         :view==='tab-threequarter'?new T.Vector3(1,.25,1).normalize():new T.Vector3(1,0,0);
@@ -220,7 +229,7 @@ try {
       qa.renderer.render(qa.scene,cam);
       const data=qa.renderer.domElement.toDataURL('image/png');
       let imageRange=null,blackFraction=null;
-      if(gun||tabBox||tabAnatomy||tabDress||tabBear){
+      if(gun||tabBox||tabAnatomy||tabDress||tabBear||tab){
         const probe=document.createElement('canvas');probe.width=160;probe.height=100;
         const ctx=probe.getContext('2d');ctx.drawImage(qa.renderer.domElement,0,0,160,100);
         const rgba=ctx.getImageData(0,0,160,100).data;
@@ -272,6 +281,8 @@ try {
     assert.ok(Math.abs(pixels/trioView.trioPixels.Qwerty-measured.trio.heights[name]/measured.trio.heights.Qwerty)<1e-6);
   }
   await capture('tab-reference-front','tab');
+  await capture('tab-victoria-front','tab-victoria-front');
+  await capture('tab-victoria-side','tab-victoria-side');
   for(const view of ['tab-anatomy-front','tab-anatomy-side'])
     await capture(view,view);
   for(const view of ['tab-dress-front','tab-dress-side','tab-bear-grip'])

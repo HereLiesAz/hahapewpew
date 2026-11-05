@@ -1,0 +1,107 @@
+name: Fetch and inspect Victoria GLB
+on:
+  push:
+    branches: [feature/tab-victoria-body]
+    paths:
+      - .github/workflows/tab-victoria-source.yml
+      - scripts/assemble_victoria_tab.py
+      - tests/test_tab_victoria_integration.py
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Decode Draco mesh dependency
+        run: python3 -m pip install 'numpy>=2,<3' DracoPy Pillow
+      - name: Fetch exact public Rex Mun asset from official API
+        shell: bash
+        run: |
+          mkdir -p artifacts/victoria
+          python3 - <<'PY'
+          import json,urllib.request,pathlib,hashlib,uuid
+          from urllib.parse import quote,urlencode
+          uuid='1fcc4446-1992-48ec-a160-9cd73ee35158'
+          endpoint='https://www.blenderkit.com/api/v1/search/?query='+quote('Victoria Character Rigged')+'&asset_type=model'
+          req=urllib.request.Request(endpoint,headers={'User-Agent':'HahaPewPew-Character-Importer/1.0','Accept':'application/json'})
+          with urllib.request.urlopen(req,timeout=25) as f:
+              results=json.load(f)['results']
+          choices=[r for r in results if r.get('assetBaseId')==uuid and r.get('author',{}).get('id')==310916]
+          assert len(choices)==1, 'exact Victoria revision not found'
+          meta=choices[0]
+          source=next(f for f in meta['files'] if f.get('fileType')=='gltf')
+          url=source['downloadUrl']+'?'+urlencode({'scene_uuid':str(__import__('uuid').uuid4())})
+          print('Found',meta['name'],'revision',meta['id'],'GLB bytes',source['fileUploadSize'])
+          req=urllib.request.Request(url,headers={'User-Agent':'HahaPewPew-Character-Importer/1.0','Accept':'application/json'})
+          with urllib.request.urlopen(req,timeout=35) as r:
+              raw=r.read(20000000)
+              print('Download endpoint',r.status,r.headers.get('Content-Type'),'bytes',len(raw))
+          if raw[:4]==b'glTF':
+              payload=raw
+          else:
+              obj=json.loads(raw)
+              print('Download response keys',list(obj.keys()))
+              uri=next((obj[k] for k in ['filePath','downloadUrl','url'] if isinstance(obj.get(k),str) and obj[k].startswith('https://')),None)
+              if not uri:raise RuntimeError('Official download endpoint returned no file URL')
+              with urllib.request.urlopen(urllib.request.Request(uri,headers={'User-Agent':'HahaPewPew-Character-Importer/1.0'}),timeout=45) as f:
+                  payload=f.read(20000000)
+          if payload[:4]!=b'glTF':raise RuntimeError('Official GLTF file signature missing: '+repr(payload[:40]))
+          out=pathlib.Path('artifacts/victoria/Victoria_RexMun_Source.glb')
+          out.write_bytes(payload)
+          print('Verified glTF bytes',len(payload),'sha256',hashlib.sha256(payload).hexdigest())
+          header_bytes=int.from_bytes(payload[8:12],'little')
+          if header_bytes!=len(payload):raise RuntimeError('GLB length mismatch')
+          size=int.from_bytes(payload[12:16],'little')
+          gltf=json.loads(payload[20:20+size])
+          print('GLB skeletons',len(gltf.get('skins',[])),'nodes',len(gltf.get('nodes',[])),'meshes',len(gltf.get('meshes',[])))
+          # Draco compression retains the exact material UVs and source weights.
+          import DracoPy,numpy as np,shutil
+          prim=gltf['meshes'][0]['primitives'][0]
+          ext=prim['extensions']['KHR_draco_mesh_compression']
+          view=gltf['bufferViews'][ext['bufferView']]
+          start=view.get('byteOffset',0)
+          binary_start=28+size
+          mesh=DracoPy.decode(payload[binary_start+start:binary_start+start+view['byteLength']])
+          decoded={}
+          for key,identifier in ext['attributes'].items():
+              attr=mesh.get_attribute_by_unique_id(identifier)
+              decoded[key]=attr['data']
+              print('draco',key,np.asarray(attr['data']).shape,str(np.asarray(attr['data']).dtype))
+          decoded['faces']=mesh.faces
+          np.savez_compressed('artifacts/victoria/source-body-decoded.npz',**decoded)
+          shutil.copy2('public/assets/characters/Tab_Reference.glb','artifacts/victoria/Tab_Before_Victoria.glb')
+          pathlib.Path('artifacts/victoria/manifest.json').write_text(json.dumps({
+              'sourceAssetBaseId':uuid,'revisionId':meta['id'],'author':'Rex Mun',
+              'license':meta['license'],'sha256':hashlib.sha256(payload).hexdigest(),
+              'nodeNames':[n.get('name') for n in gltf.get('nodes',[])],
+              'meshNames':[m.get('name') for m in gltf.get('meshes',[])],
+              'skins':gltf.get('skins',[]),'animations':[a.get('name') for a in gltf.get('animations',[])]
+          },indent=2))
+          PY
+      - name: Assemble intact Tab costume over Victoria's rigged body
+        run: |
+          python3 scripts/assemble_victoria_tab.py \
+            --source artifacts/victoria/Victoria_RexMun_Source.glb \
+            --decoded artifacts/victoria/source-body-decoded.npz \
+            --tab public/assets/characters/Tab_Reference.glb \
+            --out public/assets/characters/Tab_Victoria.glb
+          python3 -m unittest discover -s tests -p test_tab_victoria_integration.py
+          cp public/assets/characters/Tab_Victoria.glb artifacts/victoria/Tab_Victoria.glb
+      - name: Commit generated candidate on feature branch only
+        run: |
+          git add public/assets/characters/Tab_Victoria.glb
+          if ! git diff --cached --quiet; then
+            git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'Regenerate Victoria child body with original Tab outfit'
+            git push origin 'HEAD:feature/tab-victoria-body'
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: victoria-source-inspection
+          path: artifacts/victoria/
+          if-no-files-found: warn
