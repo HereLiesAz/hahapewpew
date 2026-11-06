@@ -56,7 +56,7 @@ test('runtime requires the real Tab clip and weighted-rig contract',()=>{
 test('child stance translates the world root without sliding a planted ankle',()=>{
   const f=fixture();
   const frames=[];
-  for(const distance of [.12,.22,.34]){
+  for(const distance of [.06,.10,.14]){
     f.character.position.x=distance;
     const state=f.motion.update(.1,{walking:true,heading:Math.PI/2});
     frames.push({state,point:ankle(f,'L')});
@@ -86,6 +86,29 @@ test('production 0.66 root scale preserves true world ankle contact and sole cle
   for(const point of observed.slice(1))
     assert.ok(point.distanceTo(observed[0])<.012,'foot must remain planted at production scale');
   close(observed[0].y,.0957,.003);
+});
+
+test('walking knees remain human-facing through every planted stride',()=>{
+  const f=fixture();
+  f.character.scale.setScalar(.66);
+  const direction=new THREE.Vector3(0,0,1).applyQuaternion(f.character.quaternion);
+  const samples=[0,0];
+  for(let frame=1;frame<=120;frame++){
+    f.character.position.x=frame*1.22/60;
+    const state=f.motion.update(1/60,{walking:true,heading:Math.PI/2});
+    for(let i=0;i<2;i++){
+      if(!state.stance[i])continue;
+      const side=i?'R':'L';
+      f.character.updateMatrixWorld(true);
+      const hip=f.names.get('hip.'+side).getWorldPosition(new THREE.Vector3());
+      const knee=f.names.get('knee.'+side).getWorldPosition(new THREE.Vector3());
+      const anterior=knee.sub(hip).dot(direction);
+      assert.ok(anterior>.005,
+        side+' knee must remain ahead of hip during stance; digitigrade pose at frame '+frame+': '+anterior);
+      samples[i]++;
+    }
+  }
+  assert.ok(samples.every(n=>n>35),'sample both feet across several full stride cycles');
 });
 
 test('opposite leg advances on alternating half-strides, never sinks below ground',()=>{
