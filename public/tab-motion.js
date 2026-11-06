@@ -151,7 +151,9 @@ export function createTabMotionRig(gltf,root){
           // Bound only upward jumps when walking resumes mid-swing. Never
           // delay the descending arc: the shoe must reach ground by stance.
           const previousHeight=footprint.get(limb.name)?.y??floor;
-          const desiredHeight=.075*Math.sin(Math.PI*fraction);
+          // Zero lift velocity at toe-off and touchdown, even at a shorter stride.
+          const lift=Math.sin(Math.PI*fraction);
+          const desiredHeight=.075*lift*lift;
           raised=Math.min(desiredHeight,Math.max(0,previousHeight-floor)+.9*dt);
           world.y=floor+raised;
         }
