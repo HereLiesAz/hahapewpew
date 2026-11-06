@@ -228,15 +228,17 @@ try {
       }
       qa.renderer.render(qa.scene,cam);
       const data=qa.renderer.domElement.toDataURL('image/png');
-      let imageRange=null,blackFraction=null;
-      if(gun||tabBox||tabAnatomy||tabDress||tabBear||tab){
+      let imageRange=null,blackFraction=null,meanBrightness=null;
+      if(gun||tabBox||tabAnatomy||tabDress||tabBear||tab||trio){
         const probe=document.createElement('canvas');probe.width=160;probe.height=100;
         const ctx=probe.getContext('2d');ctx.drawImage(qa.renderer.domElement,0,0,160,100);
         const rgba=ctx.getImageData(0,0,160,100).data;
-        let low=255,high=0,black=0;
+        let low=255,high=0,black=0,brightness=0;
         for(let i=0;i<rgba.length;i+=4){low=Math.min(low,rgba[i],rgba[i+1],rgba[i+2]);high=Math.max(high,rgba[i],rgba[i+1],rgba[i+2]);
+          brightness+=rgba[i]+rgba[i+1]+rgba[i+2];
           if(Math.max(rgba[i],rgba[i+1],rgba[i+2])<3)black++;}
         imageRange=high-low;blackFraction=black/(rgba.length/4);
+        meanBrightness=brightness/(rgba.length/4*3);
       }
       hidden.forEach(([root,visible])=>{root.visible=visible});
       // A fixed camera envelope is not the actor's measured pixel height.
@@ -257,7 +259,7 @@ try {
         const top=new T.Vector3(c.x,b.max.y,c.z).project(cam),bottom=new T.Vector3(c.x,b.min.y,c.z).project(cam);
         return [name,Math.abs(top.y-bottom.y)*innerHeight/2];
       }));
-      return {data,projection:cam.type,direction:direction.toArray(),projectedSpan,imageRange,blackFraction,trioPixels,
+      return {data,projection:cam.type,direction:direction.toArray(),projectedSpan,imageRange,blackFraction,meanBrightness,trioPixels,
         projectedHeight:Math.abs(top.y-bottom.y)*innerHeight/2,
         bounds:{min:measuredBox.min.toArray(),max:measuredBox.max.toArray()},
         cameraBounds:view==='motion'?{min:box.min.toArray(),max:box.max.toArray()}:null};
@@ -279,6 +281,44 @@ try {
   for(const [name,pixels] of Object.entries(trioView.trioPixels)){
     assert.ok(pixels>120,name+' too small for a scale comparison');
     assert.ok(Math.abs(pixels/trioView.trioPixels.Qwerty-measured.trio.heights[name]/measured.trio.heights.Qwerty)<1e-6);
+  }
+  // T3.7: keep all actors, camera framing, positions, and materials fixed
+  // while varying only the game's real hemisphere and directional lights.
+  const originalLights=await page.evaluate(()=>{
+    const scene=window.__productionQA.qa.scene;
+    const lights=scene.children.filter(n=>n.isHemisphereLight||n.isDirectionalLight);
+    if(lights.length<2)throw Error('Missing production hemisphere/sun lights');
+    return lights.map(light=>({uuid:light.uuid,intensity:light.intensity}));
+  });
+  try{
+    await page.evaluate(()=>{
+      window.__productionQA.qa.scene.children.forEach(light=>{
+        if(light.isHemisphereLight)light.intensity=.12;
+        if(light.isDirectionalLight)light.intensity=.10;
+      });
+    });
+    const dim=await capture('tab-t37-trio-dim','trio');
+    await page.evaluate(()=>{
+      window.__productionQA.qa.scene.children.forEach(light=>{
+        if(light.isHemisphereLight)light.intensity=1.35;
+        if(light.isDirectionalLight)light.intensity=2.65;
+      });
+    });
+    const bright=await capture('tab-t37-trio-bright','trio');
+    assert.deepEqual(dim.trioPixels,bright.trioPixels,
+      'T3.7 must preserve the same reference framing and character scales');
+    assert.ok(bright.meanBrightness>dim.meanBrightness+1,
+      'Production Tab and robots must respond visibly to changed lighting');
+    report.results.push({mode:'tab-t37-trio-lighting',
+      dimMean:dim.meanBrightness,brightMean:bright.meanBrightness,
+      pixelSpans:bright.trioPixels});
+  }finally{
+    await page.evaluate(original=>{
+      for(const saved of original){
+        const light=window.__productionQA.qa.scene.getObjectByProperty('uuid',saved.uuid);
+        if(light)light.intensity=saved.intensity;
+      }
+    },originalLights);
   }
   await capture('tab-reference-front','tab');
   await capture('tab-victoria-front','tab-victoria-front');
