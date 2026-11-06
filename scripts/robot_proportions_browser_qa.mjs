@@ -375,14 +375,16 @@ try {
         Math.hypot(...sample[side].map((v,j)=>v-base[j]))));
     };
     const leftSlide=contacts('left',0,0,5);
-    const rightSlide=contacts('right',1,5,11);
+    // Compare consecutive contacts in one right-foot stride; the shorter
+    // child gait plants twice across the old sample window.
+    const rightSlide=contacts('right',1,8,13);
     const footReach=Math.max(...samples.flatMap(s=>s.slip));
     const swingLift=Math.max(...samples.flatMap(s=>[s.left[1],s.right[1]]));
     // Pause during left stance, without moving the root; both ankles may settle
     // but must not slide sideways.
     t.root.position.set(0,0,-1.7);actor.reset();
     for(let i=1;i<=4;i++){
-      t.root.position.x=i*.085;
+      t.root.position.x=i*.055;
       actor.update(.085,{walking:true,heading:Math.PI/2});
     }
     const before=point('L');
@@ -442,7 +444,7 @@ try {
   await page.evaluate(()=>{
     const {t}=window.__productionQA;
     t.root.position.set(0,0,-1.7);t.asset.reset();t.root.rotation.y=Math.PI/2;
-    t.root.position.x=.28;t.asset.update(.2,{walking:true,heading:Math.PI/2});
+    t.root.position.x=.34;t.asset.update(.2,{walking:true,heading:Math.PI/2});
   });
   await capture('tab-t36-walk-front','tab-victoria-front');
   await capture('tab-t36-walk-side','tab-victoria-side');
