@@ -25,8 +25,25 @@ The report's independent browser measurements were:
 
 These figures come from the artifact's `robot-proportions/results.json`, not an inferred animation or a concept image. Near-zero numbers are floating-point measurements, **not** claims of physical subatomic precision. The browser report also records `passed: true` and an empty `errors` list.
 
-## Later corrective revision and acceptance boundary
+## Final production-browser acceptance — 2026-11-05/06
 
-After that artifact was generated, PR [#46](https://github.com/HereLiesAz/hahapewpew/pull/46) added lateral hip IK, inverse ankle roll and both-foot sole-up assertions in the real Victoria browser QA. These changes require the **final** post-fix browser run [42132730458](https://github.com/HereLiesAz/hahapewpew/actions/runs/42132730458), not an earlier screenshot, for acceptance. Its workflow was still running when this note was authored. PRs [#43](https://github.com/HereLiesAz/hahapewpew/pull/43), [#44](https://github.com/HereLiesAz/hahapewpew/pull/44) and [#45](https://github.com/HereLiesAz/hahapewpew/pull/45) address curved-world clock coverage, interrupted swing settling and normal touchdown respectively.
+The final post-fix [Chromium run 42132730458](https://github.com/HereLiesAz/hahapewpew/actions/runs/42132730458) completed **successfully** at PR #46 head `c200cc5170af675cf46b9a8749edd25aba3d0c08`, with Node regressions, Python model tests, actual Three.js production-scene captures and video encoding all green. [Artifact 13463854730](https://github.com/HereLiesAz/hahapewpew/actions/runs/42132730458/artifacts/13463854730) contains the final `robot-proportions/results.json`, walk/side/pause/turn/idle/live-world stills, **42 motion PNGs** and `tab-t36-walk-pause-turn.mp4`. I extracted and inspected all 42 frames, plus the six named stills. The captured views show child-sized alternating steps, a stationary pause, progressively turned body and level shoes, retained bear grip, and intact box and torn dress. No **new visible** hand/dress penetration or prop detachment appeared in those views. This is scoped rendered acceptance, not a claim of exhaustive mesh-collision proof.
 
-**Status: T3.6 remains open.** Before checking it off, verify run 42132730458 completed successfully, inspect its final walk, turn, idle and live-world frames for clothing/hand clipping, and record the actual post-fix measurements. T3.7 side-by-side reference fidelity is a separate acceptance gate.
+The final artifact's report contains `passed: true`, `errors: []` and these independent measurements:
+
+| Final production observation | Value |
+| --- | ---: |
+| Left/right stance slip | `2.498001805406602e-16` / `4.871083751574258e-16` world units |
+| Planted-turn lateral shoe displacement | `2.2887833992611187e-16` world units |
+| Planted-turn target reach error | `9.309503074677274e-17` world units |
+| Minimum world-space sole-up dot product | `1` |
+| Hip lateral abduction | `0.190732920979294` radians |
+| Teddy still parented to hand | `true` |
+| Live simulated interval | `5.999999999999985` seconds |
+| Live curved-lane excursion | `0.19658101713936638` world units |
+| Live root distance | `7.541666742770786` world units |
+| Live emergency leg-reach corrections | `0` |
+
+The negligible residuals are machine floating-point error, not physical-world accuracy. The production call site is `public/world3d.js` (`createTabMotionRig` and the live per-frame `rig.asset.update`), independent of the test fixture. The shipped Victoria dress/box/bear GLB and original reference asset were not modified by the locomotion fixes. PRs #43–#46 are merged, and the sole-roll finding on #46 is resolved.
+
+**T3.6 accepted and checked off** using the final Chromium evidence and independently inspected rendered frames. A separate cold GLEE run was unavailable and is not claimed. T3.1–T3.3 source-art fidelity, T3.7 trio scale/lighting/performance, and broad collision behavior remain distinct, unaccepted tasks.

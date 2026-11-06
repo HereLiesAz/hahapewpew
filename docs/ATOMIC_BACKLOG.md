@@ -39,7 +39,7 @@
 - [ ] **T3.3 Human anatomy:** Sculpt believable *child* shoulders, knees, hands and feet under the box without adult proportions. **Done when:** anatomical silhouette and range-of-motion review pass.
 - [x] **T3.4 Dress and teddy:** Build separate dress topology with correct drape and a faithfully shaped teddy carried at the hand. **Done when:** bear placement and dress silhouette match the source from several angles.
 - [x] **T3.5 Rig, skinning and UVs:** Skin body/dress to a humanoid hierarchy, rig hand grip and export mapped assets. **Done when:** weight, deformation and glTF checks pass.
-- [ ] **T3.6 Locomotion/acting:** Add child-sized steps, pauses, gestures, bear hold, idle look and plausible turns. **Done when:** captured clips show no foot sliding or dress/hand clipping.
+- [x] **T3.6 Locomotion/acting:** Add child-sized steps, pauses, gestures, bear hold, idle look and plausible turns. **Done when:** captured clips show no foot sliding or dress/hand clipping.
 - [ ] **T3.7 Browser fidelity gate:** Inspect Tab next to both robots at actual game scale and varied lighting. **Done when:** side-by-side reference screenshots, performance and collision checks pass.
 
 ## 4 — Adult NPCs: credible human assets
