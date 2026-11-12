@@ -30,16 +30,6 @@ function reshape(gltf, offsets) {
   });
 }
 
-function updateRestBind(gltf) {
-  gltf.scene.updateMatrixWorld(true);
-  const visited = new Set();
-  gltf.scene.traverse(node => {
-    if (!node.isSkinnedMesh || visited.has(node.skeleton)) return;
-    visited.add(node.skeleton);
-    node.skeleton.calculateInverses();
-  });
-}
-
 function attachClamp(wrist, side, material) {
   const hook = new THREE.Group();
   hook.name = 'Qwerty.ReferenceClamp.' + (side < 0 ? 'L' : 'R');
@@ -81,20 +71,6 @@ export function fitQwertyProportions(gltf) {
   const names = ['wristL', 'wristR'];
   const wrists = names.map(name => gltf.scene.getObjectByName(name));
   if (wrists.some(node => !node?.isBone)) throw new Error('Qwerty wrist bones missing');
-  const spine = gltf.scene.getObjectByName('spine');
-  const neckBone = gltf.scene.getObjectByName('neck');
-  if (!spine?.isBone || !neckBone?.isBone) throw new Error('Qwerty spine/neck missing');
-  spine.position.y -= .085;
-  neckBone.position.y -= .085;
-  for (const side of ['L', 'R']) {
-    const hip = gltf.scene.getObjectByName('hip' + side);
-    const knee = gltf.scene.getObjectByName('knee' + side);
-    const ankle = gltf.scene.getObjectByName('ankle' + side);
-    if (![hip, knee, ankle].every(node => node?.isBone)) throw new Error('Qwerty leg bones missing');
-    hip.position.y -= .075;
-    knee.position.y += .035;
-    ankle.position.y += .040;
-  }
   const lowerTorso = -.085;
   const lowerHead = -.170;
   const offsets = {
@@ -110,7 +86,6 @@ export function fitQwertyProportions(gltf) {
     'wristR': () => [0, .53, 0]
   };
   reshape(gltf, offsets);
-  updateRestBind(gltf);
   attachClamp(wrists[0], -1, limb[0].material);
   attachClamp(wrists[1], 1, limb[0].material);
   gltf.scene.userData.qwertyProportionsFitted = true;
@@ -118,20 +93,6 @@ export function fitQwertyProportions(gltf) {
 
 export function fitShiftProportions(gltf) {
   if (gltf.scene.userData.shiftProportionsFitted) return;
-  const spine = gltf.scene.getObjectByName('spine');
-  const neckBone = gltf.scene.getObjectByName('neck');
-  if (!spine?.isBone || !neckBone?.isBone) throw new Error('Shift spine/neck missing');
-  spine.position.y -= .035;
-  neckBone.position.y -= .020;
-  for (const side of ['L', 'R']) {
-    const hip = gltf.scene.getObjectByName('hip' + side);
-    const knee = gltf.scene.getObjectByName('knee' + side);
-    const ankle = gltf.scene.getObjectByName('ankle' + side);
-    if (![hip, knee, ankle].every(node => node?.isBone)) throw new Error('Shift leg bones missing');
-    hip.position.y -= .040;
-    knee.position.y += .022;
-    ankle.position.y += .018;
-  }
   reshape(gltf, {
     spine: -.035,
     'armL': -.035, 'armR': -.035,
@@ -142,6 +103,5 @@ export function fitShiftProportions(gltf) {
     'kneeL': -.018, 'kneeR': -.018,
     head: -.055
   });
-  updateRestBind(gltf);
   gltf.scene.userData.shiftProportionsFitted = true;
 }
