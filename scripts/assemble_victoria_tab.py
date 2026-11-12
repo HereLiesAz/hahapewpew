@@ -314,7 +314,7 @@ def retessellate_sleeves(g, blob):
             for segment in range(20):
                 ring=[vertex(t0,segment),vertex(t1,segment),
                       vertex(t1,segment+1),vertex(t0,segment+1)]
-                for face in ((0,1,2),(0,2,3)):
+                for face in ((0,3,2),(0,2,1)):
                     for index in face:
                         for name in attrs:
                             vertices[name].append(ring[index][name])
