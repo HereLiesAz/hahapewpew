@@ -53,7 +53,7 @@ test('three model graphs construct without throwing',()=>{
     let n=0;c.root.traverse(()=>n++);
     assert.ok(n>80,`${name}: expected a substantial physically modeled rig, got ${n} nodes`);
   }
-  assert.equal(cast.Shift.root.scale.x,.99);
+  assert.equal(cast.Shift.root.scale.x,.843);
   assert.equal(cast.Shift.root.scale.y,cast.Shift.root.scale.x);
   assert.equal(cast.Shift.root.scale.z,cast.Shift.root.scale.x);
   assert.equal(cast.Shift.gun.visible,false);

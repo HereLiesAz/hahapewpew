@@ -42,8 +42,8 @@ test('Owner scale correction: Qwerty GLB untouched, only uniform displayed scale
   // Browser-only character-models.js creates DOM textures at import time:
   // test the exact production scale declarations without importing its module.
   const source=readFileSync(new URL('../public/character-models.js',import.meta.url),'utf8');
-  assert.match(source,/root\.name='Shift';root\.scale\.setScalar\(\.99\)/);
-  assert.match(source,/groundScale:\.99/);
+  assert.match(source,/root\.name='Shift';root\.scale\.setScalar\(\.843\)/);
+  assert.match(source,/groundScale:\.843/);
   assert.match(source,/groundScale:\.27/);
   assert.match(source,/root\.name='Qwerty';root\.scale\.setScalar\(\.27\)/);
   assert.doesNotMatch(source,/root\.name='Qwerty';root\.scale\.setScalar\(\.54\)/);
@@ -76,19 +76,19 @@ test('Shift corrected GLB is truly circular from ABOVE at every shell ring',()=>
   assert.deepEqual(liveShift,newShift,'the corrected model must be the actual LIVE Shift asset');
 });
 
-test('Uniform Shift enlargement preserves shallow wok profile and body proportions',()=>{
+test('Shift torso size matches Qwerty while preserving the shallow wok',()=>{
   const Q=open(qwerty),S=open(newShift);
   const qBody=accessor(Q,prim(Q,'Qwerty/Body_Graphite'),'POSITION').a;
   const sBody=accessor(S,prim(S,'Shift/Body_Graphite'),'POSITION').a;
   const qHeight=(qBody.max[1]-qBody.min[1])*.27;
   // The actual production controller retains its already-tested 0.55 compact-body
   // transform; scaling the parent uniformly enlarges its rendered torso too.
-  const sHeight=(sBody.max[1]-sBody.min[1])*.99*.55;
-  assert.ok(sHeight/qHeight>1.10&&sHeight/qHeight<1.30,
-    'whole-actor Shift torso must remain comparable to Qwerty');
+  const sHeight=(sBody.max[1]-sBody.min[1])*.843*.55;
+  assert.ok(Math.abs(sHeight/qHeight-1)<.02,
+    'Shift compact torso height must match Qwerty within two percent');
   const stage=S.g.nodes.find(n=>n.name==='Shift.S24.GroundAlign');
   const sTop=Math.max(...S.g.meshes[0].primitives.map(p=>S.g.accessors[p.attributes.POSITION].max[1]));
-  const sStanding=(sTop+stage.translation[1])*.99;
+  const sStanding=(sTop+stage.translation[1])*.843;
   assert.ok(Number.isFinite(sStanding)&&sStanding>0,'standing height is measured, not constrained against Qwerty');
   const shell=accessor(S,prim(S,'Shift/Dome_Side'),'POSITION').a;
   const width=shell.max[0]-shell.min[0],rise=shell.max[1]-shell.min[1];

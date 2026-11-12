@@ -331,8 +331,8 @@
     "rootScales": {
       "Tab": 0.66,
       "Qwerty": 0.27,
-      "Shift": 0.99
+      "Shift": 0.843
     },
-    "shiftHeightPolicy": "Shallow inverted-wok profile retained. Owner requested enlarging all of Shift to match Qwerty overall height; former 92 percent target remains superseded."
+    "shiftHeightPolicy": "Shallow inverted-wok profile retained. Owner clarified Shift should be slightly shorter overall, with rendered torso height matching Qwerty; former 92 percent target remains superseded."
   }
 }
