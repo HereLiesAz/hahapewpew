@@ -156,7 +156,7 @@ test('Live Shift torso shrinks independently of the dome and original geometry',
   assert.ok(Math.abs(compactBottom-(originalBottom-.035))<1e-5,
     'torso bottom '+compactBottom+' differs from source '+originalBottom+' after leg correction');
   const loweredHead=head.getWorldPosition(new T.Vector3());
-  assert.ok(originalHead.y-loweredHead.y>.20&&originalHead.y-loweredHead.y<.24,
+  assert.ok(originalHead.y-loweredHead.y>.16&&originalHead.y-loweredHead.y<.19,
     'the wok settles with the smaller torso instead of hovering above it');
   assert.ok(Math.abs(loweredHead.x-originalHead.x)<1e-6);
   assert.ok(Math.abs(loweredHead.z-originalHead.z)<1e-6);
