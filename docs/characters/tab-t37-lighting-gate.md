@@ -23,3 +23,14 @@ This is explicitly a **headless Chromium SwiftShader CPU-submission benchmark**,
 The captures and measurements must be inspected **after CI**. A perceptual source-art match cannot be established from a brightness difference, and this QA does not yet test frame rate, scene collision, shadow/cloth penetration, or proportions under a shared reference photograph. Do **not** mark T3.7 complete from these two pictures alone.
 
 Source: `docs/characters/tab-t31-result.md` (cropped reference provenance and scale limitation); `docs/ATOMIC_BACKLOG.md` (T3.7 acceptance definition).
+
+## 2026-11-12 CI evidence review (T3.7 still open)
+
+Inspected the actual PNG images and `robot-proportions/results.json` from [Shift S2.7 visual QA run 43277635374](https://github.com/HereLiesAz/hahapewpew/actions/runs/43277635374), artifact `13970494026`, on merged PR #57's head SHA `203a7ec37005832eb1ec99d5fc38b94a78cd024f`.
+
+- `tab-victoria-front.png` and `tab-victoria-side.png` show the fitted, fully textured outfit, rounded flats and hanging teddy in front and profile; these still images do not establish animated cloth/leg contact or approve likeness against the source illustration.
+- `tab-t37-trio-bright.png` and `tab-t37-trio-dim.png` show the same three actors and camera. Their reported mean pixel values are 130.48210416666666 and 119.3343125, respectively; these are image brightness statistics, not an art-direction verdict.
+- The reported projected heights are Tab 756.0173922582753 px, Qwerty 320.8246725370154 px, Shift 149.20479627276896 px. The visibly dramatic cross-character size difference is **not approved** by the source-art scale contract (T3.1). No checkbox is changed here.
+- The headless Chromium SwiftShader render profile recorded 40 samples after 8 warm-ups: 281.25 ms median JavaScript submit, 395.1000000000058 ms p95, 644 draw calls, 41,212 triangles, 1,384 tracked geometries, 32 textures, and 1600 × 1000 framebuffer. These figures come exclusively from the artifact's `tab-t37-production-render-profile` entry; they are not measured real-device frame times or mobile FPS.
+
+**Remaining acceptance blockers:** source-approved trio/box proportions; motion-frame inspection for bear/hand, shoes and torn cloth; collision and penetration tests; real-device performance and memory budgets. Passing browser CI does not close T3.7.
