@@ -326,13 +326,13 @@
     "status": "approximate source landmarks; independent of crop canvas height"
   },
   "scalePolicy": {
-    "status": "provisional runtime sizes preserved; owner-intended cross-character ratio unresolved",
+    "status": "provisional runtime sizes recorded; Tab cross-character scale remains unresolved",
     "sourceAuthority": "Individual crops do not supply a common pixel scale. Browser comparison records existing models, not intended proportions.",
     "rootScales": {
       "Tab": 0.66,
       "Qwerty": 0.27,
-      "Shift": 0.46
+      "Shift": 0.99
     },
-    "shiftHeightPolicy": "Shallow inverted-wok profile; leave standing height wherever it ends up. The former 92 percent target is superseded."
+    "shiftHeightPolicy": "Shallow inverted-wok profile retained. Owner requested enlarging all of Shift to match Qwerty overall height; former 92 percent target remains superseded."
   }
 }

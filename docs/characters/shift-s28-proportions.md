@@ -104,3 +104,7 @@ Actual production Chromium neutral-pose measurements:
 Shift's dome rise is 0.1583282232 world units across a diameter of 0.5654578853. Standing height is a measured consequence of the requested profile, **not a target**. The previous 92% constraint was removed at the owner's explicit instruction.
 
 Front, side and paired production captures were opened and inspected. The cap reads as a shallow inverted bowl, retains its circular overhead outline and continuous cel shading, and passes head/eye attachment, weapon, animation, fallback and rendered-road contact checks. These checks do not imply the owner's final artistic approval.
+
+## 2026-11-12 whole-actor Shift enlargement
+
+The owner's new request to increase **all** of Shift to the same apparent overall height as Qwerty overrides the prior 0.46-root and old equal-torso-size policies above. The live Shift and procedural fallback are now assigned a uniform **0.99** scene-root and groundScale, while Qwerty stays 0.27. The prior front-view trio projected spans were 149.20479627276896 pixels for Shift and 320.8246725370154 for Qwerty. Their independently measured ratio suggests a target root scale near 0.99 without enlarging one part independently. Browser regression measures both actual loaded, skinned actors at the same ground and camera depth, requires overall height agreement within 5%, and captures production views. The old 0.46 measurements in historical sections are deliberately retained as provenance, not current truth. Visual QA remains required.

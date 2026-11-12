@@ -64,3 +64,7 @@ Measured from the production assets at `caccdbc112283d232a15a1cbf71e739207367cc7
 | Shift | 0.46 | 0.40896 | 0.57374 |
 
 The trio image uses a single orthographic +X view with all three root X positions at zero and a shared QA minimum Y of −0.0455. The projected heights reproduce the measured world-height ratios. The source annotation, trio frame and Tab close-up were opened and inspected; 92 Node tests, 50 Python tests and the full production Chromium run passed locally. Cold independent GLEE found no remaining defect in this reconciliation. Merged-commit CI is checked separately after publication.
+
+## Owner correction: whole Shift matches Qwerty (2026-11-12)
+
+The owner's explicit request supersedes the earlier instruction to preserve Shift's provisional 0.46 scale. Scale **the complete Shift root** uniformly to 0.99, leaving Qwerty at 0.27 and Tab at 0.66; the revised numerical contract is `tab-t31-trace.json`. The scale is selected from the same-camera Chromium trio's prior measured projected spans (Shift 149.20479627276896 px, Qwerty 320.8246725370154 px at 0.46), yielding an approximately equal standing height, not from the isolated character crops. The shallow inverted-wok dome, body/limb proportions, weapon, eyes, GLBs and animations are unchanged. Tab-to-robot artistic scale remains separately unapproved. Actual post-change Chromium screenshots and ground contact must pass before visual acceptance.
