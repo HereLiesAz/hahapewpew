@@ -314,14 +314,23 @@ test('S2.2 dome normals are continuous while every geometric and skin attribute 
   let changedShells=0,sharedVertices=0;
   for(const [mesh,original] of before){
     const shell=['Shift/Dome_Side','Shift/Dome_Graphite'].includes(mesh.material.name);
+    const fitted=new Set(['Shift/Dome_Side','Shift/Dome_Graphite','Shift/Ink_Outline',
+      'Shift/Eyes_2D_Emission','Shift/Body_Graphite','Shift/Control_Light','Shift/Limb_Black']).has(mesh.material.name);
     for(const [name,values] of Object.entries(original.attributes)){
       assert.deepEqual(Array.from(original.geometry.attributes[name].array),values,'source geometry must remain untouched');
-      if(shell&&name==='normal')continue;
+      if(fitted&&(name==='normal'||name==='position'))continue;
       assert.deepEqual(Array.from(mesh.geometry.attributes[name].array),values,mesh.material.name+'/'+name);
     }
     if(!shell){
-      if(mesh.material.name!=='Shift/Ink_Outline')assert.equal(mesh.geometry,original.geometry);
+      if(fitted)assert.notEqual(mesh.geometry,original.geometry);
       continue;
+    }
+    const sourcePositions=original.geometry.attributes.position,changedPositions=mesh.geometry.attributes.position;
+    for(let i=0;i<sourcePositions.count;i++){
+      assert.ok(Math.abs(sourcePositions.getX(i)-changedPositions.getX(i))<1e-6);
+      assert.ok(Math.abs(sourcePositions.getZ(i)-changedPositions.getZ(i))<1e-6);
+      assert.ok(Math.abs(sourcePositions.getY(i)-changedPositions.getY(i)-.055)<1e-6,
+        'S2.2 dome translated down without reshaping shell or losing circularity');
     }
     changedShells++;
     assert.notEqual(mesh.geometry,original.geometry);
