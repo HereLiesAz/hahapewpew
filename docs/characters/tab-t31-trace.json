@@ -333,6 +333,7 @@
       "Qwerty": 0.27,
       "Shift": 0.843
     },
+    "shiftHorizontalScale": 0.8,
     "shiftHeightPolicy": "Shallow inverted-wok profile retained. Owner clarified Shift should be slightly shorter overall, with rendered torso height matching Qwerty; former 92 percent target remains superseded."
   }
 }

@@ -153,7 +153,7 @@ try {
   });
   report.results.push({mode:'neutral-production',...measured});
   for(const [name,scale] of Object.entries(tabContract.scalePolicy.rootScales)){
-    assert.deepEqual(measured.trio.rootScales[name],[scale,scale,scale]);
+    assert.deepEqual(measured.trio.rootScales[name],name==='Shift'?[tabContract.scalePolicy.shiftHorizontalScale,scale,tabContract.scalePolicy.shiftHorizontalScale]:[scale,scale,scale]);
     assert.ok(Math.abs(measured.trio.minima[name]-measured.trio.groundY)<1e-6);
   }
   assert.deepEqual(measured.trio.models,['glb','glb-q16','glb']);
@@ -162,7 +162,7 @@ try {
   assert.deepEqual(measured.trio.skinTextures,{base:true,normal:true});
   assert.deepEqual(measured.trio.rootDepths,[0,0,0]);
   assert.deepEqual(measured.qScale,[.27,.27,.27]);
-  assert.deepEqual(measured.sScale,[.843,.843,.843]);
+  assert.deepEqual(measured.sScale,[.8,.843,.8]);
   assert.ok(Number.isFinite(measured.relativeHeight)&&measured.relativeHeight>.83&&measured.relativeHeight<.88,
     'Shift must stand a little shorter than Qwerty following torso-size correction');
   assert.ok(measured.domeRise/measured.domeDiameter>.26&&measured.domeRise/measured.domeDiameter<.30,'head must be a shallow wok');

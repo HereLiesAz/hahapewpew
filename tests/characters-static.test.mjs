@@ -38,6 +38,6 @@ test('all character PBR image references exist and are nonempty',()=>{
 });
 test('physically plausible relative height: Tab is noticeably taller than either machine',()=>{
   assert.match(models,/root\.name='Tab';root\.scale\.setScalar\(\.66\)/);
-  assert.match(models,/root\.name='Shift';root\.scale\.setScalar\(\.843\)/);
+  assert.match(models,/root\.name='Shift';root\.scale\.setScalar\(\.843\);root\.scale\.x=root\.scale\.z=\.8/);
   assert.match(models,/root\.name='Qwerty';root\.scale\.setScalar\(\.27\)/);
 });

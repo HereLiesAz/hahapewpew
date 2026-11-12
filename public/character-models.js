@@ -270,7 +270,7 @@ function shiftDomeDecal(head,material,cx,cy,width,height,angle=0,offset=.006){
 const shiftInk=new THREE.MeshBasicMaterial({color:'#0c1010',toneMapped:false,side:THREE.DoubleSide});
 const shiftLight=new THREE.MeshBasicMaterial({color:'#ffffff',toneMapped:false,side:THREE.DoubleSide});
 function buildShift(scene){
-  const root=group(scene);root.name='Shift';root.scale.setScalar(.843);
+  const root=group(scene);root.name='Shift';root.scale.setScalar(.843);root.scale.x=root.scale.z=.8;
   const legs=[robotLeg(root,-1,.33),robotLeg(root,1,.33)];
   const torso=group(root,0,.54,0);
   const body=sculpt(torso,M.steel,[[-.29,.25,.19],[-.21,.27,.22],[.03,.27,.24],[.25,.19,.19],[.33,.14,.14]],40);
