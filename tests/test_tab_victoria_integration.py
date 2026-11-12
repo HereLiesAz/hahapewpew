@@ -134,6 +134,28 @@ class TabVictoria(unittest.TestCase):
             self.assertLess(abs(np.median(lower[:,0])-np.median(upper[:,0])),.13,
                             side+' shin bends like an extra hind-leg segment')
 
+    def test_ankle_weights_start_at_the_foot_not_halfway_up_the_calf(self):
+        """Ankle-controlled skin must end below the actual human shin."""
+        body=self.parts['Tab/Skin']
+        xyz=accessor(self.output,self.after,body['attributes']['POSITION'])
+        ids=accessor(self.output,self.after,body['attributes']['JOINTS_0'])
+        weights=accessor(self.output,self.after,body['attributes']['WEIGHTS_0'])
+        names=[self.output['nodes'][n]['name']
+               for n in self.output['skins'][0]['joints']]
+        for side in ('L','R'):
+            ankle=names.index('ankle.'+side)
+            knee=names.index('knee.'+side)
+            foot=xyz[(ids[:,0]==ankle)&(weights[:,0]>.5)]
+            calf=xyz[(ids[:,0]==knee)&(weights[:,0]>.5)]
+            self.assertGreater(len(foot),100,side+' must retain a real foot')
+            self.assertGreater(len(calf),110,side+' must retain the full shin')
+            self.assertLess(foot[:,1].max(),.23,
+                side+' ankle skin includes mid-calf; lower shin was assigned to foot')
+            self.assertLess(calf[:,1].min(),.22,
+                side+' lower shin must extend to the anatomical ankle')
+            self.assertGreater(calf[:,1].max(),.61,
+                side+' shin must still connect to the real knee')
+
     def test_original_dress_and_bear_pose_survive(self):
         g = self.output
         self.assertEqual([a['name'] for a in g['animations']],
