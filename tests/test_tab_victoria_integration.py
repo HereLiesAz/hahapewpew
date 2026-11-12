@@ -56,14 +56,25 @@ class TabVictoria(unittest.TestCase):
         self.assertEqual(origin['creator'], 'Rex Mun')
         self.assertEqual(origin['sourceSHA256'], EXPECTED_SOURCE)
         self.assertEqual(set(self.parts), set(self.base_parts))
+        altered={
+            'Tab/Dress_Main':{'JOINTS_0','WEIGHTS_0'},
+            'Tab/Dress_Dark':{'POSITION','JOINTS_0','WEIGHTS_0'},
+            'Tab/Dress_Light':{'JOINTS_0','WEIGHTS_0'},
+            'Tab/Dress_Shadow':{'JOINTS_0','WEIGHTS_0'},
+            'Tab/Dress_Dirt':{'JOINTS_0','WEIGHTS_0'},
+            'Tab/Shoe':{'POSITION'},
+            'Tab/Ink':{'POSITION'},
+        }
         for key in sorted(self.base_parts):
             if key == 'Tab/Skin':
                 continue
-            old, new = self.base_parts[key], self.parts[key]
-            self.assertEqual(set(old['attributes']), set(new['attributes']), key)
-            for attr in old['attributes']:
+            original, new = self.base_parts[key], self.parts[key]
+            self.assertEqual(set(original['attributes']), set(new['attributes']), key)
+            for attr in original['attributes']:
+                if attr in altered.get(key,set()):
+                    continue
                 np.testing.assert_array_equal(
-                    accessor(self.original, self.before, old['attributes'][attr]),
+                    accessor(self.original, self.before, original['attributes'][attr]),
                     accessor(self.output, self.after, new['attributes'][attr]),
                     err_msg=f'{key} {attr}')
         for index, sha in enumerate((EXPECTED_FACE, EXPECTED_SIDE)):
@@ -170,11 +181,69 @@ class TabVictoria(unittest.TestCase):
         shoe = accessor(g, self.after, self.parts['Tab/Shoe']['attributes']['POSITION'])
         self.assertLess(shoe[:, 1].min(), .01)
 
+    def test_skirt_moves_with_hips_and_thigh_skin_stays_covered(self):
+        part=self.parts['Tab/Dress_Main']
+        xyz=accessor(self.output,self.after,part['attributes']['POSITION'])
+        weights=accessor(self.output,self.after,part['attributes']['WEIGHTS_0'])
+        names=[self.output['nodes'][n]['name'] for n in self.output['skins'][0]['joints']]
+        ids=accessor(self.output,self.after,part['attributes']['JOINTS_0'])
+        hem=xyz[:,1]<.70
+        self.assertGreater(hem.sum(),1000)
+        hip_l=names.index('hip.L');hip_r=names.index('hip.R')
+        self.assertTrue(np.all(ids[hem,1]==hip_l))
+        self.assertTrue(np.all(ids[hem,2]==hip_r))
+        self.assertGreater(np.mean(weights[hem,1]+weights[hem,2]),.25)
+        # No hidden thigh triangles remain visible through the torn dress.
+        body=self.parts['Tab/Skin']
+        pos=accessor(self.output,self.after,body['attributes']['POSITION'])
+        bone=accessor(self.output,self.after,body['attributes']['JOINTS_0'])
+        face=accessor(self.output,self.after,body['indices']).ravel()
+        visible=np.unique(face)
+        hip=np.isin(bone[visible,0],[hip_l,hip_r])
+        self.assertFalse(np.any(hip&(pos[visible,1]>.76)))
+
+    def test_flats_enclose_the_feet_with_grounded_soles(self):
+        shoe=accessor(self.output,self.after,self.parts['Tab/Shoe']['attributes']['POSITION'])
+        previous=accessor(self.original,self.before,
+                          self.base_parts['Tab/Shoe']['attributes']['POSITION'])
+        self.assertLess(abs(float(shoe[:,1].min())),.005)
+        self.assertGreater(shoe[:,1].max(),.15)
+        self.assertGreater(shoe[:,1].max(),previous[:,1].max()+.045)
+        self.assertTrue(np.allclose(shoe[:,0],previous[:,0]))
+        self.assertTrue(np.allclose(shoe[:,2],previous[:,2]))
+
+    def test_bear_rotates_at_its_held_ear_not_above_the_hand(self):
+        nodes=self.output['nodes']
+        parents={child:i for i,node in enumerate(nodes) for child in node.get('children',[])}
+        def world(index):
+            p=np.asarray(nodes[index].get('translation',[0,0,0]))
+            return p+world(parents[index]) if index in parents else p
+        bear=next(i for i,n in enumerate(nodes) if n['name']=='bear')
+        palm=next(i for i,n in enumerate(nodes) if n['name']=='hand.R')
+        pivot=world(bear)
+        held=np.array([.348,.973,.109])
+        self.assertLess(np.linalg.norm(pivot-held),.012)
+        self.assertLess(np.linalg.norm(pivot-world(palm)),.07)
+        self.assertEqual(parents[bear],palm)
+
+    def test_tailored_sleeves_are_no_longer_identical_radius_rods(self):
+        old=self.base_parts['Tab/Dress_Dark'];new=self.parts['Tab/Dress_Dark']
+        previous=accessor(self.original,self.before,old['attributes']['POSITION'])
+        positions=accessor(self.output,self.after,new['attributes']['POSITION'])
+        self.assertEqual(previous.shape,positions.shape)
+        # Alter the shoulder caps and cuff silhouettes on both arms while
+        # keeping the original bodice, UVs and texture artwork recognizable.
+        for side in (-1,1):
+            sleeve=(positions[:,0]*side>.20)&(positions[:,1]>1.49)
+            self.assertGreater(sleeve.sum(),200)
+            changed=np.linalg.norm(positions[sleeve]-previous[sleeve],axis=1)
+            self.assertGreater(np.sum(changed>.004),50)
+
     def test_only_leg_bind_transforms_changed(self):
         before = self.original['nodes']; after = self.output['nodes']
         self.assertEqual([n['name'] for n in before], [n['name'] for n in after])
         self.assertEqual(len(self.output['skins'][0]['joints']), 20)
-        leg = {'hip.L', 'hip.R', 'knee.L', 'knee.R', 'ankle.L', 'ankle.R'}
+        leg = {'hip.L', 'hip.R', 'knee.L', 'knee.R', 'ankle.L', 'ankle.R', 'bear'}
         for a, b in zip(before, after):
             if a['name'] not in leg:
                 self.assertEqual(a, b, a['name'])
