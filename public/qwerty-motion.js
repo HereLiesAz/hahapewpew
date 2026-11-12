@@ -1,5 +1,6 @@
 import * as THREE from './vendor/three.module.js';
 import {celShadeRobot} from './cel-robots.js';
+import {fitQwertyProportions} from './robot-proportion-fit.js';
 
 /** Candidate motion rig. Keep separate from the live character until Q1.8. */
 export function shortStrideClip(source, factor=.62) {
@@ -22,6 +23,7 @@ export function shortStrideClip(source, factor=.62) {
 
 /** Actual skinned GLB, four toon bands, unshaded 2D eyes, independently driven lids. */
 export function createQwertyMotionRig(gltf) {
+  fitQwertyProportions(gltf);
   const root=gltf.scene;
   const skull=root.getObjectByName('skull_upper');
   const fixedPlate=root.getObjectByName('base_plate');
