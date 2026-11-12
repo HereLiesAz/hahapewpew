@@ -509,6 +509,35 @@ try {
     'Tab teddy must remain attached to her right-hand ear grip');
   assert.ok(Math.abs(tabMotion.idleLook)>.03,
     'Tab must have an independent idle look');
+  // Check the actual Victoria knee-chain angle, not merely its planted ankle.
+  // A short stride previously passed foot-contact tests while the legs stayed
+  // in a digitigrade crouch. This exercises multiple complete walking cycles.
+  const legProfile=await page.evaluate(()=>{
+    const {T,qa,t}=window.__productionQA;
+    const actor=t.asset,root=t.root;
+    root.position.set(0,0,-1.7);root.rotation.y=Math.PI/2;actor.reset();
+    let maxStanceFlex=0,samples=0;
+    for(let frame=1;frame<=120;frame++){
+      root.position.x=frame*1.22/60;
+      const gait=actor.update(1/60,{walking:true,heading:Math.PI/2});
+      qa.scene.updateMatrixWorld(true);
+      for(const [index,side] of ['L','R'].entries()){
+        if(!gait.stance[index])continue;
+        const hip=actor.joints['hip'+side].getWorldPosition(new T.Vector3());
+        const knee=actor.joints['knee'+side].getWorldPosition(new T.Vector3());
+        const foot=actor.joints['ankle'+side].getWorldPosition(new T.Vector3());
+        const thigh=knee.clone().sub(hip).normalize();
+        const shin=foot.clone().sub(knee).normalize();
+        const flex=Math.acos(T.MathUtils.clamp(thigh.dot(shin),-1,1));
+        maxStanceFlex=Math.max(maxStanceFlex,flex);samples++;
+      }
+    }
+    return {maxStanceFlex,samples,limitRadians:.70};
+  });
+  report.results.push({mode:'tab-t36-victoria-knee-profile',...legProfile});
+  assert.ok(legProfile.samples>=100,'Both legs must plant across repeated walks');
+  assert.ok(legProfile.maxStanceFlex<legProfile.limitRadians,
+    'Real Victoria shin and thigh must not form a persistent animal-like crouch');
   // Production WebGL stills for visual review, not fabricated render targets.
   await page.evaluate(()=>{
     const {t}=window.__productionQA;

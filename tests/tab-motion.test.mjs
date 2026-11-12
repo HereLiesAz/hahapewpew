@@ -102,13 +102,42 @@ test('walking knees remain human-facing through every planted stride',()=>{
       f.character.updateMatrixWorld(true);
       const hip=f.names.get('hip.'+side).getWorldPosition(new THREE.Vector3());
       const knee=f.names.get('knee.'+side).getWorldPosition(new THREE.Vector3());
-      const anterior=knee.sub(hip).dot(direction);
-      assert.ok(anterior>.005,
-        side+' knee must remain ahead of hip during stance; digitigrade pose at frame '+frame+': '+anterior);
+      const foot=f.names.get('ankle.'+side).getWorldPosition(new THREE.Vector3());
+      const fromHip=knee.clone().sub(hip);
+      const hipToFoot=foot.sub(hip);
+      const onAxis=hipToFoot.multiplyScalar(fromHip.dot(hipToFoot)/hipToFoot.lengthSq());
+      const anterior=fromHip.sub(onAxis).dot(direction);
+      assert.ok(anterior>.002,
+        side+' knee must flex forward of hip-to-ankle axis at frame '+frame+': '+anterior);
       samples[i]++;
     }
   }
   assert.ok(samples.every(n=>n>35),'sample both feet across several full stride cycles');
+});
+
+test('planted knees are only gently flexed, not digitigrade',()=>{
+  const f=fixture();
+  f.character.scale.setScalar(.66);
+  let samples=0;
+  for(let frame=1;frame<=120;frame++){
+    f.character.position.x=frame*1.22/60;
+    const gait=f.motion.update(1/60,{walking:true,heading:Math.PI/2});
+    f.character.updateMatrixWorld(true);
+    for(let i=0;i<2;i++){
+      if(!gait.stance[i])continue;
+      const side=i===0?'L':'R';
+      const hip=f.names.get('hip.'+side).getWorldPosition(new THREE.Vector3());
+      const knee=f.names.get('knee.'+side).getWorldPosition(new THREE.Vector3());
+      const foot=f.names.get('ankle.'+side).getWorldPosition(new THREE.Vector3());
+      const thigh=knee.clone().sub(hip).normalize();
+      const shin=foot.clone().sub(knee).normalize();
+      const flex=Math.acos(THREE.MathUtils.clamp(thigh.dot(shin),-1,1));
+      assert.ok(flex<.70,
+        side+' planted knee excessively flexed at frame '+frame+': '+flex);
+      samples++;
+    }
+  }
+  assert.ok(samples>=100,'measure both planted legs through repeated strides');
 });
 
 test('opposite leg advances on alternating half-strides, never sinks below ground',()=>{
