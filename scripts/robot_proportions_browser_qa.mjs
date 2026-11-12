@@ -222,26 +222,38 @@ try {
       cam.position.copy(center).addScaledVector(direction,gun||tabBox?Math.max(size.x,size.y,size.z)*1.5+.02:5);
       cam.up.set(0,view==='top'?0:1,view==='top'?-1:0);
       cam.lookAt(center);cam.updateMatrixWorld(true);
-      // Prevent the other actor occluding single-character side views.
+      // Render an anatomy plate, not the surrounding game world. Road-contact
+      // measurements above still use the real road; only the screenshot omits it.
       const hidden=[];
+      for(const node of qa.scene.children){
+        if(node.isLight||[t.root,q.root,s.root].includes(node))continue;
+        hidden.push([node,node.visible]);node.visible=false;
+      }
+      // Prevent the other actor occluding single-character side views.
       for(const rig of [t,q,s])if(!trio&&(rig===t&&focus!==t||!pair&&rig!==focus)){
         hidden.push([rig.root,rig.root.visible]);rig.root.visible=false;
       }
-      qa.renderer.render(qa.scene,cam);
-      const data=qa.renderer.domElement.toDataURL('image/png');
-      let imageRange=null,blackFraction=null,meanBrightness=null;
-      if(gun||tabBox||tabAnatomy||tabDress||tabBear||tab||trio){
-        const probe=document.createElement('canvas');probe.width=160;probe.height=100;
-        const ctx=probe.getContext('2d');ctx.drawImage(qa.renderer.domElement,0,0,160,100);
-        const rgba=ctx.getImageData(0,0,160,100).data;
-        let low=255,high=0,black=0,brightness=0;
-        for(let i=0;i<rgba.length;i+=4){low=Math.min(low,rgba[i],rgba[i+1],rgba[i+2]);high=Math.max(high,rgba[i],rgba[i+1],rgba[i+2]);
-          brightness+=rgba[i]+rgba[i+1]+rgba[i+2];
-          if(Math.max(rgba[i],rgba[i+1],rgba[i+2])<3)black++;}
-        imageRange=high-low;blackFraction=black/(rgba.length/4);
-        meanBrightness=brightness/(rgba.length/4*3);
+      const originalBackground=qa.scene.background,originalFog=qa.scene.fog;
+      qa.scene.background=new T.Color('#e4e4e4');qa.scene.fog=null;
+      let data,imageRange=null,blackFraction=null,meanBrightness=null;
+      try{
+        qa.renderer.render(qa.scene,cam);
+        data=qa.renderer.domElement.toDataURL('image/png');
+        if(gun||tabBox||tabAnatomy||tabDress||tabBear||tab||trio){
+          const probe=document.createElement('canvas');probe.width=160;probe.height=100;
+          const ctx=probe.getContext('2d');ctx.drawImage(qa.renderer.domElement,0,0,160,100);
+          const rgba=ctx.getImageData(0,0,160,100).data;
+          let low=255,high=0,black=0,brightness=0;
+          for(let i=0;i<rgba.length;i+=4){low=Math.min(low,rgba[i],rgba[i+1],rgba[i+2]);high=Math.max(high,rgba[i],rgba[i+1],rgba[i+2]);
+            brightness+=rgba[i]+rgba[i+1]+rgba[i+2];
+            if(Math.max(rgba[i],rgba[i+1],rgba[i+2])<3)black++;}
+          imageRange=high-low;blackFraction=black/(rgba.length/4);
+          meanBrightness=brightness/(rgba.length/4*3);
+        }
+      }finally{
+        hidden.forEach(([root,visible])=>{root.visible=visible});
+        qa.scene.background=originalBackground;qa.scene.fog=originalFog;
       }
-      hidden.forEach(([root,visible])=>{root.visible=visible});
       // A fixed camera envelope is not the actor's measured pixel height.
       const measuredBox=view==='motion'?bounds(s.asset.model):box;
       const measuredCenter=measuredBox.getCenter(new T.Vector3());
