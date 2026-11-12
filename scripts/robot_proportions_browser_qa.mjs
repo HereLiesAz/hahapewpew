@@ -459,10 +459,24 @@ try {
     }
     const ear=t.asset.joints.bear.getWorldPosition(new T.Vector3());
     const hand=t.asset.joints.handR.getWorldPosition(new T.Vector3());
+    // The joint can be attached while the fingers hang straight past the ear.
+    // Count actual skinned hand vertices touching the ear in the rest pose.
+    const bodyPos=body.geometry.getAttribute('position');
+    const bodyIds=body.geometry.getAttribute('skinIndex');
+    const bodyW=body.geometry.getAttribute('skinWeight');
+    const handIndex=body.skeleton.bones.findIndex(b=>b.userData.name==='hand.R');
+    if(handIndex<0)throw Error('Victoria right-hand skin joint missing');
+    let fingerGripVertices=0;
+    const earRest=new T.Vector3(.348,.973,.109);
+    for(let i=0;i<bodyPos.count;i++){
+      if(bodyIds.getX(i)!==handIndex||bodyW.getX(i)<=.5)continue;
+      if(earRest.distanceTo(new T.Vector3(bodyPos.getX(i),bodyPos.getY(i),bodyPos.getZ(i)))<.03)
+        fingerGripVertices++;
+    }
     return {meanHipWeight,hemCount:hem.length,
       skirtArticulation:shifted.distanceTo(initial),
       restError:restored.distanceTo(initial),
-      shoeMin,shoeMax,gripDistance:ear.distanceTo(hand)};
+      shoeMin,shoeMax,gripDistance:ear.distanceTo(hand),fingerGripVertices};
   });
   report.results.push({mode:'tab-outfit-hip-sole-bear-fit',...costumeFit});
   assert.ok(costumeFit.meanHipWeight>.25&&costumeFit.hemCount>100,
@@ -471,8 +485,8 @@ try {
     'Dress hem must deform and return without drifting');
   assert.ok(Math.abs(costumeFit.shoeMin)<.004&&costumeFit.shoeMax>.15,
     'Shoe must have a road-level sole and upper surrounding the human foot');
-  assert.ok(costumeFit.gripDistance<.08,
-    'Bear must pivot at the ear within the actual hand grip');
+  assert.ok(costumeFit.gripDistance<.08&&costumeFit.fingerGripVertices>120,
+    'Bear pivot and actual curved fingers must both grasp the held ear');
   // A former Victoria import attached the LOWER SHIN to ankle joints.
   // World-space shoe contact alone missed the resulting mid-calf false ankle.
   // Inspect skin weights in the actual GLTFLoader mesh, not a guessed silhouette.
