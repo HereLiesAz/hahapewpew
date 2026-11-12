@@ -82,6 +82,9 @@ test('Qwerty tangled original fingers are replaced with symmetrical hooked clamp
     const clamp = wrist.getObjectByName('Qwerty.ReferenceClamp.' + side);
     assert.ok(clamp);
     assert.equal(clamp.children.length, 6, 'palm and two hooked tines must exist');
+    assert.equal(clamp.scale.x, 1.45, 'clamps must read as substantial hooks at game camera distance');
+    assert.equal(clamp.scale.y, clamp.scale.x);
+    assert.equal(clamp.scale.z, clamp.scale.x);
     assert.ok(clamp.children.every(mesh => mesh.isMesh && mesh.castShadow));
   }
   fitQwertyProportions(gltf);
