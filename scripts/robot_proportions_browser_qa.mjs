@@ -162,14 +162,14 @@ try {
   assert.deepEqual(measured.trio.skinTextures,{base:true,normal:true});
   assert.deepEqual(measured.trio.rootDepths,[0,0,0]);
   assert.deepEqual(measured.qScale,[.27,.27,.27]);
-  assert.deepEqual(measured.sScale,[.99,.99,.99]);
-  assert.ok(Number.isFinite(measured.relativeHeight)&&Math.abs(measured.relativeHeight-1)<.05,
-    'Shift and Qwerty must stand at comparable overall height in the actual production render');
+  assert.deepEqual(measured.sScale,[.843,.843,.843]);
+  assert.ok(Number.isFinite(measured.relativeHeight)&&measured.relativeHeight>.83&&measured.relativeHeight<.88,
+    'Shift must stand a little shorter than Qwerty following torso-size correction');
   assert.ok(measured.domeRise/measured.domeDiameter>.26&&measured.domeRise/measured.domeDiameter<.30,'head must be a shallow wok');
-  // Uniformly enlarging the whole Shift makes its visible body comparable to
-  // Qwerty; no separate dome, limb, weapon or torso-only multiplier is changed.
-  assert.ok(measured.sTorso/measured.qTorso>1.10&&measured.sTorso/measured.qTorso<1.30,
-    'Shift torso must remain comparable to Qwerty after uniform actor scaling');
+  // Verify the real loaded, skinned torso mesh against Qwerty, not overall
+  // standing height: the dome must remain proportionally large and shallow.
+  assert.ok(Math.abs(measured.sTorso/measured.qTorso-1)<.02,
+    'Shift and Qwerty rendered torso heights must match within two percent');
   assert.ok(measured.bodyBottom<=measured.hipTop+.001,
     'visible hip-to-torso gap in live skinned actor');
   assert.ok(Math.abs(measured.qFoot-measured.surfaceY)<1e-6);
