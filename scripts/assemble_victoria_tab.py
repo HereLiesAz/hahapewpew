@@ -265,6 +265,70 @@ def append_image(g, blob, source_g, source_bin, name):
     return len(g['textures'])-1
 
 
+def retessellate_sleeves(g, blob):
+    """Replace two-ring rod sleeves with rounded, multi-ring skinned cloth.
+
+    Retain all other dress triangles exactly; fit_costume later reshapes the
+    new rings and computes their actual smoothed surface normals.
+    """
+    skin_names=[g['nodes'][i]['name'] for i in g['skins'][0]['joints']]
+    joints={name:i for i,name in enumerate(skin_names)}
+    part=next(p for p in g['meshes'][0]['primitives']
+              if g['materials'][p['material']]['name']=='Tab/Dress_Dark')
+    attrs=part['attributes']
+    original={name:accessor(g,blob,index).copy() for name,index in attrs.items()}
+    primary=original['JOINTS_0'][:,0].reshape(-1,3)
+    sleeves=[joints['shoulder.L'],joints['shoulder.R']]
+    keep=~np.all(np.isin(primary,sleeves),axis=1)
+    chunks={name:[data.reshape(-1,3,data.shape[1])[keep].reshape(-1,data.shape[1])]
+            for name,data in original.items()}
+    for side,start,end,r0,r1 in (
+        ('L',[-.223,1.777,0],[-.366,1.532,0],.109,.090),
+        ('R',[.223,1.776,0],[.292,1.571,.005],.098,.074)):
+        start=np.array(start,dtype=np.float64)
+        end=np.array(end,dtype=np.float64)
+        axis=(end-start)/np.linalg.norm(end-start)
+        tangent=np.cross(axis,[0,0,1.])
+        tangent/=np.linalg.norm(tangent)
+        bitangent=np.cross(axis,tangent)
+        shoulder=joints['shoulder.'+side]
+        chest=joints['chest']
+        elbow=joints['elbow.'+side]
+        vertices={name:[] for name in attrs}
+        def vertex(t,k):
+            angle=k*2*np.pi/20
+            radial=tangent*np.cos(angle)+bitangent*np.sin(angle)
+            radius=(1-t)*r0+t*r1
+            location=start+(end-start)*t+radial*radius
+            chest_weight=.30*(1-t)**4
+            elbow_weight=.28*t**3
+            return {
+                'POSITION':location.astype(np.float32),
+                'NORMAL':radial.astype(np.float32),
+                'TEXCOORD_0':np.array([k/20,t],dtype=np.float32),
+                'JOINTS_0':np.array([shoulder,chest,elbow,0],dtype=np.uint16),
+                'WEIGHTS_0':np.array([1-chest_weight-elbow_weight,
+                                      chest_weight,elbow_weight,0],dtype=np.float32)}
+        for row in range(7):
+            t0=row/7;t1=(row+1)/7
+            for segment in range(20):
+                ring=[vertex(t0,segment),vertex(t1,segment),
+                      vertex(t1,segment+1),vertex(t0,segment+1)]
+                for face in ((0,1,2),(0,2,3)):
+                    for index in face:
+                        for name in attrs:
+                            vertices[name].append(ring[index][name])
+        for name in attrs:
+            chunks[name].append(np.asarray(vertices[name],dtype=original[name].dtype))
+    final={name:np.ascontiguousarray(np.concatenate(chunks[name]))
+           for name in attrs}
+    for name,data in final.items():
+        previous=g['accessors'][attrs[name]]
+        attrs[name]=append_accessor(g,blob,data,previous['componentType'],
+                                    previous['type'],34962,
+                                    minmax=name=='POSITION')
+
+
 def fit_costume(g, blob):
     """Fit original costume mesh to human calves, shoes, and articulated sleeves.
 
@@ -374,6 +438,7 @@ def main(source, decoded, tab, target):
     nodes={n['name']:n for n in g['nodes']}
     nodes['bear']['translation']=[.003,-.037,.049]
     patch_legs(g,blob)
+    retessellate_sleeves(g,blob)
     fit_costume(g,blob)
     # The GLB joint index is the zero-based slot in the skin.joints list.
     joint_names={n['name']:j for j,n in enumerate([g['nodes'][i] for i in g['skins'][0]['joints']])}
