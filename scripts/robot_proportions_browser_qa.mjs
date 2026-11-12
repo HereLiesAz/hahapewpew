@@ -270,7 +270,8 @@ try {
     if(view==='gun'||view==='gun-muzzle'){
       assert.ok(result.projectedSpan>300);assert.ok(result.imageRange>20,'weapon close-up is blank');
     }
-    else if(view!=='top')assert.ok(result.projectedHeight>300);
+    else if(view!=='top')assert.ok(result.projectedHeight>(pair?250:300),
+      'actor must remain visibly framed in the camera; pair framing includes both enlarged models');
     if(view.startsWith('tab-')){
       assert.ok(result.imageRange>20,'Tab close-up is blank');
       assert.ok(result.blackFraction<.25,'Tab close-up is obscured by black geometry');
