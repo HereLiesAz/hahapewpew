@@ -6,7 +6,7 @@ import * as THREE from './vendor/three.module.js';
 const CLIPS=['Tab_Walk','Tab_Idle','Tab_Bear_Swing'];
 const STEP=0.28; // child-scale step: keeps planted knees ahead of the hips
 const STANCE=0.55; // foot stays fixed in world space for 55% of its stride
-const HIP_DROP=0.10; // gives the near-straight rest legs room to step
+const HIP_DROP=0.035; // just enough leg reach for the stride, without a permanent deep crouch
 
 function angleDelta(from,to){return Math.atan2(Math.sin(to-from),Math.cos(to-from));}
 function approach(current,target,rate,dt){return current+(target-current)*(1-Math.exp(-rate*dt));}
