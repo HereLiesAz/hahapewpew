@@ -80,6 +80,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  id-token: write
 jobs:
   shift-s27:
     # Playwright 1.56.1 supports Ubuntu 24.04 but not ubuntu-latest (26.04).
@@ -122,3 +123,7 @@ jobs:
             artifacts/shift-s27
             artifacts/robot-proportions
           if-no-files-found: warn
+
+      - name: Report CI result
+        if: always()
+        uses: HereLiesAz/workflows/.github/actions/ci-report@de579d34aee1d8a18b9d5329afdd94632258f621
