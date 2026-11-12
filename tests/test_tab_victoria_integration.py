@@ -108,6 +108,32 @@ class TabVictoria(unittest.TestCase):
         self.assertGreater(p[:, 0].max(), .30)
         self.assertLess(p[:, 0].min(), -.30)
 
+    def test_victoria_shins_connect_to_low_ankles_beneath_the_knees(self):
+        """Visible body geometry, not only joint names, must reach the shoes."""
+        g=self.output
+        body=self.parts['Tab/Skin']
+        xyz=accessor(g,self.after,body['attributes']['POSITION'])
+        joints=accessor(g,self.after,body['attributes']['JOINTS_0'])
+        weights=accessor(g,self.after,body['attributes']['WEIGHTS_0'])
+        names=[g['nodes'][n]['name'] for n in g['skins'][0]['joints']]
+        for side,expected_x in (('L',-.135),('R',.135)):
+            knee=names.index('knee.'+side)
+            ankle=names.index('ankle.'+side)
+            # The vertical reference bands are independently defined by the
+            # authored dress/shoe dimensions, not by the retarget algorithm.
+            leg=xyz[np.isin(joints[:,0],[knee,ankle]) & (weights[:,0]>.5)]
+            lower=leg[(leg[:,1]>.19)&(leg[:,1]<.31)]
+            upper=leg[(leg[:,1]>.49)&(leg[:,1]<.61)]
+            self.assertGreater(len(lower),15,side+' missing exposed lower shin')
+            self.assertGreater(len(upper),15,side+' missing anatomical upper shin')
+            for band in (lower,upper):
+                self.assertLess(abs(np.median(band[:,0])-expected_x),.17,
+                                side+' shin is displaced from the real ankle line')
+                self.assertLess(abs(np.median(band[:,2])-.034),.19,
+                                side+' shin protrudes sideways from the shoe')
+            self.assertLess(abs(np.median(lower[:,0])-np.median(upper[:,0])),.13,
+                            side+' shin bends like an extra hind-leg segment')
+
     def test_original_dress_and_bear_pose_survive(self):
         g = self.output
         self.assertEqual([a['name'] for a in g['animations']],
