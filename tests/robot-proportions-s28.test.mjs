@@ -154,7 +154,7 @@ test('Live Shift torso shrinks independently of the dome and original geometry',
     'compact torso must be visibly smaller');
   const compactBottom=new T.Box3().setFromObject(torso,true).min.y;
   assert.ok(Math.abs(compactBottom-(originalBottom-.035))<1e-5,
-    'torso bottom must descend with shortened legs, not float above their hips');
+    'torso bottom '+compactBottom+' differs from source '+originalBottom+' after leg correction');
   const loweredHead=head.getWorldPosition(new T.Vector3());
   assert.ok(originalHead.y-loweredHead.y>.20&&originalHead.y-loweredHead.y<.24,
     'the wok settles with the smaller torso instead of hovering above it');
@@ -259,12 +259,12 @@ test('Production Shift feet touch rendered road at rest and during walk',async()
     return new T.Box3().setFromObject(motion.model,true).min.y;
   };
   assert.ok(Math.abs(footY()-(-.0625))<1e-6,
-    'precise rendered lowest point '+footY()+' differs from grounded road');
+    'precise lowest '+footY()+' differs from road; by mesh: '+(()=>{const arr=[];motion.model.traverse(n=>{if(n.isSkinnedMesh)arr.push([n.material.name,new T.Box3().setFromObject(n,true).min.y])});return JSON.stringify(arr)})());
   Object.values(motion.clips).forEach(a=>a.reset().play());
   for(let i=0;i<12;i++){
     motion.update(.05,{walking:true});motion.ground(actor,[road]);
     assert.ok(Math.abs(footY()-(-.0625))<1e-6,
-    'precise rendered lowest point '+footY()+' differs from grounded road');
+    'precise lowest '+footY()+' differs from road; by mesh: '+(()=>{const arr=[];motion.model.traverse(n=>{if(n.isSkinnedMesh)arr.push([n.material.name,new T.Box3().setFromObject(n,true).min.y])});return JSON.stringify(arr)})());
   }
   // Move the actor between frames: stale bind inverses must not double its transform.
   actor.position.set(1.25,.8,-.6);
