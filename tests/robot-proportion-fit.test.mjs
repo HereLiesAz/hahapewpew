@@ -56,18 +56,19 @@ test('Qwerty head rests on the body with negligible visible neck and no change t
   }
 });
 
-test('Qwerty leg pivots actually shorten while ankles and soles stay planted', async () => {
+test('Qwerty visible legs shorten while ankles and original joint pivots remain stable', async () => {
   const gltf = await loaded('Qwerty_Q16_Validated.glb');
   const limb = primitive(gltf, 'Qwerty/Limb_Black');
-  const original = {foot: span(limb, 'ankleL'), hip: jointY(gltf, 'hipL'),
-    knee: jointY(gltf, 'kneeL'), ankle: jointY(gltf, 'ankleL')};
+  const original = {foot: span(limb, 'ankleL'), hip: span(limb, 'hipL'),
+    knee: span(limb, 'kneeL'), hipJoint: jointY(gltf, 'hipL'),
+    kneeJoint: jointY(gltf, 'kneeL'), ankleJoint: jointY(gltf, 'ankleL')};
   fitQwertyProportions(gltf);
-  assert.ok(jointY(gltf, 'hipL') < original.hip - .06);
-  assert.ok(jointY(gltf, 'kneeL') < original.knee - .03);
-  assert.ok(Math.abs(jointY(gltf, 'ankleL') - original.ankle) < 1e-6);
+  assert.ok(Math.abs(span(limb, 'hipL').high - original.hip.high + .075) < 1e-5);
+  assert.ok(Math.abs(span(limb, 'kneeL').low - original.knee.low + .040) < 1e-5);
+  assert.ok(Math.abs(jointY(gltf, 'hipL') - original.hipJoint) < 1e-6);
+  assert.ok(Math.abs(jointY(gltf, 'kneeL') - original.kneeJoint) < 1e-6);
+  assert.ok(Math.abs(jointY(gltf, 'ankleL') - original.ankleJoint) < 1e-6);
   assert.deepEqual(span(limb, 'ankleL'), original.foot);
-  assert.ok(Math.abs(span(limb, 'hipL').high - .42984) < .003);
-  assert.ok(Math.abs(span(limb, 'kneeL').low - .08337) < .003);
 });
 
 test('Qwerty tangled original fingers are replaced with symmetrical hooked clamps', async () => {
@@ -89,21 +90,23 @@ test('Qwerty tangled original fingers are replaced with symmetrical hooked clamp
       'repeated rig creation must not duplicate clamps');
 });
 
-test('Shift keeps circular head and grounded feet while neck and leg joints shorten', async () => {
+test('Shift preserves circular head, ankle and pivots while shortening visible legs', async () => {
   const gltf = await loaded('Shift_Rigged.glb');
   const shell = primitive(gltf, 'Shift/Dome_Side');
   const limb = primitive(gltf, 'Shift/Limb_Black');
   const before = span(shell, 'head');
-  const foot = span(limb, 'ankleL');
-  const hip = jointY(gltf, 'hipL'), knee = jointY(gltf, 'kneeL'),
-    ankle = jointY(gltf, 'ankleL');
+  const original = {foot: span(limb, 'ankleL'), hip: span(limb, 'hipL'),
+    knee: span(limb, 'kneeL'), hipJoint: jointY(gltf, 'hipL'),
+    kneeJoint: jointY(gltf, 'kneeL'), ankleJoint: jointY(gltf, 'ankleL')};
   fitShiftProportions(gltf);
   assert.ok(Math.abs(span(shell, 'head').high - before.high + .055) < 1e-5);
   assert.ok(span(limb, 'neck').high - span(limb, 'neck').low < .02);
-  assert.ok(jointY(gltf, 'hipL') < hip - .035);
-  assert.ok(jointY(gltf, 'kneeL') < knee - .015);
-  assert.ok(Math.abs(jointY(gltf, 'ankleL') - ankle) < 1e-6);
-  assert.deepEqual(span(limb, 'ankleL'), foot);
+  assert.ok(Math.abs(span(limb, 'hipL').high - original.hip.high + .04) < 1e-5);
+  assert.ok(Math.abs(span(limb, 'kneeL').low - original.knee.low + .018) < 1e-5);
+  assert.ok(Math.abs(jointY(gltf, 'hipL') - original.hipJoint) < 1e-6);
+  assert.ok(Math.abs(jointY(gltf, 'kneeL') - original.kneeJoint) < 1e-6);
+  assert.ok(Math.abs(jointY(gltf, 'ankleL') - original.ankleJoint) < 1e-6);
+  assert.deepEqual(span(limb, 'ankleL'), original.foot);
   fitShiftProportions(gltf);
-  assert.ok(Math.abs(jointY(gltf, 'hipL') - (hip - .04)) < 1e-6);
+  assert.deepEqual(span(limb, 'ankleL'), original.foot);
 });
