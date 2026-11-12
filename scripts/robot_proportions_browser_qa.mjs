@@ -415,6 +415,78 @@ try {
     t.asset.model.getObjectByName('kneeL').rotation.x=0;
   });
   await capture('tab-t35-skin-restored','tab-anatomy-front');
+  // The actual loaded outfit must follow hip articulation, seat the
+  // feet inside its flats, and pivot the teddy around its held ear.
+  const costumeFit=await page.evaluate(()=>{
+    const {T,qa,t}=window.__productionQA;
+    const meshes={};
+    t.asset.model.traverse(n=>{
+      if(n.isSkinnedMesh)meshes[n.material?.name]=n;
+    });
+    const dress=meshes['Tab/Dress_Main'],shoe=meshes['Tab/Shoe'],body=meshes['Tab/Skin'];
+    if(!dress||!shoe||!body)throw Error('Tab costume skin partitions missing');
+    const position=dress.geometry.getAttribute('position');
+    const weights=dress.geometry.getAttribute('skinWeight');
+    const indices=dress.geometry.getAttribute('skinIndex');
+    const hem=[];
+    const left=dress.skeleton.bones.findIndex(n=>n.userData.name==='hip.L');
+    const right=dress.skeleton.bones.findIndex(n=>n.userData.name==='hip.R');
+    for(let i=0;i<position.count;i++){
+      if(position.getY(i)<.7&&indices.getY(i)===left&&indices.getZ(i)===right)
+        hem.push({index:i,weight:weights.getY(i)+weights.getZ(i)});
+    }
+    if(hem.length<100)throw Error('Unweighted skirt hem');
+    const meanHipWeight=hem.reduce((sum,v)=>sum+v.weight,0)/hem.length;
+    const sample=hem.find(v=>position.getX(v.index)<-.25&&v.weight>.30);
+    if(!sample)throw Error('No left-hip responsive dress vertex');
+    const point=()=>{
+      qa.scene.updateMatrixWorld(true);dress.skeleton.update();
+      return dress.getVertexPosition(sample.index,new T.Vector3())
+        .applyMatrix4(dress.matrixWorld);
+    };
+    const initial=point();
+    const hip=t.asset.joints.hipL;
+    const before=hip.rotation.x;
+    hip.rotation.x=before+.38;
+    const shifted=point();
+    hip.rotation.x=before;
+    const restored=point();
+    const flat=shoe.geometry.getAttribute('position');
+    let shoeMin=Infinity,shoeMax=-Infinity;
+    for(let i=0;i<flat.count;i++){
+      shoeMin=Math.min(shoeMin,flat.getY(i));
+      shoeMax=Math.max(shoeMax,flat.getY(i));
+    }
+    const ear=t.asset.joints.bear.getWorldPosition(new T.Vector3());
+    const hand=t.asset.joints.handR.getWorldPosition(new T.Vector3());
+    // The joint can be attached while the fingers hang straight past the ear.
+    // Count actual skinned hand vertices touching the ear in the rest pose.
+    const bodyPos=body.geometry.getAttribute('position');
+    const bodyIds=body.geometry.getAttribute('skinIndex');
+    const bodyW=body.geometry.getAttribute('skinWeight');
+    const handIndex=body.skeleton.bones.findIndex(b=>b.userData.name==='hand.R');
+    if(handIndex<0)throw Error('Victoria right-hand skin joint missing');
+    let fingerGripVertices=0;
+    const earRest=new T.Vector3(.348,.973,.109);
+    for(let i=0;i<bodyPos.count;i++){
+      if(bodyIds.getX(i)!==handIndex||bodyW.getX(i)<=.5)continue;
+      if(earRest.distanceTo(new T.Vector3(bodyPos.getX(i),bodyPos.getY(i),bodyPos.getZ(i)))<.03)
+        fingerGripVertices++;
+    }
+    return {meanHipWeight,hemCount:hem.length,
+      skirtArticulation:shifted.distanceTo(initial),
+      restError:restored.distanceTo(initial),
+      shoeMin,shoeMax,gripDistance:ear.distanceTo(hand),fingerGripVertices};
+  });
+  report.results.push({mode:'tab-outfit-hip-sole-bear-fit',...costumeFit});
+  assert.ok(costumeFit.meanHipWeight>.25&&costumeFit.hemCount>100,
+    'Actual skirt must follow both hips during walking');
+  assert.ok(costumeFit.skirtArticulation>.008&&costumeFit.restError<.00001,
+    'Dress hem must deform and return without drifting');
+  assert.ok(Math.abs(costumeFit.shoeMin)<.004&&costumeFit.shoeMax>.15,
+    'Shoe must have a road-level sole and upper surrounding the human foot');
+  assert.ok(costumeFit.gripDistance<.08&&costumeFit.fingerGripVertices>120,
+    'Bear pivot and actual curved fingers must both grasp the held ear');
   // A former Victoria import attached the LOWER SHIN to ankle joints.
   // World-space shoe contact alone missed the resulting mid-calf false ankle.
   // Inspect skin weights in the actual GLTFLoader mesh, not a guessed silhouette.
@@ -551,7 +623,7 @@ try {
     'Victoria hip must solve the lateral foot target, not silently discard it');
   assert.ok(tabMotion.turnSoleUp>.995,
     'Both Victoria shoe soles must remain level during hip abduction');
-  assert.ok(tabMotion.parentAttached&&tabMotion.gripDistance<.25,
+  assert.ok(tabMotion.parentAttached&&tabMotion.gripDistance<.08,
     'Tab teddy must remain attached to her right-hand ear grip');
   assert.ok(Math.abs(tabMotion.idleLook)>.03,
     'Tab must have an independent idle look');

@@ -1,7 +1,7 @@
 name: Fetch and inspect Victoria GLB
 on:
   push:
-    branches: [feature/tab-victoria-fit, fix/tab-ankle-anatomy]
+    branches: [feature/tab-victoria-fit, fix/tab-ankle-anatomy, fix/tab-dress-shoes-bear-blouse]
     paths:
       - .github/workflows/tab-victoria-source.yml
       - scripts/assemble_victoria_tab.py

@@ -29,7 +29,7 @@ This project is a public web app and GitHub repository. A shipped GLB in `public
 
 ## Victoria child body replacement (2026-11-05)
 
-The owner selected Rex Mun's fully built [Victoria Character Rigged](https://www.blenderkit.com/asset-gallery-detail/1fcc4446-1992-48ec-a160-9cd73ee35158/). `Tab_Victoria.glb` is a **separate** 20-joint candidate assembled from Victoria's skinned, UV-textured 6,438-vertex child body using `scripts/assemble_victoria_tab.py`; it keeps the original 16 Tab costume/prop primitives, including **dirty, physically torn dress, charcoal-colored material folds, printed box/flaps, bear, shoes**, geometrically and UV-identical. Box artwork hash regressions remain enforced. The original `Tab_Reference.glb` remains unchanged as the runtime fallback. The browser prefers Victoria when its complete GLB and the three Tab animation clips load; `data-tab-source` distinguishes `victoria` from `reference`.
+The owner selected Rex Mun's fully built [Victoria Character Rigged](https://www.blenderkit.com/asset-gallery-detail/1fcc4446-1992-48ec-a160-9cd73ee35158/). `Tab_Victoria.glb` is a **separate** 20-joint candidate assembled from Victoria's skinned, UV-textured 6,438-vertex child body using `scripts/assemble_victoria_tab.py`; it keeps the original 16 Tab costume/prop primitives, including **dirty, physically torn dress, charcoal-colored material folds, printed box/flaps, bear, shoes**, originally geometry- and UV-identical. PR #57 deliberately fits selected clothing, shoes and teddy-pivot geometry to Victoria while preserving UVs, grime art, torn topology, and box artwork hashes. The original `Tab_Reference.glb` remains unchanged as the runtime fallback. The browser prefers Victoria when its complete GLB and the three Tab animation clips load; `data-tab-source` distinguishes `victoria` from `reference`.
 
 Model provenance: Blenderkit revision `58d886e3-672a-4e41-b0ff-2d9b27cd130a`, source GLB SHA-256 `ba3853fe4c68f613a69240c4de782b931b9730adfd94049242afd2e94ed89eca`, Blenderkit royalty-free. The source is downloaded and decoded from official public metadata only by `.github/workflows/tab-victoria-source.yml`. Repacking the child body into the application does not transfer its copyright. Preserve attribution. The model's leg rest transforms were realigned to Victoria's anatomy; T3.6 separate locomotion and acting acceptance remains open. Neither this selection nor source loading constitutes sign-off on overall source-art fidelity.
 
@@ -62,3 +62,16 @@ bank away from the ground. Production-scale fixture and Chromium GLB QA
 measure actual left/right ankle positions and world-space sole-up vectors
 through a planted turn. This change is not final T3.6 acceptance until those
 checks and rendered captures pass.
+
+## Victoria outfit, footwear and teddy fit (PR #57)
+
+The original Tab_Reference.glb fallback is unchanged. Four production Victoria defects motivated the following scoped fixes:
+
+- Skirt: Previously 14% lower-hem combined hip influence left the dress nearly stationary as the thighs moved. The candidate increases its bilateral hip weighting toward the hem and removes fully covered upper-thigh faces. The existing ragged hem, tears, fray, fabric art, UVs, and skirt topology remain.
+- Flats: The original shoe upper ended near Y=0.102, below Victoria's foot reaching Y=0.167. Raised vamp geometry encloses the foot while preserving the Y=0 ground-level sole and existing toe silhouette.
+- Teddy: The existing bear bone rotated below and outside the hand-held ear. Its pivot and inverse bind now center the swing at the gripped ear. The source Victoria right-hand index, thumb, and neighboring fingers are also locally curled into a visible pinch (with per-vertex original finger weights) rather than hanging straight below the ear. The teddy mesh and sewn materials are unchanged.
+- Blouse: Both old two-ring sleeve cylinders are replaced by seven-band, 20-segment tapered cloth meshes (840 skinned vertices per sleeve). The fitted rings form rounded caps, cuff flare and subtle fabric folds; the bodice receives modest tailoring. New UVs are limited to the replacement sleeves; printed cardboard, original texture images, and exposed bare arms remain intact. Post-fit normals are recalculated from actual surface triangles.
+
+Source of truth: scripts/assemble_victoria_tab.py. Source rebuild: .github/workflows/tab-victoria-source.yml. Tests/test_tab_victoria_integration.py asserts actual material geometry and rig bindings; scripts/robot_proportions_browser_qa.mjs independently measures loaded cloth articulation, shoe coverage, the held bear pivot, and existing walking/turning invariants.
+
+Acceptance pending: full post-regeneration Chromium captures and side/front motion frames must be inspected before claiming visual completion. The changes are limited to the Victoria candidate, not the untouched reference fallback.
