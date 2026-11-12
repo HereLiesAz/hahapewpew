@@ -6,6 +6,11 @@ on:
       - .github/workflows/tab-victoria-source.yml
       - scripts/assemble_victoria_tab.py
       - tests/test_tab_victoria_integration.py
+  pull_request:
+    paths:
+      - scripts/assemble_victoria_tab.py
+      - tests/test_tab_victoria_integration.py
+      - .github/workflows/tab-victoria-source.yml
   workflow_dispatch:
 permissions:
   contents: write
@@ -93,6 +98,7 @@ jobs:
           python3 -m unittest discover -s tests -p test_tab_victoria_integration.py
           cp public/assets/characters/Tab_Victoria.glb artifacts/victoria/Tab_Victoria.glb
       - name: Commit generated candidate on feature branch only
+        if: github.event_name == 'push' && github.ref_type == 'branch'
         run: |
           git add public/assets/characters/Tab_Victoria.glb
           if ! git diff --cached --quiet; then
