@@ -330,6 +330,24 @@ def fit_costume(g, blob):
                 lift=np.clip((pos[mask,1]-.025)/.077,0,1)
                 pos[mask,1]+=.058*lift**1.4
         if material in {'Tab/Dress_Dark','Tab/Shoe','Tab/Ink'}:
+            # These primitives use unindexed triangle soup. Rebuild normals
+            # from the POST-FIT triangles, averaging coincident vertices for
+            # smooth cloth and leather while retaining hard ink edges.
+            normal=accessor(g,blob,attrs['NORMAL'])
+            triangles=pos.reshape(-1,3,3)
+            area=np.cross(triangles[:,1]-triangles[:,0],
+                          triangles[:,2]-triangles[:,0])
+            if material=='Tab/Ink':
+                face=area/np.maximum(np.linalg.norm(area,axis=1,keepdims=True),1e-9)
+                changed=(ids[:,0]==joints['ankle.L']) | (ids[:,0]==joints['ankle.R'])
+                normal[changed]=np.repeat(face,3,axis=0)[changed]
+            else:
+                _,inverse=np.unique(np.round(pos,6),axis=0,return_inverse=True)
+                sums=np.zeros((int(inverse.max())+1,3),dtype=np.float64)
+                np.add.at(sums,inverse,np.repeat(area,3,axis=0))
+                magnitude=np.linalg.norm(sums,axis=1,keepdims=True)
+                smooth=sums/np.maximum(magnitude,1e-9)
+                normal[:]=smooth[inverse].astype(np.float32)
             p=g['accessors'][attrs['POSITION']]
             p['min']=np.min(pos,axis=0).astype(float).tolist()
             p['max']=np.max(pos,axis=0).astype(float).tolist()
