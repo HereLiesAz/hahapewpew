@@ -76,12 +76,14 @@ test('Shift corrected GLB is truly circular from ABOVE at every shell ring',()=>
   assert.deepEqual(liveShift,newShift,'the corrected model must be the actual LIVE Shift asset');
 });
 
-test('Shared torso size and shallow wok profile — standing height follows the head',()=>{
+test('Uniform Shift enlargement preserves shallow wok profile and body proportions',()=>{
   const Q=open(qwerty),S=open(newShift);
   const qBody=accessor(Q,prim(Q,'Qwerty/Body_Graphite'),'POSITION').a;
   const sBody=accessor(S,prim(S,'Shift/Body_Graphite'),'POSITION').a;
   const qHeight=(qBody.max[1]-qBody.min[1])*.27;
-  const sHeight=(sBody.max[1]-sBody.min[1])*.99;
+  // The actual production controller retains its already-tested 0.55 compact-body
+  // transform; scaling the parent uniformly enlarges its rendered torso too.
+  const sHeight=(sBody.max[1]-sBody.min[1])*.99*.55;
   assert.ok(sHeight/qHeight>1.10&&sHeight/qHeight<1.30,
     'whole-actor Shift torso must remain comparable to Qwerty');
   const stage=S.g.nodes.find(n=>n.name==='Shift.S24.GroundAlign');
