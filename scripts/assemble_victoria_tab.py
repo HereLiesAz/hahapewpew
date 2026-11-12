@@ -65,7 +65,34 @@ def align(src_a, src_b, dst_a, dst_b):
     return matrix, np.asarray(dst_a)-matrix@src_a
 
 
-def retarget_body(points, normals, joints, weights, source_names, target_indices):
+def source_leg_rest_points(g, blob):
+    """Read Victoria's actual deform-joint pivots from GLB inverse bind poses.
+
+    The decoded source mesh and inverse bind matrices share mesh-local space.
+    Explicit joints, rather than guessed knee/ankle vertex bands, locate the
+    original anatomical hinges even when Victoria's authored pose is bent.
+    """
+    skin=g['skins'][0]
+    inverse=accessor(g,blob,skin['inverseBindMatrices'])
+    if inverse.shape[1]!=16:
+        raise ValueError('Victoria source inverse bind accessor must be MAT4')
+    matrices=inverse.reshape(-1,4,4).transpose(0,2,1).astype(np.float64)
+    pivots=np.linalg.inv(matrices)[:,:3,3]*SCALE
+    names=[g['nodes'][i]['name'] for i in skin['joints']]
+    out={}
+    for side in ('L','R'):
+        for joint in ('thigh','shin','foot'):
+            label=f'DEF-{joint}.{side}'
+            matching=[i for i,n in enumerate(names) if n==label]
+            if len(matching)!=1:raise ValueError('Missing unique Victoria deform pivot '+label)
+            out[(side,joint)]=pivots[matching[0]]
+        hip,knee,ankle=(out[(side,key)] for key in ('thigh','shin','foot'))
+        if min(np.linalg.norm(knee-hip),np.linalg.norm(ankle-knee))<.1:
+            raise ValueError('Degenerate Victoria '+side+' anatomical joint span')
+    return out
+
+
+def retarget_body(points, normals, joints, weights, source_names, target_indices, source_leg_pivots):
     """Repose a fully authored body and reduce its Rigify controls to Tab's 20 joints."""
     point_out = np.zeros_like(points, dtype=np.float64)
     normal_out = np.zeros_like(normals, dtype=np.float64)
@@ -90,7 +117,27 @@ def retarget_body(points, normals, joints, weights, source_names, target_indices
         orientation, _, axes = np.linalg.svd(lower_matrix)
         hand_matrix = .94 * (orientation @ axes)
         transformations[(source_side,'hand')] = (hand_matrix, C-hand_matrix@c)
-        transformations[(source_side,'leg')] = (np.eye(3), np.array([direction*.030,0,.012]))
+        # Victoria's leg mesh was formerly just translated. Her authored knee
+        # and ankle vertices then followed mismatched Tab pivots: the shoe was
+        # on the floor, but the visible lower leg kinked halfway up her calf.
+        # Fit BOTH original thigh and shin rest axes to Tab's true bone spans.
+        sign = 1 if tab_side=='R' else -1
+        hip=np.array([sign*.135,1.190,.0])
+        knee=np.array([sign*.14,.663,.023])
+        ankle=np.array([sign*.135,.145,.034])
+        source_hip=source_leg_pivots[(source_side,'thigh')]
+        source_knee=source_leg_pivots[(source_side,'shin')]
+        source_ankle=source_leg_pivots[(source_side,'foot')]
+        transformations[(source_side,'thigh')] = align(
+            source_hip,source_knee,hip,knee)
+        transformations[(source_side,'shin')] = align(
+            source_knee,source_ankle,knee,ankle)
+        # Translate the actual foot pivot to the ankle without stretching toes.
+        shin_axis=transformations[(source_side,'shin')][0]
+        u,_,vt=np.linalg.svd(shin_axis)
+        foot_rotation=u@vt
+        transformations[(source_side,'foot')]=(
+            foot_rotation,ankle-foot_rotation@source_ankle)
     body = np.diag([.91, 1., .92])
     transformations['body'] = (body, np.zeros(3))
 
@@ -108,11 +155,11 @@ def retarget_body(points, normals, joints, weights, source_names, target_indices
             part = 'wrist.' if '.001' in key else 'elbow.'
             return (part+target_side,(source_side,'lower'))
         if key.startswith(('thigh','pelvis')) and source_side:
-            return ('hip.'+target_side,(source_side,'leg'))
+            return ('hip.'+target_side,(source_side,'thigh'))
         if key.startswith('shin') and source_side:
-            return (('ankle.' if '.001' in key else 'knee.')+target_side,(source_side,'leg'))
+            return (('ankle.' if '.001' in key else 'knee.')+target_side,(source_side,'foot' if '.001' in key else 'shin'))
         if key.startswith(('foot','toe')) and source_side:
-            return ('ankle.'+target_side,(source_side,'leg'))
+            return ('ankle.'+target_side,(source_side,'foot'))
         if key.startswith('spine'):
             section = int(key.split('.')[-1]) if '.' in key else 0
             target = ('spine' if section<=2 else 'chest' if section<=4 else
@@ -235,9 +282,10 @@ def main(source, decoded, tab, target):
     # The GLB joint index is the zero-based slot in the skin.joints list.
     joint_names={n['name']:j for j,n in enumerate([g['nodes'][i] for i in g['skins'][0]['joints']])}
     upstream=[src['nodes'][i]['name'] for i in src['skins'][0]['joints']]
+    leg_pivots=source_leg_rest_points(src,source_bin)
     pos,norm,joint,weight=retarget_body(source_arrays['POSITION'],source_arrays['NORMAL'],
                                         source_arrays['JOINTS_0'],source_arrays['WEIGHTS_0'],
-                                        upstream,joint_names)
+                                        upstream,joint_names,leg_pivots)
     uv=source_arrays['TEXCOORD_0'].astype(np.float32)
     faces=source_arrays['faces'].astype(np.uint32)
     # Covered anatomy must not bleed through the owner's intact dress or box.
