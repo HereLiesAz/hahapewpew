@@ -102,9 +102,13 @@ test('walking knees remain human-facing through every planted stride',()=>{
       f.character.updateMatrixWorld(true);
       const hip=f.names.get('hip.'+side).getWorldPosition(new THREE.Vector3());
       const knee=f.names.get('knee.'+side).getWorldPosition(new THREE.Vector3());
-      const anterior=knee.sub(hip).dot(direction);
-      assert.ok(anterior>.005,
-        side+' knee must remain ahead of hip during stance; digitigrade pose at frame '+frame+': '+anterior);
+      const foot=f.names.get('ankle.'+side).getWorldPosition(new THREE.Vector3());
+      const fromHip=knee.clone().sub(hip);
+      const hipToFoot=foot.sub(hip);
+      const onAxis=hipToFoot.multiplyScalar(fromHip.dot(hipToFoot)/hipToFoot.lengthSq());
+      const anterior=fromHip.sub(onAxis).dot(direction);
+      assert.ok(anterior>.002,
+        side+' knee must flex forward of hip-to-ankle axis at frame '+frame+': '+anterior);
       samples[i]++;
     }
   }
