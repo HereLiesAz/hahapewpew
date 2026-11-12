@@ -262,6 +262,27 @@ class TabVictoria(unittest.TestCase):
         self.assertGreater(np.count_nonzero(close),120)
         self.assertGreater(np.count_nonzero(close&(skin[:,1]>.93)),110)
 
+    def test_curled_finger_normals_match_the_final_skin_surface(self):
+        part=self.parts['Tab/Skin']
+        xyz=accessor(self.output,self.after,part['attributes']['POSITION'])
+        normal=accessor(self.output,self.after,part['attributes']['NORMAL'])
+        ids=accessor(self.output,self.after,part['attributes']['JOINTS_0'])
+        faces=accessor(self.output,self.after,part['indices']).reshape(-1,3)
+        names=[self.output['nodes'][i]['name']
+               for i in self.output['skins'][0]['joints']]
+        hand=(ids[:,0]==names.index('hand.R'))
+        area=np.cross(xyz[faces[:,1]]-xyz[faces[:,0]],
+                      xyz[faces[:,2]]-xyz[faces[:,0]])
+        vertex=np.zeros_like(xyz,dtype=np.float64)
+        np.add.at(vertex,faces.ravel(),np.repeat(area,3,axis=0))
+        magnitude=np.linalg.norm(vertex,axis=1)
+        available=hand&(magnitude>1e-9)
+        self.assertGreater(available.sum(),400)
+        face=vertex[available]/magnitude[available,None]
+        agreement=np.abs(np.sum(face*normal[available],axis=1))
+        self.assertGreater(np.mean(agreement>.70),.80)
+        self.assertGreater(np.mean(np.linalg.norm(normal[available],axis=1)>.98),.99)
+
     def test_tailored_sleeves_are_no_longer_identical_radius_rods(self):
         old=self.base_parts['Tab/Dress_Dark'];new=self.parts['Tab/Dress_Dark']
         previous=accessor(self.original,self.before,old['attributes']['POSITION'])
