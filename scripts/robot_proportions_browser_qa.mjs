@@ -320,6 +320,35 @@ try {
       }
     },originalLights);
   }
+  // T3.7: profile real production scene draws, not an isolated proxy mesh.
+  // This is a headless SwiftShader CPU-submit benchmark, NOT device FPS.
+  const rendering=await page.evaluate(()=>{
+    const {qa}=window.__productionQA;
+    qa.scene.updateMatrixWorld(true);
+    const frames=[];
+    for(let i=0;i<48;i++){
+      const start=performance.now();
+      qa.renderer.render(qa.scene,qa.camera);
+      const elapsed=performance.now()-start;
+      if(i>=8)frames.push(elapsed);
+    }
+    const sorted=frames.slice().sort((a,b)=>a-b);
+    const render=qa.renderer.info.render, memory=qa.renderer.info.memory;
+    return {backend:'headless-chromium-swiftshader',
+      sampleCount:frames.length,warmupFrames:8,
+      medianSubmitMs:(sorted[19]+sorted[20])/2,
+      p95SubmitMs:sorted[Math.ceil(sorted.length*.95)-1],
+      minSubmitMs:sorted[0],maxSubmitMs:sorted.at(-1),
+      drawCalls:render.calls,triangles:render.triangles,
+      geometries:memory.geometries,textures:memory.textures,
+      viewport:[qa.renderer.domElement.width,qa.renderer.domElement.height]};
+  });
+  assert.equal(rendering.sampleCount,40);
+  for(const key of ['medianSubmitMs','p95SubmitMs','drawCalls','triangles','geometries','textures'])
+    assert.ok(Number.isFinite(rendering[key])&&rendering[key]>0,
+      'T3.7 render metric must be a measured, positive value: '+key);
+  assert.ok(rendering.p95SubmitMs>=rendering.medianSubmitMs);
+  report.results.push({mode:'tab-t37-production-render-profile',...rendering});
   await capture('tab-reference-front','tab');
   await capture('tab-victoria-front','tab-victoria-front');
   await capture('tab-victoria-side','tab-victoria-side');
