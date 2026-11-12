@@ -19,7 +19,7 @@ T3.3 deliberately changes both shoe-strap triangles in the shared `Tab/Ink` mate
 
 The Victoria source's two shin deformation sections now both map to their corresponding `knee` joint; actual foot and toe deformation stays on the corresponding `ankle`. The same source transfer explicitly aligns the original thigh and shin rest axes to Tab's real hip, knee and low ankle pivots using the official model's inverse-bind skeleton matrices. The dirty/torn dress, box printing, bear, shoes, original fallback and skeleton node count remain unchanged.
 
-Independent inspection of the source-rebuilt, still-unmerged GLB found these *per-leg* geometric ranges in rig units:
+Independent inspection of the source-rebuilt GLB merged into `main` found these *per-leg* geometric ranges in rig units:
 
 | Dominant skin influence | Before correction | Corrected candidate |
 | --- | --- | --- |
@@ -29,4 +29,6 @@ Independent inspection of the source-rebuilt, still-unmerged GLB found these *pe
 
 These are decoded geometry observations, not art-derived scale targets. `tests/test_tab_victoria_integration.py` now rejects any ankle-controlled body vertex above the independently defined low-foot band and requires the knee-controlled shin to reach down to the real ankle. `scripts/robot_proportions_browser_qa.mjs` verifies the same bone/skin boundary in the actually loaded production GLB, alongside full motion and side renders.
 
-**Acceptance pending:** the final branch-head Chromium WebGL captures must be visually inspected, automated GLB tests must pass against the committed *new binary*, and PR review findings resolved. The pre-fix screenshots and old T3.6 contact-only results do **not** prove the lower-leg anatomy was correct.
+**Ankle-specific acceptance verified, November 12, 2026.** [Chromium run 43265743659](https://github.com/HereLiesAz/hahapewpew/actions/runs/43265743659) passed the complete Node, Python GLB, browser and recording workflow; [artifact 13965584522](https://github.com/HereLiesAz/hahapewpew/actions/runs/43265743659/artifacts/13965584522) contains the new `robot-proportions/results.json`, `tab-t36-walk-side.png`, and 42 motion frames. The loaded production Victoria mesh reports ankle-controlled maximum height `0.16667035` (left) and `0.16667014` (right), with the knee-owned shin extending to `0.13711149` and `0.13711128` respectively. The report has `passed: true` and `errors: []`. The side view and eight distributed motion frames were opened and compared with the previous captured leg defect: the mid-calf false-ankle kink no longer appears.
+
+The earlier T3.6 contact-only result was **insufficient** to establish correct anatomy; this independent skin-weight and visual gate specifically closes that gap. **T3.3 as a whole remains open:** some upper-thigh body geometry can still protrude through torn cloth and the original-art fidelity/owner scale approval are separate unresolved gates. No cold GLEE audit was available.
