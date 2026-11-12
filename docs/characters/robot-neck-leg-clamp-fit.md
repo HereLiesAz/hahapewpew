@@ -20,3 +20,7 @@ The compression is confined to geometry under the existing rest joints rather th
 `tests/robot-proportion-fit.test.mjs` independently checks source art preservation, head/torso gap, neck thickness, altered upper leg vertex bounds, unchanged ankle surfaces and joints, animation-linked clamps and idempotence. The existing Shift source-geometry, cel-band, eye-overlay, animation and grounding tests remain active. `scripts/robot_proportions_browser_qa.mjs` and `scripts/shift_s27_browser_qa.mjs` must provide actual Chromium stills and motion captures. Do not merge unless these pass and the renders are visually inspected.
 
 No task checkbox is marked complete merely from a proposed shape or from unit tests; owner review of actual renders remains authoritative.
+
+## Unobstructed character evidence
+
+For anatomical reviews, `scripts/robot_proportions_browser_qa.mjs` captures the actual loaded character models against a flat, neutral-grey background with streets, terrain, buildings and props temporarily hidden. Lighting and the real skinned character rigs remain active. The renderer restores every hidden node's previous visibility, original backdrop and fog after each frame, even if capture fails. Measurements and real rendered-road/foot contact checks occur **before** these visibility changes and are not weakened. Wide gameplay evidence from `scripts/shift_s27_browser_qa.mjs` remains available separately. The character screenshots, not road-heavy gameplay frames, are the primary visual acceptance artifacts.
