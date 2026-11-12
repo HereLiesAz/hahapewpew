@@ -247,6 +247,21 @@ class TabVictoria(unittest.TestCase):
             agreement=np.einsum('ij,ikj->ik',face_normals,vertex_normals)
             self.assertGreater(np.mean(agreement>.20),.96,material)
 
+    def test_right_fingers_actually_pinching_teddy_ear(self):
+        body=self.parts['Tab/Skin']
+        xyz=accessor(self.output,self.after,body['attributes']['POSITION'])
+        ids=accessor(self.output,self.after,body['attributes']['JOINTS_0'])
+        weights=accessor(self.output,self.after,body['attributes']['WEIGHTS_0'])
+        names=[self.output['nodes'][i]['name'] for i in self.output['skins'][0]['joints']]
+        hand=names.index('hand.R')
+        skin=xyz[(ids[:,0]==hand)&(weights[:,0]>.5)]
+        ear=np.array([.348,.973,.109])
+        # The earlier grip had the correct bear-bone parent but only 24
+        # vertices within this radius: her long fingers hung next to the ear.
+        close=np.linalg.norm(skin-ear,axis=1)<.03
+        self.assertGreater(np.count_nonzero(close),120)
+        self.assertGreater(np.count_nonzero(close&(skin[:,1]>.93)),110)
+
     def test_tailored_sleeves_are_no_longer_identical_radius_rods(self):
         old=self.base_parts['Tab/Dress_Dark'];new=self.parts['Tab/Dress_Dark']
         previous=accessor(self.original,self.before,old['attributes']['POSITION'])
