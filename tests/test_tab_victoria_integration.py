@@ -58,12 +58,12 @@ class TabVictoria(unittest.TestCase):
         self.assertEqual(set(self.parts), set(self.base_parts))
         altered={
             'Tab/Dress_Main':{'JOINTS_0','WEIGHTS_0'},
-            'Tab/Dress_Dark':{'POSITION','JOINTS_0','WEIGHTS_0'},
+            'Tab/Dress_Dark':{'POSITION','NORMAL','JOINTS_0','WEIGHTS_0'},
             'Tab/Dress_Light':{'JOINTS_0','WEIGHTS_0'},
             'Tab/Dress_Shadow':{'JOINTS_0','WEIGHTS_0'},
             'Tab/Dress_Dirt':{'JOINTS_0','WEIGHTS_0'},
-            'Tab/Shoe':{'POSITION'},
-            'Tab/Ink':{'POSITION'},
+            'Tab/Shoe':{'POSITION','NORMAL'},
+            'Tab/Ink':{'POSITION','NORMAL'},
         }
         for key in sorted(self.base_parts):
             if key == 'Tab/Skin':
@@ -225,6 +225,26 @@ class TabVictoria(unittest.TestCase):
         self.assertLess(np.linalg.norm(pivot-held),.012)
         self.assertLess(np.linalg.norm(pivot-world(palm)),.07)
         self.assertEqual(parents[bear],palm)
+
+    def test_reshaped_shoes_and_sleeves_have_updated_unit_normals(self):
+        for material in ('Tab/Shoe','Tab/Dress_Dark'):
+            original=self.base_parts[material];out=self.parts[material]
+            old=accessor(self.original,self.before,original['attributes']['NORMAL'])
+            normal=accessor(self.output,self.after,out['attributes']['NORMAL'])
+            xyz=accessor(self.output,self.after,out['attributes']['POSITION'])
+            self.assertTrue(np.isfinite(normal).all(),material)
+            lengths=np.linalg.norm(normal,axis=1)
+            self.assertGreater(np.mean((lengths>.97)&(lengths<1.03)),.99,material)
+            self.assertGreater(np.mean(np.linalg.norm(normal-old,axis=1)>.025),.10,material)
+            triangles=xyz.reshape(-1,3,3)
+            faces=np.cross(triangles[:,1]-triangles[:,0],
+                           triangles[:,2]-triangles[:,0])
+            face_lengths=np.linalg.norm(faces,axis=1)
+            valid=face_lengths>1e-8
+            face_normals=faces[valid]/face_lengths[valid,None]
+            vertex_normals=normal.reshape(-1,3,3)[valid]
+            agreement=np.einsum('ij,ikj->ik',face_normals,vertex_normals)
+            self.assertGreater(np.mean(agreement>.20),.96,material)
 
     def test_tailored_sleeves_are_no_longer_identical_radius_rods(self):
         old=self.base_parts['Tab/Dress_Dark'];new=self.parts['Tab/Dress_Dark']
