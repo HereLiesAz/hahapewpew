@@ -100,7 +100,7 @@ jobs:
           python3 -m unittest discover -s tests -p test_tab_victoria_integration.py
           cp public/assets/characters/Tab_Victoria.glb artifacts/victoria/Tab_Victoria.glb
       - name: Commit generated candidate on feature branch only
-        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event_name == 'push' && github.ref_type == 'branch'
         run: |
           git add public/assets/characters/Tab_Victoria.glb
           if ! git diff --cached --quiet; then
