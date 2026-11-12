@@ -157,7 +157,10 @@ def retarget_body(points, normals, joints, weights, source_names, target_indices
         if key.startswith(('thigh','pelvis')) and source_side:
             return ('hip.'+target_side,(source_side,'thigh'))
         if key.startswith('shin') and source_side:
-            return (('ankle.' if '.001' in key else 'knee.')+target_side,(source_side,'foot' if '.001' in key else 'shin'))
+            # Both source shin sections deform with the knee; assigning the
+            # lower shin to the ankle makes an extra joint halfway up
+            # the calf, even though the anatomical ankle bone is low.
+            return ('knee.'+target_side,(source_side,'shin'))
         if key.startswith(('foot','toe')) and source_side:
             return ('ankle.'+target_side,(source_side,'foot'))
         if key.startswith('spine'):
