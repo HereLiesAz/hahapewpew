@@ -33,6 +33,7 @@ function reshape(gltf, offsets) {
 function attachClamp(wrist, side, material) {
   const hook = new THREE.Group();
   hook.name = 'Qwerty.ReferenceClamp.' + (side < 0 ? 'L' : 'R');
+  hook.scale.setScalar(1.45);
   const segments = [
     [[0, 0, 0], [side * .080, -.010, .020], .020],
     [[side * .080, -.010, .020], [side * .120, -.043, .020], .017],
