@@ -270,7 +270,7 @@ function shiftDomeDecal(head,material,cx,cy,width,height,angle=0,offset=.006){
 const shiftInk=new THREE.MeshBasicMaterial({color:'#0c1010',toneMapped:false,side:THREE.DoubleSide});
 const shiftLight=new THREE.MeshBasicMaterial({color:'#ffffff',toneMapped:false,side:THREE.DoubleSide});
 function buildShift(scene){
-  const root=group(scene);root.name='Shift';root.scale.setScalar(.46);
+  const root=group(scene);root.name='Shift';root.scale.setScalar(.99);
   const legs=[robotLeg(root,-1,.33),robotLeg(root,1,.33)];
   const torso=group(root,0,.54,0);
   const body=sculpt(torso,M.steel,[[-.29,.25,.19],[-.21,.27,.22],[.03,.27,.24],[.25,.19,.19],[.33,.14,.14]],40);
@@ -322,7 +322,7 @@ function buildShift(scene){
   head.scale.y /= .55;
   head.scale.z /= .55;
   return {root,torso,head,arms:arms.map(a=>a.shoulder),legs:legs.map(l=>l.hip),
-    elbows:arms.map(a=>a.elbow),knees:legs.map(l=>l.knee),gun,barrel,anchor:.91,groundScale:.46};
+    elbows:arms.map(a=>a.elbow),knees:legs.map(l=>l.knee),gun,barrel,anchor:.91,groundScale:.99};
 }
 // The boxy Canadian-style talking mechanism has two **separate** mesh shells.
 // Both shell pieces have actual UVs from ExtrudeGeometry, not a texture mask.
