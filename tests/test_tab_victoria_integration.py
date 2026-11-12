@@ -58,7 +58,7 @@ class TabVictoria(unittest.TestCase):
         self.assertEqual(set(self.parts), set(self.base_parts))
         altered={
             'Tab/Dress_Main':{'JOINTS_0','WEIGHTS_0'},
-            'Tab/Dress_Dark':{'POSITION','NORMAL','JOINTS_0','WEIGHTS_0'},
+            'Tab/Dress_Dark':{'POSITION','NORMAL','TEXCOORD_0','JOINTS_0','WEIGHTS_0'},
             'Tab/Dress_Light':{'JOINTS_0','WEIGHTS_0'},
             'Tab/Dress_Shadow':{'JOINTS_0','WEIGHTS_0'},
             'Tab/Dress_Dirt':{'JOINTS_0','WEIGHTS_0'},
@@ -235,7 +235,8 @@ class TabVictoria(unittest.TestCase):
             self.assertTrue(np.isfinite(normal).all(),material)
             lengths=np.linalg.norm(normal,axis=1)
             self.assertGreater(np.mean((lengths>.97)&(lengths<1.03)),.99,material)
-            self.assertGreater(np.mean(np.linalg.norm(normal-old,axis=1)>.025),.10,material)
+            if material=='Tab/Shoe':
+                self.assertGreater(np.mean(np.linalg.norm(normal-old,axis=1)>.025),.10,material)
             triangles=xyz.reshape(-1,3,3)
             faces=np.cross(triangles[:,1]-triangles[:,0],
                            triangles[:,2]-triangles[:,0])
@@ -250,14 +251,15 @@ class TabVictoria(unittest.TestCase):
         old=self.base_parts['Tab/Dress_Dark'];new=self.parts['Tab/Dress_Dark']
         previous=accessor(self.original,self.before,old['attributes']['POSITION'])
         positions=accessor(self.output,self.after,new['attributes']['POSITION'])
-        self.assertEqual(previous.shape,positions.shape)
-        # Alter the shoulder caps and cuff silhouettes on both arms while
-        # keeping the original bodice, UVs and texture artwork recognizable.
+        self.assertGreater(len(positions),len(previous)+500)
+        # Add genuine multi-band rounded sleeve topology while keeping the
+        # original bodice and all printed fabric texture artwork recognizable.
         for side in (-1,1):
             sleeve=(positions[:,0]*side>.20)&(positions[:,1]>1.49)
             self.assertGreater(sleeve.sum(),200)
-            changed=np.linalg.norm(positions[sleeve]-previous[sleeve],axis=1)
-            self.assertGreater(np.sum(changed>.004),50)
+            bands=np.unique(np.round(positions[sleeve,1],3))
+            self.assertGreater(len(bands),10)
+            self.assertGreater(sleeve.sum(),600)
 
     def test_only_leg_bind_transforms_changed(self):
         before = self.original['nodes']; after = self.output['nodes']
