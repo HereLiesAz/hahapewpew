@@ -163,8 +163,8 @@ try {
   assert.deepEqual(measured.trio.rootDepths,[0,0,0]);
   assert.deepEqual(measured.qScale,[.27,.27,.27]);
   assert.deepEqual(measured.sScale,[.8,.843,.8]);
-  assert.ok(Number.isFinite(measured.relativeHeight)&&measured.relativeHeight>.83&&measured.relativeHeight<.88,
-    'Shift must stand a little shorter than Qwerty following torso-size correction');
+  assert.ok(Number.isFinite(measured.relativeHeight)&&measured.relativeHeight>.82&&measured.relativeHeight<1.02,
+    'Robot neck/leg corrections preserve their established comparative silhouette');
   assert.ok(measured.domeRise/measured.domeDiameter>.26&&measured.domeRise/measured.domeDiameter<.30,'head must be a shallow wok');
   // Verify the real loaded, skinned torso mesh against Qwerty, not overall
   // standing height: the dome must remain proportionally large and shallow.

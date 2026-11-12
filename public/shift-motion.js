@@ -6,11 +6,13 @@ import {toCreasedNormals} from './vendor/BufferGeometryUtils.js';
 import {celShadeRobot} from './cel-robots.js';
 import {attachShiftFaceGraphics} from './shift-face-graphics.js';
 import {attachShiftConcealedMinigun} from './shift-weapon.js';
+import {fitShiftProportions} from './robot-proportion-fit.js';
 
 const REQUIRED=['Shift_Walk','Shift_Idle','Shift_Talk','Shift_Turn','Shift_Weapon'];
 
 export function createShiftSequenceRig(gltf) {
   if(!gltf?.scene||!Array.isArray(gltf.animations))throw new TypeError('Expected parsed Shift GLB');
+  fitShiftProportions(gltf);
   const actionsByName=new Map(gltf.animations.map(c=>[c.name,c]));
   for(const name of REQUIRED)if(!actionsByName.has(name))throw new Error('Shift clip missing: '+name);
   const bones={};
