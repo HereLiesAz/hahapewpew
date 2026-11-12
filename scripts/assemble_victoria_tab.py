@@ -403,7 +403,7 @@ def main(source, decoded, tab, target):
     g['asset'].setdefault('extras',{})['sourceModel']={
         'name':'Victoria Character Rigged','creator':'Rex Mun','license':'royalty_free',
         'assetBaseId':ASSET_ID,'sourceSHA256':SOURCE_SHA256,
-        'textureAndShapePreservation':'original Tab dress/cardboard/teddy/shoe geometry unchanged'}
+        'textureAndShapePreservation':'original printed box and teddy geometry, UVs, skirt tear topology retained; skirt weights, tailored sleeves, covered shoe uppers and ear pivot fitted to Victoria'}
     g['meshes'][0]['name']='Tab: Victoria body / original torn dress, box and bear'
     blob.extend(b'\0'*(-len(blob)%4))
     g['buffers'][0]['byteLength']=len(blob)
