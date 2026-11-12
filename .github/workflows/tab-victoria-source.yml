@@ -1,21 +1,28 @@
 name: Fetch and inspect Victoria GLB
 on:
   push:
-    branches: [feature/tab-victoria-fit]
+    branches: [feature/tab-victoria-fit, fix/tab-ankle-anatomy]
     paths:
       - .github/workflows/tab-victoria-source.yml
       - scripts/assemble_victoria_tab.py
       - tests/test_tab_victoria_integration.py
+  pull_request:
+    paths:
+      - scripts/assemble_victoria_tab.py
+      - tests/test_tab_victoria_integration.py
+      - .github/workflows/tab-victoria-source.yml
   workflow_dispatch:
 permissions:
   contents: write
 jobs:
   source:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.head_ref || github.ref_name }}
           persist-credentials: true
       - name: Decode Draco mesh dependency
         run: python3 -m pip install 'numpy>=2,<3' DracoPy Pillow
@@ -93,11 +100,12 @@ jobs:
           python3 -m unittest discover -s tests -p test_tab_victoria_integration.py
           cp public/assets/characters/Tab_Victoria.glb artifacts/victoria/Tab_Victoria.glb
       - name: Commit generated candidate on feature branch only
+        if: github.event_name == 'push' && github.ref_type == 'branch'
         run: |
           git add public/assets/characters/Tab_Victoria.glb
           if ! git diff --cached --quiet; then
             git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'Regenerate Victoria child body with original Tab outfit'
-            git push origin 'HEAD:feature/tab-victoria-fit'
+            git push origin "HEAD:${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
           fi
       - uses: actions/upload-artifact@v4
         if: always()
