@@ -12,6 +12,12 @@ The production Chromium QA in `scripts/robot_proportions_browser_qa.mjs` now ren
 
 The test asserts that the measured projected height spans are identical and the bright render is observably brighter than the dim render. The *same scene lights are restored in a `finally` block* before all subsequent motion and material tests. Neither the user-facing lighting nor Tab's geometry, animations, costume or teddy are changed. No invented source-approved trio scale is implied: the observed runtime root scales remain provisional under T3.1.
 
+## Production-scene render profile (pending browser evidence)
+
+The same Chromium regression now records 40 measured `WebGLRenderer.render(scene,camera)` calls after eight warm-up draws, using the **real loaded production scene and camera**. Its `tab-t37-production-render-profile` result logs median/p95/min/max JavaScript submit times, renderer draw calls, triangle counts, tracked geometry/texture counts, and framebuffer dimensions. No asset is substituted and no gameplay rendering settings change.
+
+This is explicitly a **headless Chromium SwiftShader CPU-submission benchmark**, not display frame time, GPU time, mobile FPS, total memory consumption, or a performance certification. It asserts that metrics are finite, nonzero and internally ordered; there is intentionally no invented hardware-specific frame budget. Real mobile and desktop device measurements, load/download bytes, and collision acceptance remain open.
+
 ## Acceptance boundary
 
 The captures and measurements must be inspected **after CI**. A perceptual source-art match cannot be established from a brightness difference, and this QA does not yet test frame rate, scene collision, shadow/cloth penetration, or proportions under a shared reference photograph. Do **not** mark T3.7 complete from these two pictures alone.
