@@ -153,15 +153,20 @@ test('Live Shift torso shrinks independently of the dome and original geometry',
   assert.ok(compactHeight/originalHeight>.50&&compactHeight/originalHeight<.60,
     'compact torso must be visibly smaller');
   const compactBottom=new T.Box3().setFromObject(torso,true).min.y;
-  assert.ok(Math.abs(compactBottom-originalBottom)<1e-6,
-    'torso bottom must remain at the original leg contact, not float above it');
+  assert.ok(Math.abs(compactBottom-(originalBottom-.035))<1e-5,
+    'torso bottom must descend with shortened legs, not float above their hips');
   const loweredHead=head.getWorldPosition(new T.Vector3());
-  assert.ok(originalHead.y-loweredHead.y>.15&&originalHead.y-loweredHead.y<.18,
+  assert.ok(originalHead.y-loweredHead.y>.20&&originalHead.y-loweredHead.y<.24,
     'the wok settles with the smaller torso instead of hovering above it');
   assert.ok(Math.abs(loweredHead.x-originalHead.x)<1e-6);
   assert.ok(Math.abs(loweredHead.z-originalHead.z)<1e-6);
   assert.ok(head.getWorldScale(new T.Vector3()).distanceTo(originalHeadScale)<1e-6);
-  assert.deepEqual(Array.from(torso.geometry.attributes.position.array),source);
+  const fitted=torso.geometry.attributes.position.array;
+  for(let i=0;i<fitted.length;i+=3){
+    assert.ok(Math.abs(fitted[i]-source[i])<1e-6);
+    assert.ok(Math.abs(fitted[i+1]-source[i+1]+.035)<1e-6);
+    assert.ok(Math.abs(fitted[i+2]-source[i+2])<1e-6);
+  }
   torso.pose();
   controller.restoreCompactBody();
   assert.ok(Math.abs(height()-compactHeight)<1e-6,'pose recovery restores the body correction');
@@ -253,11 +258,13 @@ test('Production Shift feet touch rendered road at rest and during walk',async()
     motion.model.traverse(n=>{if(n.isSkinnedMesh)n.skeleton.update()});
     return new T.Box3().setFromObject(motion.model,true).min.y;
   };
-  assert.ok(Math.abs(footY()-(-.0625))<1e-6);
+  assert.ok(Math.abs(footY()-(-.0625))<1e-6,
+    'precise rendered lowest point '+footY()+' differs from grounded road');
   Object.values(motion.clips).forEach(a=>a.reset().play());
   for(let i=0;i<12;i++){
     motion.update(.05,{walking:true});motion.ground(actor,[road]);
-    assert.ok(Math.abs(footY()-(-.0625))<1e-6);
+    assert.ok(Math.abs(footY()-(-.0625))<1e-6,
+    'precise rendered lowest point '+footY()+' differs from grounded road');
   }
   // Move the actor between frames: stale bind inverses must not double its transform.
   actor.position.set(1.25,.8,-.6);
@@ -411,7 +418,8 @@ test('S2.3 replaces only the raised eye triangles and disposes reversibly',async
     if(n.material?.name==='Shift/Ink_Outline')ink=n;
     if(n.material?.name==='Shift/Eyes_2D_Emission')white=n;
   });
-  const original=ink.geometry,motion=createShiftSequenceRig(gltf);
+  const original=ink.geometry,originalPositions=Array.from(original.attributes.position.array),
+    motion=createShiftSequenceRig(gltf);
   assert.equal(white.visible,false);
   assert.deepEqual(Array.from(ink.geometry.index.array),[
     ...Array.from({length:288},(_,i)=>i),...Array.from({length:72},(_,i)=>2016+i)
@@ -423,6 +431,9 @@ test('S2.3 replaces only the raised eye triangles and disposes reversibly',async
   motion.faceGraphics.dispose();motion.dispose();
   assert.equal(disposed,3);
   assert.equal(originalDisposed,0);
-  assert.equal(ink.geometry,original);
+  assert.notEqual(ink.geometry,original,'proportion fit retains its own cloned geometry');
+  assert.deepEqual(Array.from(original.attributes.position.array),originalPositions,
+    'source GLB ink positions must remain unchanged');
+  assert.equal(ink.geometry.attributes.position.count,original.attributes.position.count);
   assert.equal(white.visible,true);
 });
