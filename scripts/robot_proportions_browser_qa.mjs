@@ -415,6 +415,52 @@ try {
     t.asset.model.getObjectByName('kneeL').rotation.x=0;
   });
   await capture('tab-t35-skin-restored','tab-anatomy-front');
+  // A former Victoria import attached the LOWER SHIN to ankle joints.
+  // World-space shoe contact alone missed the resulting mid-calf false ankle.
+  // Inspect skin weights in the actual GLTFLoader mesh, not a guessed silhouette.
+  const lowerLegWeights=await page.evaluate(()=>{
+    const {t}=window.__productionQA;
+    const skins=[];
+    t.asset.model.traverse(n=>{
+      if(n.isSkinnedMesh&&n.material?.name==='Tab/Skin')skins.push(n);
+    });
+    if(skins.length!==1)throw Error('Expected one loaded Victoria skin mesh');
+    const skin=skins[0],position=skin.geometry.getAttribute('position');
+    const ids=skin.geometry.getAttribute('skinIndex');
+    const weights=skin.geometry.getAttribute('skinWeight');
+    const result={};
+    for(const side of ['L','R']){
+      const ankle=skin.skeleton.bones.findIndex(b=>b.userData.name==='ankle.'+side);
+      const knee=skin.skeleton.bones.findIndex(b=>b.userData.name==='knee.'+side);
+      if(ankle<0||knee<0)throw Error('Missing anatomical limb '+side);
+      let ankleMax=-Infinity,kneeMin=Infinity,kneeMax=-Infinity;
+      let ankleVertices=0,kneeVertices=0;
+      for(let i=0;i<position.count;i++){
+        if(weights.getX(i)<=.5)continue;
+        if(ids.getX(i)===ankle){
+          ankleVertices++;
+          ankleMax=Math.max(ankleMax,position.getY(i));
+        }
+        if(ids.getX(i)===knee){
+          kneeVertices++;
+          kneeMin=Math.min(kneeMin,position.getY(i));
+          kneeMax=Math.max(kneeMax,position.getY(i));
+        }
+      }
+      result[side]={ankleMax,ankleVertices,kneeMin,kneeMax,kneeVertices};
+    }
+    return result;
+  });
+  report.results.push({mode:'tab-t33-real-skin-ankle-boundary',...lowerLegWeights});
+  for(const side of ['L','R']){
+    const leg=lowerLegWeights[side];
+    assert.ok(leg.ankleVertices>100&&leg.kneeVertices>110,
+      'Actual Victoria model needs continuous feet and calves: '+side);
+    assert.ok(leg.ankleMax<.23,
+      'Ankle controls mid-calf skin instead of only foot/toes: '+side);
+    assert.ok(leg.kneeMin<.22&&leg.kneeMax>.61,
+      'Shin must run continuously from knee down to ankle: '+side);
+  }
   // T3.6: measure actual ankle world-space contact under root translation.
   // Nominal three GLB clips alone do not prove that a moving child is walking.
   const tabMotion=await page.evaluate(()=>{
