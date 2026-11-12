@@ -42,7 +42,7 @@ test('Owner scale correction: Qwerty GLB untouched, only uniform displayed scale
   // Browser-only character-models.js creates DOM textures at import time:
   // test the exact production scale declarations without importing its module.
   const source=readFileSync(new URL('../public/character-models.js',import.meta.url),'utf8');
-  assert.match(source,/root\.name='Shift';root\.scale\.setScalar\(\.843\)/);
+  assert.match(source,/root\.name='Shift';root\.scale\.setScalar\(\.843\);root\.scale\.x=root\.scale\.z=\.8/);
   assert.match(source,/groundScale:\.843/);
   assert.match(source,/groundScale:\.27/);
   assert.match(source,/root\.name='Qwerty';root\.scale\.setScalar\(\.27\)/);
