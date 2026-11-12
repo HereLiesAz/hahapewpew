@@ -185,6 +185,28 @@ def retarget_body(points, normals, joints, weights, source_names, target_indices
             point_out[mask]+=w*(positions[mask]@mat.T+translation)
             normal_out[mask]+=w*(normals[mask]@np.linalg.inv(mat))
             mapped_weights[mask,target_indices[dest]]+=w[:,0]
+    # Victoria's imported fingers were straight and hung below the toy.
+    # Curl the RIGHT hand's source finger tips around the left teddy ear.
+    # The bone mapping mirrors source .L to Tab hand.R; preserve the palm
+    # and interpolate offsets by the original per-vertex finger weights.
+    grip_bends={
+        'f_index.01':(.008,.026,-.003),
+        'f_index.02':(.019,.068,-.011),
+        'f_index.03':(.027,.110,-.022),
+        'thumb.01':(.010,.012,-.018),
+        'thumb.02':(.038,.044,-.046),
+        'thumb.03':(.061,.080,-.071),
+        'f_middle.02':(0,.035,-.008),
+        'f_middle.03':(0,.066,-.012),
+        'f_ring.02':(0,.026,.005),
+        'f_ring.03':(0,.055,.012),
+        'f_pinky.02':(0,.023,.008),
+        'f_pinky.03':(0,.046,.015)}
+    for segment,offset in grip_bends.items():
+        source_joint=source_names.index('DEF-'+segment+'.L')
+        influence=np.sum(np.where(joints==source_joint,weights,0),axis=1)
+        point_out+=influence[:,None]*np.asarray(offset)
+
     sums=mapped_weights.sum(axis=1)
     if np.min(sums)<.99 or np.max(sums)>1.01:
         raise ValueError('Source weights were lost while remapping')
