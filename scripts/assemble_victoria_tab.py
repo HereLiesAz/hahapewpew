@@ -482,6 +482,28 @@ def main(source, decoded, tab, target):
         for i,j in enumerate(dominant)],dtype=bool)
     # Face-level culling avoids splitting UVs or touching original Tab dress.
     faces=faces[~np.any(covered[faces],axis=1)]
+    # The imported finger offsets reshape actual skin, not just cloth.
+    # Rebuild right-hand vertex normals from the final, indexed triangle
+    # surface, smoothing coincident UV-split vertices while leaving the
+    # untouched Victoria body normals and source textures intact.
+    triangle=pos[faces]
+    area=np.cross(triangle[:,1]-triangle[:,0],
+                  triangle[:,2]-triangle[:,0])
+    summed=np.zeros_like(pos,dtype=np.float64)
+    np.add.at(summed,faces.reshape(-1),np.repeat(area,3,axis=0))
+    _,groups=np.unique(np.round(pos,6),axis=0,return_inverse=True)
+    smooth=np.zeros((int(groups.max())+1,3),dtype=np.float64)
+    np.add.at(smooth,groups,summed)
+    calculated=smooth[groups]
+    magnitude=np.linalg.norm(calculated,axis=1)
+    hand=(dominant==joint_names['hand.R'])&(magnitude>1e-9)
+    if np.any(hand):
+        calculated[hand]/=magnitude[hand,None]
+        # Preserve the original outward-facing winding at mirrored source
+        # seams, even where the original imported normal is unusual.
+        flip=np.sum(calculated[hand]*norm[hand],axis=1)<0
+        calculated[hand]*=np.where(flip,-1.,1.)[:,None]
+        norm[hand]=calculated[hand].astype(np.float32)
     if np.any(faces>=len(pos)) or np.any(uv<0) or np.any(uv>1):
         raise ValueError('Source face index or UV out of bounds')
     attrs={
