@@ -265,6 +265,76 @@ def append_image(g, blob, source_g, source_bin, name):
     return len(g['textures'])-1
 
 
+def fit_costume(g, blob):
+    """Fit original costume mesh to human calves, shoes, and articulated sleeves.
+
+    Preserve original UVs, material IDs, tear topology, and the exposed feet.
+    Only the Victoria candidate is changed, not the fallback reference GLB.
+    """
+    joints={g['nodes'][n]['name']:i for i,n in enumerate(g['skins'][0]['joints'])}
+    for part in g['meshes'][0]['primitives']:
+        material=g['materials'][part['material']]['name']
+        attrs=part['attributes']
+        if material not in {'Tab/Dress_Main','Tab/Dress_Dark','Tab/Dress_Light',
+                            'Tab/Dress_Shadow','Tab/Dress_Dirt','Tab/Shoe','Tab/Ink'}:
+            continue
+        pos=accessor(g,blob,attrs['POSITION'])
+        ids=accessor(g,blob,attrs['JOINTS_0'])
+        if material.startswith('Tab/Dress_'):
+            weights=accessor(g,blob,attrs['WEIGHTS_0'])
+            # The skirt is still one continuous torn piece. Its lower panels
+            # follow both hips, unlike the nearly rigid 14% source weights.
+            mask=(ids[:,0]==joints['spine'])&(pos[:,1]<1.31)
+            if np.any(mask):
+                y=pos[mask,1]
+                hip_weight=.38*np.clip((1.31-y)/.78,0,1)
+                left=np.clip(.5-pos[mask,0]/1.0,.08,.92)
+                ids[mask,1]=joints['hip.L']
+                ids[mask,2]=joints['hip.R']
+                weights[mask,0]=1-hip_weight
+                weights[mask,1]=hip_weight*left
+                weights[mask,2]=hip_weight*(1-left)
+                weights[mask,3]=0
+            if material=='Tab/Dress_Dark':
+                # Sculpt the two rod-like sleeves into rounded cloth caps,
+                # a shallow elbow taper, cuff flare, and fine folded creases.
+                sleeves=[
+                    ('L',np.array([-.223,1.777,0.]),np.array([-.366,1.532,0.])),
+                    ('R',np.array([.223,1.776,0.]),np.array([.292,1.571,.005]))]
+                for side,start,end in sleeves:
+                    mask=(ids[:,0]==joints['shoulder.'+side])&(pos[:,1]>1.43)
+                    axis=end-start
+                    lengths=np.sum(axis*axis)
+                    t=np.clip(((pos[mask]-start)@axis)/lengths,0,1)
+                    center=start+t[:,None]*axis
+                    radial=pos[mask]-center
+                    angle=np.arctan2(radial[:,2],radial[:,0])
+                    cap=.14*np.sin(np.pi*t)**2
+                    cuff=.13*np.clip((t-.82)/.18,0,1)**2
+                    wrinkles=.045*np.sin(7*angle+12*t)*np.sin(np.pi*t)**2
+                    pos[mask]=center+radial*(1+cap+cuff+wrinkles)[:,None]
+                # The bodice has softly tailored fabric panels rather than
+                # a single invariant-radius tube along the entire torso.
+                mask=(ids[:,0]==joints['chest'])&(pos[:,1]>=1.35)&(pos[:,1]<1.85)
+                if np.any(mask):
+                    angle=np.arctan2(pos[mask,2],pos[mask,0])
+                    drape=1+.028*np.sin(angle*6+pos[mask,1]*9)
+                    pos[mask,0]*=drape
+                    pos[mask,2]*=drape
+        if material in {'Tab/Shoe','Tab/Ink'}:
+            mask=np.ones(len(pos),dtype=bool) if material=='Tab/Shoe' else (
+                (ids[:,0]==joints['ankle.L']) | (ids[:,0]==joints['ankle.R']))
+            if np.any(mask):
+                # Keep the existing sole flush to the ground, raising only
+                # the upper leather so Victoria's toes sit INSIDE the flats.
+                lift=np.clip((pos[mask,1]-.025)/.077,0,1)
+                pos[mask,1]+=.058*lift**1.4
+        if material in {'Tab/Dress_Dark','Tab/Shoe','Tab/Ink'}:
+            p=g['accessors'][attrs['POSITION']]
+            p['min']=np.min(pos,axis=0).astype(float).tolist()
+            p['max']=np.max(pos,axis=0).astype(float).tolist()
+
+
 def main(source, decoded, tab, target):
     src,source_bin,raw=read_glb(source)
     if hashlib.sha256(raw).hexdigest()!=SOURCE_SHA256:
@@ -281,7 +351,12 @@ def main(source, decoded, tab, target):
         raise ValueError('Unexpected Victoria source body vertex count')
     if source_arrays['POSITION'].shape!=(6438,3) or source_arrays['faces'].shape!=(11252,3):
         raise ValueError('Unexpected Victoria topology')
+    # Rotate the teddy around the ear actually held between Victoria's
+    # fingers, not around a point below and outside her hand.
+    nodes={n['name']:n for n in g['nodes']}
+    nodes['bear']['translation']=[.003,-.037,.049]
     patch_legs(g,blob)
+    fit_costume(g,blob)
     # The GLB joint index is the zero-based slot in the skin.joints list.
     joint_names={n['name']:j for j,n in enumerate([g['nodes'][i] for i in g['skins'][0]['joints']])}
     upstream=[src['nodes'][i]['name'] for i in src['skins'][0]['joints']]
@@ -298,10 +373,10 @@ def main(source, decoded, tab, target):
     dominant=joint[np.arange(len(joint)),binding]
     name_by_joint=[g['nodes'][i]['name'] for i in g['skins'][0]['joints']]
     covered=np.array([name_by_joint[int(j)] in {'spine','chest','neck','head'} or
-        (name_by_joint[int(j)] in {'hip.L','hip.R'} and pos[i,1]>1.12)
+        (name_by_joint[int(j)] in {'hip.L','hip.R'} and pos[i,1]>.74)
         for i,j in enumerate(dominant)],dtype=bool)
     # Face-level culling avoids splitting UVs or touching original Tab dress.
-    faces=faces[~np.all(covered[faces],axis=1)]
+    faces=faces[~np.any(covered[faces],axis=1)]
     if np.any(faces>=len(pos)) or np.any(uv<0) or np.any(uv>1):
         raise ValueError('Source face index or UV out of bounds')
     attrs={
