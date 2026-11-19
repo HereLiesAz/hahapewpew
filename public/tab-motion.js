@@ -50,7 +50,8 @@ function tailorTabBlouse(gltf){
   gltf.scene.traverse(n=>{
     if(n.isSkinnedMesh&&n.material?.name==='Tab/Dress_Dark')cloth.push(n);
   });
-  if(cloth.length!==1)throw Error('Tab blouse partition missing');
+  if(!cloth.length)return; // Unit rigs without a costume still exercise the gait.
+  if(cloth.length!==1)throw Error('Tab blouse partition ambiguous');
   const mesh=cloth[0],geometry=mesh.geometry.clone();
   const positions=geometry.attributes.position,ids=geometry.attributes.skinIndex;
   let sleeves=0,bodice=0;
