@@ -66,21 +66,29 @@ function tailorTabBlouse(gltf){
         z*(.89+.09*t)+.009*Math.sin(x*16+y*9)*t);
       bodice++;
     }else if((bone==='shoulderL'||bone==='shoulderR')&&y>1.43&&y<1.91){
-      const side=bone==='shoulderL'?-1:1;
-      const t=Math.max(0,Math.min(1,(1.777-y)/.245));
-      const centerX=side*(.223+.143*t);
-      const dx=x-centerX;
-      const angle=Math.atan2(z,dx);
-      const puff=1.12+.18*Math.sin(Math.PI*t)-.11*t+.17*t**6;
-      const pleat=.095*Math.sin(5*angle+10*t)*Math.sin(Math.PI*t);
-      const drape=.025*Math.sin(3*angle+4*t)*Math.sin(Math.PI*t);
-      positions.setXYZ(i,centerX+dx*(puff+pleat),y+drape,
-        z*(.94+.20*Math.sin(Math.PI*t)+pleat));
+      const left=bone==='shoulderL';
+      const start=left?[-.223,1.777,0]:[.223,1.776,0];
+      const end=left?[-.366,1.532,0]:[.292,1.571,.005];
+      const ax=end[0]-start[0],ay=end[1]-start[1],az=end[2]-start[2];
+      // Project onto the actual slanted sleeve axis. Using only vertex Y
+      // distorted equal-radius ring vertices differently and tore the cloth.
+      const t=Math.max(0,Math.min(1,
+        ((x-start[0])*ax+(y-start[1])*ay+(z-start[2])*az)/
+        (ax*ax+ay*ay+az*az)));
+      const cx=start[0]+t*ax,cy=start[1]+t*ay,cz=start[2]+t*az;
+      const rx=x-cx,ry=y-cy,rz=z-cz;
+      const angle=Math.atan2(rz,rx);
+      const drape=1.15+.11*(1-t)**2+.10*t**6;
+      const pleat=.035*Math.sin(5*angle+6*t)*Math.sin(Math.PI*t)**2;
+      const radius=drape+pleat;
+      positions.setXYZ(i,cx+rx*radius,cy+ry*radius,cz+rz*radius);
       sleeves++;
     }
   }
   if(sleeves<300||bodice<100)throw Error('Tab blouse vertices missing');
-  positions.needsUpdate=true;geometry.computeVertexNormals();
+  // Preserve the source's area-averaged smooth garment normals. Recomputing
+  // normals on this UV-split triangle soup made each sleeve visibly faceted.
+  positions.needsUpdate=true;
   mesh.geometry=geometry;gltf.scene.userData.tailoredBlouse=true;
 }
 
