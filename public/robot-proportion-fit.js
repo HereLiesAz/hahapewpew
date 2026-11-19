@@ -75,7 +75,8 @@ function fitTorsoDepth(gltf, materialName, ratio) {
     z0=Math.min(z0,p.getZ(i));z1=Math.max(z1,p.getZ(i));
   }
   if(!(x1>x0&&z1>z0))throw Error('Invalid torso dimensions: '+materialName);
-  const factor=ratio*(x1-x0)/(z1-z0),pivot=(z0+z1)/2;
+  // In this GLB the face looks along X, so X is depth and Z is width.
+  const factor=(x1-x0)/(ratio*(z1-z0)),pivot=(z0+z1)/2;
   for(const node of meshes){
     const geometry=node.geometry.clone(),positions=geometry.attributes.position;
     const joints=geometry.attributes.skinIndex;
