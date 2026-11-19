@@ -120,8 +120,10 @@ function thickenShiftArms(gltf){
     };
     const a=bounds(ai),l=bounds(li);
     if(!(a.width>0&&a.depth>0))throw Error('Zero-width Shift arm: '+arm+side);
-    const factor=Math.max(1,Math.min(2.5,
-      Math.max(l.width/a.width,l.depth/a.depth)));
+    // Shift's live spine is compacted to 55%, but hips/legs are not.
+    // Compensate that actual parent transform when matching rendered thickness.
+    const factor=Math.max(1,Math.min(3.5,
+      Math.max(l.width/a.width,l.depth/a.depth)/.55));
     for(const i of ai){
       p.setX(i,a.cx+(p.getX(i)-a.cx)*factor);
       p.setZ(i,a.cz+(p.getZ(i)-a.cz)*factor);
