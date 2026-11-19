@@ -252,6 +252,28 @@ export function copyShiftLimbsToQwerty(shiftModel, qwertyModel){
     copy.name='Qwerty.CopiedShift.'+name;copy.castShadow=true;copy.receiveShadow=true;
     built.push([bone,copy]);
   }
+  // Actual Shift mesh patches retain their exact surface triangles, but the
+  // Qwerty hip/knee/ankle rest pivots are spaced differently. Bridge adjacent
+  // pivots using the same Shift limb material so the copied legs form a
+  // continuous silhouette rather than leaving detached feet.
+  for(const side of ['L','R'])for(const [upper,lower] of [
+    ['hip','knee'],['knee','ankle']
+  ]){
+    const parent=qwertyModel.getObjectByName(upper+side);
+    const child=qwertyModel.getObjectByName(lower+side);
+    if(!parent?.isBone||!child?.isBone)throw Error('Missing Qwerty leg joint '+upper+side);
+    const endpoint=parent.worldToLocal(child.getWorldPosition(new THREE.Vector3()));
+    const length=endpoint.length();
+    if(!(length>.01&&length<2))throw Error('Invalid Qwerty leg span: '+upper+side);
+    const shaft=new THREE.Mesh(
+      new THREE.CylinderGeometry(.10,.10,length,10),mesh.material);
+    shaft.name='Qwerty.CopiedShiftConnector.'+upper+side;
+    shaft.position.copy(endpoint).multiplyScalar(.5);
+    shaft.quaternion.setFromUnitVectors(
+      new THREE.Vector3(0,1,0),endpoint.clone().normalize());
+    shaft.castShadow=true;shaft.receiveShadow=true;
+    built.push([parent,shaft]);
+  }
   for(const side of ['L','R']){
     const from=shiftModel.getObjectByName('Shift.ReferenceClamp.'+side);
     const wrist=qwertyModel.getObjectByName('wrist'+side);
