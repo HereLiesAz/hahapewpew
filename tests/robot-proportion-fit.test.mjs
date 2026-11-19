@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import * as THREE from '../public/vendor/three.module.js';
 import {GLTFLoader} from '../public/vendor/GLTFLoader.js';
-import {fitQwertyProportions, fitShiftProportions} from '../public/robot-proportion-fit.js';
+import {fitQwertyProportions, fitShiftProportions, copyShiftLimbsToQwerty} from '../public/robot-proportion-fit.js';
 
 async function loaded(name) {
   const bytes = readFileSync(new URL('../public/assets/characters/' + name, import.meta.url));
@@ -49,9 +49,11 @@ test('Qwerty head rests on the body with negligible visible neck and no change t
   assert.ok(gap >= 0 && gap < .018, 'plate must nearly touch torso');
   assert.ok(span(legs, 'neck').high - span(legs, 'neck').low < .02);
   const face = primitive(gltf, 'Qwerty/Face_Matte').geometry.attributes.position.array;
+  const headDrop = originalFace[1] - face[1];
+  assert.ok(headDrop > .19 && headDrop < .35, 'shorter blouse-level torso must bring the head down');
   for (let i = 0; i < face.length; i += 3) {
     assert.ok(Math.abs(face[i] - originalFace[i]) < 1e-6);
-    assert.ok(Math.abs(face[i+1] - originalFace[i+1] + .17) < 1e-5);
+    assert.ok(Math.abs(face[i+1] - originalFace[i+1] + headDrop) < 1e-5);
     assert.ok(Math.abs(face[i+2] - originalFace[i+2]) < 1e-6);
   }
 });
@@ -82,7 +84,7 @@ test('Qwerty tangled original fingers are replaced with symmetrical hooked clamp
     const clamp = wrist.getObjectByName('Qwerty.ReferenceClamp.' + side);
     assert.ok(clamp);
     assert.equal(clamp.children.length, 6, 'palm and two hooked tines must exist');
-    assert.equal(clamp.scale.x, 1.45, 'clamps must read as substantial hooks at game camera distance');
+    assert.equal(clamp.scale.x, 1.75, 'clamps must read as substantial hooks at game camera distance');
     assert.equal(clamp.scale.y, clamp.scale.x);
     assert.equal(clamp.scale.z, clamp.scale.x);
     assert.ok(clamp.children.every(mesh => mesh.isMesh && mesh.castShadow));
@@ -112,4 +114,70 @@ test('Shift preserves circular head, ankle and pivots while shortening visible l
   assert.deepEqual(span(limb, 'ankleL'), original.foot);
   fitShiftProportions(gltf);
   assert.deepEqual(span(limb, 'ankleL'), original.foot);
+});
+
+test('torsos have owner-specified depth-to-width plans and Qwerty torso is shorter', async () => {
+  for(const [asset,fit,name,ratio] of [
+    ['Qwerty_Q16_Validated.glb',fitQwertyProportions,'Qwerty',1],
+    ['Shift_Rigged.glb',fitShiftProportions,'Shift',1.10]
+  ]){
+    const gltf=await loaded(asset);
+    const before=span(primitive(gltf,name+'/Body_Graphite'),'spine');
+    fit(gltf);
+    const mesh=primitive(gltf,name+'/Body_Graphite');
+    const after=span(mesh,'spine');
+    if(name==='Qwerty')
+      assert.ok((after.high-after.low)/(before.high-before.low)<.84,
+        'Qwerty torso should visibly shorten by more than sixteen percent');
+    const positions=mesh.geometry.attributes.position,skin=mesh.geometry.attributes.skinIndex;
+    let x0=Infinity,x1=-Infinity,z0=Infinity,z1=-Infinity;
+    for(let i=0;i<positions.count;i++){
+      if(mesh.skeleton.bones[skin.getX(i)]?.name!=='spine')continue;
+      x0=Math.min(x0,positions.getX(i));x1=Math.max(x1,positions.getX(i));
+      z0=Math.min(z0,positions.getZ(i));z1=Math.max(z1,positions.getZ(i));
+    }
+    // Both GLBs face +Z before the QA stage rotates their actor roots.
+    const actual=(z1-z0)/(x1-x0);
+    assert.ok(Math.abs(actual-ratio)<.015,
+      name+' torso depth-to-width ratio must match its independent target');
+  }
+});
+
+test('Shift has thicker arms, enlarged clamps, and Qwerty receives actual Shift limb triangles',async()=>{
+  const q=await loaded('Qwerty_Q16_Validated.glb'),s=await loaded('Shift_Rigged.glb');
+  fitQwertyProportions(q);fitShiftProportions(s);
+  const shiftLimb=primitive(s,'Shift/Limb_Black');
+  for(const side of ['L','R']){
+    const oldWrist=span(shiftLimb,'wrist'+side);
+    assert.ok(oldWrist.high-oldWrist.low<1e-5,
+      'old overlapping Shift fingers must be fully retired');
+  }
+  for(const side of ['L','R']){
+    const clamp=s.scene.getObjectByName('Shift.ReferenceClamp.'+side);
+    assert.ok(clamp,'Shift must have a distinct visible clamp on each wrist');
+    assert.equal(clamp.scale.x,1.75);
+  }
+  copyShiftLimbsToQwerty(s.scene,q.scene);
+  assert.equal(primitive(q,'Qwerty/Limb_Black').visible,false,
+    'Qwerty old limbs must be retired, not doubled under copied parts');
+  for(const name of ['armL','elbowL','wristL','armR','elbowR','wristR',
+    'hipL','kneeL','ankleL','hipR','kneeR','ankleR']){
+    const original=s.scene.getObjectByName(name);
+    const copy=q.scene.getObjectByName('Qwerty.CopiedShift.'+name);
+    assert.ok(original?.isBone&&copy?.isMesh,'missing copied Shift limb '+name);
+    assert.ok(copy.geometry.attributes.position.count>=3,'empty geometry: '+name);
+    assert.equal(copy.parent.name,name,'copy must follow Qwerty animation joint');
+  }
+  for(const side of ['L','R']){
+    for(const section of ['hip','knee']){
+      const connector=q.scene.getObjectByName('Qwerty.CopiedShiftConnector.'+section+side);
+      assert.ok(connector?.isMesh,'copied legs must bridge the actual Qwerty pivots');
+      assert.ok(connector.geometry.parameters.height>.01);
+      assert.equal(connector.parent.name,section+side);
+    }
+    assert.ok(q.scene.getObjectByName('Qwerty.CopiedShiftClamp.'+side));
+    assert.equal(q.scene.getObjectByName('Qwerty.ReferenceClamp.'+side),undefined);
+  }
+  copyShiftLimbsToQwerty(s.scene,q.scene);
+  assert.equal(q.scene.userData.shiftLimbsCopied,true);
 });

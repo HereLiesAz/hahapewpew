@@ -35,7 +35,8 @@ try {
   await page.waitForFunction(()=>{
     const q=window.__qwertyQA?.crew,c=document.querySelector('#world');
     return c?.dataset.qwertyModel==='glb-q16' && c.dataset.shiftModel==='glb' && c.dataset.tabModel==='glb'
-      && q?.Qwerty?.asset?.root && q?.Shift?.asset?.s27;
+      && q?.Qwerty?.asset?.root && q?.Shift?.asset?.s27
+      && c.dataset.qwertyLimbs==='shift-copied';
   },null,{timeout:30000});
   await page.screenshot({path:dir+'/production-wide.png'});
   const measured=await page.evaluate(async()=>{
@@ -73,9 +74,12 @@ try {
     q.root.position.y+=contact.surfaceY-bounds(q.asset.root).min.y;
     t.root.position.y+=contact.surfaceY-bounds(t.asset.model).min.y;
     const qb=bounds(q.asset.root),sb=bounds(s.asset.model),tb=bounds(t.asset.model);
-    const qTorso=bounds(q.asset.root,'Qwerty/Body_Graphite').getSize(new T.Vector3()).y;
+    const qBodyBounds=bounds(q.asset.root,'Qwerty/Body_Graphite');
+    const qTorso=qBodyBounds.getSize(new T.Vector3()).y;
     const bodyBounds=bounds(s.asset.model,'Shift/Body_Graphite');
     const sTorso=bodyBounds.getSize(new T.Vector3()).y;
+    const qBodySize=qBodyBounds.getSize(new T.Vector3());
+    const sBodySize=bodyBounds.getSize(new T.Vector3());
     const hipVertices=[];
     s.asset.model.traverseVisible(n=>{
       if(!n.isSkinnedMesh)return;
@@ -145,7 +149,11 @@ try {
         skinTextures:{base:!!childMeshes[0].material.map,normal:!!childMeshes[0].material.normalMap}},
       qHeight:qb.max.y-qb.min.y,shiftHeight:sb.max.y-sb.min.y,
       eyeSurfaceGap,printedEyeLayers:face.layers.length,visibleRaisedEyes,raisedInkIndices,whitePixels,blackPixels,
-      relativeHeight:(sb.max.y-sb.min.y)/(qb.max.y-qb.min.y),qTorso,sTorso,hipTop,bodyBottom,
+      relativeHeight:(sb.max.y-sb.min.y)/(qb.max.y-qb.min.y),qTorso,sTorso,
+      qDepthRatio:qBodySize.x/qBodySize.z,sDepthRatio:sBodySize.x/sBodySize.z,
+      qwertyLimbs:document.querySelector('#world').dataset.qwertyLimbs,
+      tabBlouseTailored:Boolean(t.asset.model.userData.tailoredBlouse),
+      hipTop,bodyBottom,
       domeRise:db.max.y-db.min.y,domeDiameter:Math.max(db.max.x-db.min.x,db.max.z-db.min.z),domeNormalSeams,domeSharedVertices,
       qFoot:qb.min.y,shiftFoot:sb.min.y,surfaceY:contact.surfaceY,ringCount:rings.size,radialError,
       clips:s.asset.actionNames,barrels:s.asset.weapon.barrelCount,
@@ -168,8 +176,14 @@ try {
   assert.ok(measured.domeRise/measured.domeDiameter>.26&&measured.domeRise/measured.domeDiameter<.30,'head must be a shallow wok');
   // Verify the real loaded, skinned torso mesh against Qwerty, not overall
   // standing height: the dome must remain proportionally large and shallow.
-  assert.ok(Math.abs(measured.sTorso/measured.qTorso-1)<.02,
-    'Shift and Qwerty rendered torso heights must match within two percent');
+  assert.ok(measured.sTorso/measured.qTorso>1.12&&measured.sTorso/measured.qTorso<1.45,
+    'Qwerty torso should be distinctly shorter than Shift after the requested correction');
+  assert.ok(Math.abs(measured.qDepthRatio-1)<.06,
+    'Qwerty rendered torso must be as deep as it is wide');
+  assert.ok(Math.abs(measured.sDepthRatio-1.10)<.07,
+    'Shift rendered torso must be slightly deeper than wide');
+  assert.equal(measured.qwertyLimbs,'shift-copied');
+  assert.equal(measured.tabBlouseTailored,true,'Victoria blouse must be tailored in the real game');
   assert.ok(measured.bodyBottom<=measured.hipTop+.001,
     'visible hip-to-torso gap in live skinned actor');
   assert.ok(Math.abs(measured.qFoot-measured.surfaceY)<1e-6);
@@ -194,7 +208,7 @@ try {
       const tabBox=['tab-front','tab-side','tab-threequarter','tab-fold'].includes(view);
       const tabAnatomy=view.startsWith('tab-anatomy');
       const tabDress=view.startsWith('tab-dress'),tabBear=view==='tab-bear-grip';
-      const focus=tab?t:view==='qwerty'?q:s;
+      const focus=tab?t:view.startsWith('qwerty')?q:s;
       const box=trio?bounds(t.asset.model).union(bounds(q.asset.root)).union(bounds(s.asset.model)):view==='motion'?window.__productionQA.motionBox:gun?bounds(s.asset.weapon.root,view==='gun-muzzle'?'Shift/Control_Light':null):eyes?bounds(s.asset.model,'Shift/Dome_Side'):pair?bounds(q.asset.root).union(bounds(s.asset.model))
         :bounds(focus===q?q.asset.root:focus.asset.model);
       if(tabAnatomy)box.copy(bounds(t.asset.model,'Tab/Skin')).union(bounds(t.asset.model,'Tab/Shoe'));
@@ -210,7 +224,7 @@ try {
       const half=trio?Math.max(size.y,size.z/aspect)*.6:eyes?Math.max(size.y*.65,Math.max(size.x,size.z)*.55/aspect):Math.max(size.y,size.x,size.z)*.65;
       const cam=new T.OrthographicCamera(-half*aspect,half*aspect,half,-half,.01,30);
       let direction=view==='top'?new T.Vector3(0,1,0)
-        :(view==='side'||view==='eyes-side')?new T.Vector3(0,0,-1):(view==='threequarter'||view==='motion')?new T.Vector3(1,0,-1).normalize():new T.Vector3(1,0,0);
+        :(view==='side'||view==='eyes-side'||view==='qwerty-side')?new T.Vector3(0,0,-1):(view==='threequarter'||view==='motion')?new T.Vector3(1,0,-1).normalize():new T.Vector3(1,0,0);
       if((tabAnatomy&&view==='tab-anatomy-side')||view==='tab-dress-side'||view==='tab-victoria-side')direction=new T.Vector3(0,0,1);
       if(tabBox)direction=view==='tab-side'?new T.Vector3(0,0,1)
         :view==='tab-fold'?new T.Vector3(1,-.45,1).normalize()
@@ -739,6 +753,7 @@ try {
   const overhead=await capture('shift-top-orthographic','top');
   assert.deepEqual(overhead.direction,[0,1,0]);
   await capture('qwerty-front','qwerty');
+  await capture('qwerty-side','qwerty-side');
 
   // Calibrate the actual installed materials through WebGL, rather than only
   // inspecting ramp bytes. These flat swatches isolate lighting/colour math.

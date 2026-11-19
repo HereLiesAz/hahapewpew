@@ -4,6 +4,7 @@ import { createCharacters, articulateWalk } from './character-models.js';
 import { GLTFLoader } from './vendor/GLTFLoader.js';
 import { celShadeRobot } from './cel-robots.js';
 import { createQwertyMotionRig } from './qwerty-motion.js';
+import { copyShiftLimbsToQwerty } from './robot-proportion-fit.js';
 import { createShiftSequenceRig } from './shift-motion.js';
 import { createTabMotionRig } from './tab-motion.js';
 import { dialoguePages, visibleDialoguePage } from './dialogue-pages.js';
@@ -110,6 +111,15 @@ Object.assign(crew,createCharacters(scene));
 celShadeRobot(crew.Shift.root,'Shift');
 celShadeRobot(crew.Qwerty.root,'Qwerty');
 
+// Keep the original rigs until both validated assets exist; then replace all
+// Qwerty limb surfaces with copied Shift GLB geometry on Qwerty's own bones.
+function fitSharedRobotLimbs(){
+  const q=crew.Qwerty.asset,s=crew.Shift.asset;
+  if(!q?.loaded||!s?.s27)return;
+  copyShiftLimbsToQwerty(s.model,q.root);
+  canvas.dataset.qwertyLimbs='shift-copied';
+}
+
 // Q1.8 integration: validated Qwerty replaces the old rig only after complete loading.
 // The procedural original remains intact and visible if the GLB fails validation.
 async function installQwertyAsset() {
@@ -122,6 +132,7 @@ async function installQwertyAsset() {
     for(const child of legacy)child.visible=false;
     rig.asset={...motion,loaded:true};
     canvas.dataset.qwertyModel='glb-q16';
+    fitSharedRobotLimbs();
   } catch(error) {
     console.warn('Validated Qwerty GLB unavailable; retaining legacy mesh:',error);
   }
@@ -151,6 +162,7 @@ async function installShiftAsset() {
       rig.asset={...motion,loaded:true,s27:true};
       rig.gun=motion.weapon.root;
       rig.barrel=motion.weapon.rotor;
+      fitSharedRobotLimbs();
       if(shiftS27Qa){canvas.dataset.shiftModel='glb-s27';}
       else canvas.dataset.shiftModel='glb';
       return;
