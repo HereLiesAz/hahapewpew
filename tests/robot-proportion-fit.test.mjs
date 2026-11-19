@@ -136,7 +136,8 @@ test('torsos have owner-specified depth-to-width plans and Qwerty torso is short
       x0=Math.min(x0,positions.getX(i));x1=Math.max(x1,positions.getX(i));
       z0=Math.min(z0,positions.getZ(i));z1=Math.max(z1,positions.getZ(i));
     }
-    const actual=(z1-z0)/(x1-x0);
+    // Front of both GLBs is +X: depth is X, horizontal width is Z.
+    const actual=(x1-x0)/(z1-z0);
     assert.ok(Math.abs(actual-ratio)<.015,
       name+' torso depth-to-width ratio must match its independent target');
   }
