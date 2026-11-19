@@ -129,6 +129,16 @@ function thickenShiftArms(gltf){
       p.setZ(i,a.cz+(p.getZ(i)-a.cz)*factor);
     }
   }
+  // Retire the old ragged finger triangles; the new enlarged two-tine clamp
+  // is the sole wrist silhouette on both Shift and the copied Qwerty limbs.
+  for(const side of ['L','R']){
+    const wi=groups.get('wrist'+side);
+    if(!wi?.length)throw Error('Missing Shift wrist skin: '+side);
+    const x=wi.reduce((sum,i)=>sum+p.getX(i),0)/wi.length;
+    const y=wi.reduce((sum,i)=>sum+p.getY(i),0)/wi.length;
+    const z=wi.reduce((sum,i)=>sum+p.getZ(i),0)/wi.length;
+    for(const i of wi)p.setXYZ(i,x,y,z);
+  }
   p.needsUpdate=true;geometry.computeVertexNormals();node.geometry=geometry;
 }
 
