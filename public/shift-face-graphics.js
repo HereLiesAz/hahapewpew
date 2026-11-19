@@ -40,8 +40,9 @@ export function attachShiftFaceGraphics(model){
   if(![xmin,xmax,ymin,ymax].every(Number.isFinite)||xmax<=xmin||ymax<=ymin)
     throw Error('Degenerate Shift graphic bounds');
   // Transparent padding prevents clamp-to-edge painting outside the artwork.
+  const widthAllowance=(xmax-xmin)*.16;
   const padding=(xmax-xmin)/128;
-  xmin-=padding;xmax+=padding;ymin-=padding;ymax+=padding;
+  xmin-=padding+widthAllowance;xmax+=padding+widthAllowance;ymin-=padding;ymax+=padding;
   const width=1024,height=Math.max(64,Math.ceil(width*(ymax-ymin)/(xmax-xmin)));
   const pixels=new Uint8Array(width*height*4);
   function paint(positions,first,stop,value){
@@ -74,6 +75,11 @@ export function attachShiftFaceGraphics(model){
       y0=Math.min(y0,inkPositions.getY(i));y1=Math.max(y1,inkPositions.getY(i));
     }
     if(!(x1>x0&&y1>y0))throw Error('Invalid Shift eye frame');
+    // Widen each painted eye without changing the skinned dome or its sockets.
+    // Expand outward more than inward to leave the narrow central separation.
+    const expansion=(x1-x0)*.27;
+    if(side==='left'){x0-=expansion;x1+=expansion*.45;}
+    else{x0-=expansion*.45;x1+=expansion;}
     // y increases upward in model space. The two panels lean in opposite
     // directions, as in the original crop; the white is inset on every side.
     const left=side==='left';
@@ -81,8 +87,8 @@ export function attachShiftFaceGraphics(model){
       ? [[.05,.92],[.92,.80],[.94,.10],[.08,.19]]
       : [[.08,.80],[.95,.92],[.92,.19],[.06,.10]];
     const inner=left
-      ? [[.19,.75],[.79,.67],[.81,.27],[.22,.32]]
-      : [[.21,.67],[.82,.75],[.79,.32],[.19,.27]];
+      ? [[.12,.75],[.87,.67],[.89,.27],[.14,.32]]
+      : [[.13,.67],[.88,.75],[.86,.32],[.11,.27]];
     for(const [quad,value] of [[outer,0],[inner,255]]){
       const [a,b,c,d]=quad.map(([u,v])=>[x0+u*(x1-x0),y0+v*(y1-y0),0]);
       const points=new THREE.Float32BufferAttribute([...a,...b,...c,...a,...c,...d],3);
