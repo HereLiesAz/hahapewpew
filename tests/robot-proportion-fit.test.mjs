@@ -146,6 +146,12 @@ test('torsos have owner-specified depth-to-width plans and Qwerty torso is short
 test('Shift has thicker arms, enlarged clamps, and Qwerty receives actual Shift limb triangles',async()=>{
   const q=await loaded('Qwerty_Q16_Validated.glb'),s=await loaded('Shift_Rigged.glb');
   fitQwertyProportions(q);fitShiftProportions(s);
+  const shiftLimb=primitive(s,'Shift/Limb_Black');
+  for(const side of ['L','R']){
+    const oldWrist=span(shiftLimb,'wrist'+side);
+    assert.ok(oldWrist.high-oldWrist.low<1e-5,
+      'old overlapping Shift fingers must be fully retired');
+  }
   for(const side of ['L','R']){
     const clamp=s.scene.getObjectByName('Shift.ReferenceClamp.'+side);
     assert.ok(clamp,'Shift must have a distinct visible clamp on each wrist');
