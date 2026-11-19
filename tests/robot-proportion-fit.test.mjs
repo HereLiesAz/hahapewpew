@@ -163,6 +163,12 @@ test('Shift has thicker arms, enlarged clamps, and Qwerty receives actual Shift 
     assert.equal(copy.parent.name,name,'copy must follow Qwerty animation joint');
   }
   for(const side of ['L','R']){
+    for(const section of ['hip','knee']){
+      const connector=q.scene.getObjectByName('Qwerty.CopiedShiftConnector.'+section+side);
+      assert.ok(connector?.isMesh,'copied legs must bridge the actual Qwerty pivots');
+      assert.ok(connector.geometry.parameters.height>.01);
+      assert.equal(connector.parent.name,section+side);
+    }
     assert.ok(q.scene.getObjectByName('Qwerty.CopiedShiftClamp.'+side));
     assert.equal(q.scene.getObjectByName('Qwerty.ReferenceClamp.'+side),undefined);
   }
