@@ -41,6 +41,48 @@ function solveLeg(hip,knee,ankle,x,z,y){
   return Math.abs(dist-d);
 }
 
+// Tailor the loaded Victoria blouse; the old radial sleeve rings and bodice
+// read as three rigid tubes. Preserve the original skinned material, skirt and
+// clip bindings, and turn only the upper cloth into draped, tapered fabric.
+function tailorTabBlouse(gltf){
+  if(gltf.scene.userData.tailoredBlouse)return;
+  const cloth=[];
+  gltf.scene.traverse(n=>{
+    if(n.isSkinnedMesh&&n.material?.name==='Tab/Dress_Dark')cloth.push(n);
+  });
+  if(cloth.length!==1)throw Error('Tab blouse partition missing');
+  const mesh=cloth[0],geometry=mesh.geometry.clone();
+  const positions=geometry.attributes.position,ids=geometry.attributes.skinIndex;
+  let sleeves=0,bodice=0;
+  for(let i=0;i<positions.count;i++){
+    const bone=mesh.skeleton.bones[ids.getX(i)]?.name;
+    const x=positions.getX(i),y=positions.getY(i),z=positions.getZ(i);
+    if((bone==='chest'||bone==='spine')&&y>=1.35&&y<=1.86){
+      const t=Math.max(0,Math.min(1,(y-1.35)/.51));
+      const waistToShoulder=.87+.22*Math.sin(Math.PI*t*.72);
+      const fold=.024*Math.sin(x*24+y*11)*Math.sin(Math.PI*t);
+      positions.setXYZ(i,x*(waistToShoulder+fold),y,
+        z*(.89+.09*t)+.009*Math.sin(x*16+y*9)*t);
+      bodice++;
+    }else if((bone==='shoulderL'||bone==='shoulderR')&&y>1.43&&y<1.91){
+      const side=bone==='shoulderL'?-1:1;
+      const t=Math.max(0,Math.min(1,(1.777-y)/.245));
+      const centerX=side*(.223+.143*t);
+      const dx=x-centerX;
+      const angle=Math.atan2(z,dx);
+      const puff=1.12+.18*Math.sin(Math.PI*t)-.11*t+.17*t**6;
+      const pleat=.095*Math.sin(5*angle+10*t)*Math.sin(Math.PI*t);
+      const drape=.025*Math.sin(3*angle+4*t)*Math.sin(Math.PI*t);
+      positions.setXYZ(i,centerX+dx*(puff+pleat),y+drape,
+        z*(.94+.20*Math.sin(Math.PI*t)+pleat));
+      sleeves++;
+    }
+  }
+  if(sleeves<300||bodice<100)throw Error('Tab blouse vertices missing');
+  positions.needsUpdate=true;geometry.computeVertexNormals();
+  mesh.geometry=geometry;gltf.scene.userData.tailoredBlouse=true;
+}
+
 export function createTabMotionRig(gltf,root){
   if(!gltf?.scene||!Array.isArray(gltf.animations)||!root?.isObject3D)
     throw new TypeError('Tab motion requires a loaded skinned glTF and its character root');
@@ -61,6 +103,7 @@ export function createTabMotionRig(gltf,root){
   let skin=0;gltf.scene.traverse(n=>{if(n.isSkinnedMesh)skin++});
   if(skin<1)throw new Error('Tab has no skinned mesh');
   if(joints.bear.parent!==joints.handR)throw new Error('Teddy must remain held by right hand');
+  tailorTabBlouse(gltf);
   const mixer=new THREE.AnimationMixer(gltf.scene);
   const walk=mixer.clipAction(clips.get('Tab_Walk'));
   const idle=mixer.clipAction(clips.get('Tab_Idle'));
