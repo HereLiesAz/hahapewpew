@@ -203,3 +203,66 @@ export function fitShiftProportions(gltf) {
   }
   gltf.scene.userData.shiftProportionsFitted = true;
 }
+
+// Copy the actual Shift limb surface into Qwerty's skeleton. Unlike a visual
+// approximation, every triangle comes from the current fitted Shift GLB.
+// Bone-local rigid patches follow Qwerty's original animated joints.
+export function copyShiftLimbsToQwerty(shiftModel, qwertyModel){
+  if(qwertyModel.userData.shiftLimbsCopied)return;
+  const source=[],target=[];
+  shiftModel.traverse(n=>{if(n.isSkinnedMesh&&n.material?.name==='Shift/Limb_Black')source.push(n)});
+  qwertyModel.traverse(n=>{if(n.isSkinnedMesh&&n.material?.name==='Qwerty/Limb_Black')target.push(n)});
+  if(source.length!==1||target.length!==1)throw Error('Missing limb surface for transfer');
+  shiftModel.updateMatrixWorld(true);qwertyModel.updateMatrixWorld(true);
+  source[0].skeleton.update();target[0].skeleton.update();
+  const mesh=source[0],p=mesh.geometry.attributes.position,indices=mesh.geometry.attributes.skinIndex;
+  const names=['armL','elbowL','wristL','armR','elbowR','wristR',
+    'hipL','kneeL','ankleL','hipR','kneeR','ankleR'];
+  const triangles=new Map(names.map(n=>[n,[]]));
+  const local=new THREE.Vector3();
+  const index=mesh.geometry.index;
+  const count=index?index.count:p.count;
+  for(let i=0;i<count;i+=3){
+    const vertices=[0,1,2].map(k=>index?index.getX(i+k):i+k);
+    const joints=vertices.map(v=>mesh.skeleton.bones[indices.getX(v)]?.name);
+    if(!joints.every(name=>name===joints[0])||!triangles.has(joints[0]))continue;
+    const bone=shiftModel.getObjectByName(joints[0]);
+    for(const v of vertices){
+      mesh.getVertexPosition(v,local).applyMatrix4(mesh.matrixWorld);
+      bone.worldToLocal(local);
+      triangles.get(joints[0]).push(local.x,local.y,local.z);
+    }
+  }
+  const built=[];
+  for(const name of names){
+    const data=triangles.get(name);
+    if(data.length<9)throw Error('No transferable Shift geometry: '+name);
+    const bone=qwertyModel.getObjectByName(name);
+    if(!bone?.isBone)throw Error('Qwerty receiver missing: '+name);
+    const geometry=new THREE.BufferGeometry();
+    const scale=name.startsWith('hip')||name.startsWith('knee')||name.startsWith('ankle')?2.50:1.65;
+    geometry.setAttribute('position',new THREE.Float32BufferAttribute(
+      data.map(v=>v*scale),3));
+    geometry.computeVertexNormals();
+    const copy=new THREE.Mesh(geometry,mesh.material);
+    copy.name='Qwerty.CopiedShift.'+name;copy.castShadow=true;copy.receiveShadow=true;
+    built.push([bone,copy]);
+  }
+  for(const side of ['L','R']){
+    const from=shiftModel.getObjectByName('Shift.ReferenceClamp.'+side);
+    const wrist=qwertyModel.getObjectByName('wrist'+side);
+    if(!from||!wrist)throw Error('Shift clamp or Qwerty wrist missing: '+side);
+    const replacement=from.clone(true);
+    replacement.name='Qwerty.CopiedShiftClamp.'+side;
+    replacement.scale.multiplyScalar(1.65);
+    built.push([wrist,replacement]);
+  }
+  // Retire the old geometry only after all twelve replacements validate.
+  for(const [bone,copy] of built)bone.add(copy);
+  target[0].visible=false;
+  for(const side of ['L','R']){
+    const old=qwertyModel.getObjectByName('Qwerty.ReferenceClamp.'+side);
+    if(old)old.removeFromParent();
+  }
+  qwertyModel.userData.shiftLimbsCopied=true;
+}
