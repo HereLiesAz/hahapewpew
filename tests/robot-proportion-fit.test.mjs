@@ -157,7 +157,41 @@ test('Shift has thicker arms, enlarged clamps, and Qwerty receives actual Shift 
     assert.ok(clamp,'Shift must have a distinct visible clamp on each wrist');
     assert.equal(clamp.scale.x,1.75);
   }
+  // Compare independently against the *original fitted* Qwerty limb mesh.
+  // These are posed world-space endpoints, not numbers recovered using the
+  // implementation's envelope mapping.
+  const originalLimb=primitive(q,'Qwerty/Limb_Black');
+  q.scene.updateMatrixWorld(true);
+  originalLimb.skeleton.update();
+  const originalFeet=new Map(),originalHips=new Map();
+  for(const side of ['L','R']){
+    const foot=new THREE.Box3(),hip=new THREE.Box3();
+    const skin=originalLimb.geometry.attributes.skinIndex;
+    const point=new THREE.Vector3();
+    for(let i=0;i<skin.count;i++){
+      const bone=originalLimb.skeleton.bones[skin.getX(i)]?.name;
+      if(bone!=='ankle'+side&&bone!=='hip'+side)continue;
+      originalLimb.getVertexPosition(i,point).applyMatrix4(originalLimb.matrixWorld);
+      (bone==='ankle'+side?foot:hip).expandByPoint(point);
+    }
+    assert.ok(!foot.isEmpty()&&!hip.isEmpty());
+    originalFeet.set(side,foot);originalHips.set(side,hip);
+  }
   copyShiftLimbsToQwerty(s.scene,q.scene);
+  q.scene.updateMatrixWorld(true);
+  for(const side of ['L','R']){
+    const copiedFoot=new THREE.Box3().setFromObject(
+      q.scene.getObjectByName('Qwerty.CopiedShift.ankle'+side),true);
+    const copiedHip=new THREE.Box3().setFromObject(
+      q.scene.getObjectByName('Qwerty.CopiedShift.hip'+side),true);
+    assert.ok(Math.abs(copiedFoot.min.y-originalFeet.get(side).min.y)<.001,
+      'Shift-derived Qwerty sole must retain its original grounded plane');
+    assert.ok(Math.abs(copiedHip.max.y-originalHips.get(side).max.y)<.001,
+      'Shift-derived Qwerty thigh must reach its original torso connection');
+    const torso=new THREE.Box3().setFromObject(primitive(q,'Qwerty/Body_Graphite'),true);
+    assert.ok(copiedHip.max.y>=torso.min.y-.01,
+      'Qwerty copied upper leg must not end below the torso');
+  }
   assert.equal(primitive(q,'Qwerty/Limb_Black').visible,false,
     'Qwerty old limbs must be retired, not doubled under copied parts');
   for(const name of ['armL','elbowL','wristL','armR','elbowR','wristR',
