@@ -50,7 +50,7 @@ function tailorTabBlouse(gltf){
   gltf.scene.traverse(n=>{
     if(n.isSkinnedMesh&&n.material?.name==='Tab/Dress_Dark')cloth.push(n);
   });
-  if(!cloth.length)return; // Unit rigs without a costume still exercise the gait.
+  if(!cloth.length)return; // Skeletal test rigs have no material partition.
   if(cloth.length!==1)throw Error('Tab blouse partition ambiguous');
   const mesh=cloth[0],geometry=mesh.geometry.clone();
   const positions=geometry.attributes.position,ids=geometry.attributes.skinIndex;
@@ -59,39 +59,50 @@ function tailorTabBlouse(gltf){
     const bone=mesh.skeleton.bones[ids.getX(i)]?.name;
     const x=positions.getX(i),y=positions.getY(i),z=positions.getZ(i);
     if((bone==='chest'||bone==='spine')&&y>=1.35&&y<=1.86){
+      // The bodice is no longer a tube: pinch the waist, broaden the bust and
+      // shoulders, and introduce shallow diagonal fabric darts. All changes
+      // ease to zero at the original blouse/neck and skirt seam boundaries.
       const t=Math.max(0,Math.min(1,(y-1.35)/.51));
-      const waistToShoulder=.87+.22*Math.sin(Math.PI*t*.72);
-      const fold=.024*Math.sin(x*24+y*11)*Math.sin(Math.PI*t);
-      positions.setXYZ(i,x*(waistToShoulder+fold),y,
-        z*(.89+.09*t)+.009*Math.sin(x*16+y*9)*t);
+      const ease=Math.sin(Math.PI*t);
+      const angle=Math.atan2(z,x);
+      const shape=1+.24*(t-.36)*ease;
+      const fold=.025*Math.sin(5*angle+9*t)*ease*ease;
+      const depth=1+(.12*t+.025)*ease;
+      positions.setXYZ(i,x*(shape+fold),y,
+        z*(depth+fold*.8)-.012*ease*Math.cos(angle*2));
       bodice++;
     }else if((bone==='shoulderL'||bone==='shoulderR')&&y>1.43&&y<1.91){
       const left=bone==='shoulderL';
       const start=left?[-.223,1.777,0]:[.223,1.776,0];
       const end=left?[-.366,1.532,0]:[.292,1.571,.005];
       const ax=end[0]-start[0],ay=end[1]-start[1],az=end[2]-start[2];
-      // Project onto the actual slanted sleeve axis. Using only vertex Y
-      // distorted equal-radius ring vertices differently and tore the cloth.
+      // Measure along the actual sloping arm, not world Y. Equal-radius
+      // source rings otherwise deform into a polygonal tube with torn cuffs.
       const t=Math.max(0,Math.min(1,
         ((x-start[0])*ax+(y-start[1])*ay+(z-start[2])*az)/
         (ax*ax+ay*ay+az*az)));
       const cx=start[0]+t*ax,cy=start[1]+t*ay,cz=start[2]+t*az;
-      const rx=x-cx,ry=y-cy,rz=z-cz;
-      const angle=Math.atan2(rz,rx);
-      const drape=1.15+.11*(1-t)**2+.10*t**6;
-      const pleat=.035*Math.sin(5*angle+6*t)*Math.sin(Math.PI*t)**2;
-      const radius=drape+pleat;
-      positions.setXYZ(i,cx+rx*radius,cy+ry*radius,cz+rz*radius);
+      const rx=x-cx,ry=y-cy,rz=z-cz,angle=Math.atan2(rz,rx);
+      // Rounded dropped shoulder, a gathered puff, a narrow upper arm and
+      // a modest turned cuff make the sleeve drape instead of read as a rod.
+      const bell=Math.sin(Math.PI*Math.min(1,(t+.045)/1.045));
+      const shoulder=.30*Math.pow(Math.max(0,bell),1.35);
+      const taper=-.17*t;
+      const cuff=.20*Math.pow(Math.max(0,(t-.82)/.18),2);
+      const pleat=.048*Math.sin(6*angle+7*t)*Math.sin(Math.PI*t)**2;
+      const radius=1.03+shoulder+taper+cuff+pleat;
+      const sag=.014*Math.sin(Math.PI*t)*(1+Math.sin(angle));
+      positions.setXYZ(i,cx+rx*radius,cy+ry*radius-sag,
+        cz+rz*radius);
       sleeves++;
     }
   }
   if(sleeves<300||bodice<100)throw Error('Tab blouse vertices missing');
-  // Preserve the source's area-averaged smooth garment normals. Recomputing
-  // normals on this UV-split triangle soup made each sleeve visibly faceted.
+  // The UV-split dress already has smooth authored normals. Recomputing face
+  // normals here creates visible triangular patches on the dark cloth.
   positions.needsUpdate=true;
   mesh.geometry=geometry;gltf.scene.userData.tailoredBlouse=true;
 }
-
 export function createTabMotionRig(gltf,root,{tailorVictoriaBlouse=false}={}){
   if(!gltf?.scene||!Array.isArray(gltf.animations)||!root?.isObject3D)
     throw new TypeError('Tab motion requires a loaded skinned glTF and its character root');
