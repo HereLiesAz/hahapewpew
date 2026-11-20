@@ -389,9 +389,19 @@ test('Victoria blouse keeps the reference narrow bodice and restrained sleeves',
   createTabMotionRig({scene:f.scene,animations},f.character,{tailorVictoriaBlouse:true});
   assert.equal(f.scene.userData.tailoredBlouse,true);
   assert.equal(cloth.material.isMeshStandardMaterial,true);
-  assert.equal(cloth.material.emissive.getHex(),0x393431,
-    'dark graphite blouse must retain visible ambient cloth detail');
-  assert.equal(cloth.material.emissiveIntensity,.55);
+  assert.equal(cloth.material.emissive.getHex(),0x514b47,
+    'graphite blouse must remain readable under the neutral renderer');
+  assert.equal(cloth.material.emissiveIntensity,.8);
+  const sampleShader={
+    vertexShader:'#include <common>\\n#include <begin_vertex>',
+    fragmentShader:'#include <common>\\n#include <emissivemap_fragment>'
+  };
+  cloth.material.onBeforeCompile(sampleShader);
+  assert.match(sampleShader.vertexShader,/varying vec3 vTabClothLocal;/);
+  assert.match(sampleShader.fragmentShader,/fabricPleat/);
+  assert.match(sampleShader.fragmentShader,/totalEmissiveRadiance/);
+  assert.ok(!sampleShader.vertexShader.includes('\\\\n'),
+    'the WebGL source needs actual newlines rather than escaped text');
   const result=cloth.geometry.attributes.position;
   const width=key=>{
     const xs=rings.get(key).map(i=>result.getX(i));
