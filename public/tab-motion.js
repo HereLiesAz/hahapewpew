@@ -106,8 +106,32 @@ function tailorTabBlouse(gltf){
   // ambient bounce to read as the reference's worn graphite cloth.
   if(mesh.material.isMeshStandardMaterial){
     const clothMaterial=mesh.material.clone();
-    clothMaterial.emissive.set(0x393431);
-    clothMaterial.emissiveIntensity=.55;
+    clothMaterial.emissive.set(0x514b47);
+    clothMaterial.emissiveIntensity=.8;
+    // The cloth texture's base color is extremely dark; geometric relief
+    // alone was invisible in actual Chromium captures. Shade the ambient
+    // bounce with longitudinal creases in LOCAL cloth coordinates, so the
+    // creases remain attached when the skinned character animates.
+    clothMaterial.onBeforeCompile=shader=>{
+      shader.vertexShader=shader.vertexShader
+        .replace('#include <common>',
+          '#include <common>\\nvarying vec3 vTabClothLocal;')
+        .replace('#include <begin_vertex>',
+          '#include <begin_vertex>\\nvTabClothLocal=position;');
+      shader.fragmentShader=shader.fragmentShader
+        .replace('#include <common>',
+          '#include <common>\\nvarying vec3 vTabClothLocal;')
+        .replace('#include <emissivemap_fragment>',`
+          #include <emissivemap_fragment>
+          float fabricFront=smoothstep(0.015,0.085,vTabClothLocal.z);
+          float fabricBody=smoothstep(1.36,1.44,vTabClothLocal.y)*
+            (1.0-smoothstep(1.77,1.85,vTabClothLocal.y));
+          float fabricPleat=pow(max(0.0,
+            sin(35.0*vTabClothLocal.x+2.4*vTabClothLocal.y)),4.0);
+          totalEmissiveRadiance*=1.0-.60*fabricFront*fabricBody*fabricPleat;
+        `);
+    };
+    clothMaterial.customProgramCacheKey=()=> 'tab-garment-pleats-1';
     mesh.material=clothMaterial;
   }
   // The authored smooth normals describe the *old* tube surfaces. Recompute
