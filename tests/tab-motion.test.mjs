@@ -394,12 +394,12 @@ test('Victoria blouse forms gathered shoulders, narrower cuffs and a shaped wais
     return Math.max(...xs)-Math.min(...xs);
   };
   for(const side of ['L','R']){
-    assert.ok(width(side+'3')>width(side+'7')*1.08,
+    assert.ok(width(side+'3')>width(side+'7')*1.20,
       side+' upper sleeve must billow above its narrower cuff');
     assert.ok(width(side+'3')>.19,
       side+' sleeve needs actual volume, not a straight narrow cylinder');
   }
-  assert.ok(width('body8')>width('body3')*1.045,
+  assert.ok(width('body8')>width('body3')*1.22,
     'blouse bust must be wider than the waist');
   for(const i of rings.get('body0')){
     assert.ok(Math.abs(result.getX(i)-original[i*3])<1e-6,
