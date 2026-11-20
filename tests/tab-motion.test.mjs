@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from '../public/vendor/three.module.js';
+import {readFileSync} from 'node:fs';
 import {createTabMotionRig} from '../public/tab-motion.js';
 
 const parts={
@@ -319,4 +320,28 @@ test('reinitializing for a neutral reference capture restores authored bind pose
   close(f.names.get('knee.R').rotation.x,0,1e-9);
   close(f.names.get('neck').rotation.y,0,1e-9);
   assert.equal(f.motion.debug().travel,0);
+});
+test('Victoria-only tailoring never runs against an incompatible reference costume',()=>{
+  const bytes=readFileSync(new URL('../public/assets/characters/Tab_Reference.glb',import.meta.url));
+  const jsonLength=bytes.readUInt32LE(12);
+  const json=JSON.parse(bytes.subarray(20,20+jsonLength).toString('utf8'));
+  assert.ok(json.materials.some(m=>m.name==='Tab/Dress_Dark'),
+    'real reference GLB has a dress material that must not trigger Victoria tailoring');
+  const f=fixture();
+  const geometry=new THREE.BufferGeometry();
+  geometry.setAttribute('position',new THREE.Float32BufferAttribute(
+    [0,1.6,0, .1,1.65,0, 0,1.7,.1],3));
+  geometry.setAttribute('skinIndex',new THREE.Uint16BufferAttribute(
+    [0,0,0,0, 0,0,0,0, 0,0,0,0],4));
+  geometry.setAttribute('skinWeight',new THREE.Float32BufferAttribute(
+    [1,0,0,0, 1,0,0,0, 1,0,0,0],4));
+  const cloth=new THREE.SkinnedMesh(geometry,new THREE.MeshBasicMaterial({name:'Tab/Dress_Dark'}));
+  cloth.bind(new THREE.Skeleton([f.names.get('shoulder.L')]));
+  f.scene.add(cloth);
+  const animations=['Tab_Walk','Tab_Idle','Tab_Bear_Swing'].map(n=>new THREE.AnimationClip(n,1,[]));
+  const gltf={scene:f.scene,animations};
+  assert.doesNotThrow(()=>createTabMotionRig(gltf,f.character,{tailorVictoriaBlouse:false}));
+  assert.equal(f.scene.userData.tailoredBlouse,undefined);
+  assert.throws(()=>createTabMotionRig(gltf,f.character,{tailorVictoriaBlouse:true}),
+    /Tab blouse vertices missing/);
 });

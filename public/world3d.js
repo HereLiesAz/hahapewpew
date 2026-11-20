@@ -235,7 +235,8 @@ async function installTabAsset() {
     const legacy=[...rig.root.children];
     rig.root.add(gltf.scene);
     for(const node of legacy)node.visible=false;
-    const motion=createTabMotionRig(gltf,rig.root);
+    const motion=createTabMotionRig(gltf,rig.root,
+      {tailorVictoriaBlouse:source==='victoria'});
     rig.asset={...motion,loaded:true};
     rig.anchor=1.74;
     canvas.dataset.tabSource=source;

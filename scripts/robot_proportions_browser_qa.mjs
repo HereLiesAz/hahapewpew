@@ -38,6 +38,26 @@ try {
       && q?.Qwerty?.asset?.root && q?.Shift?.asset?.s27
       && c.dataset.qwertyLimbs==='shift-copied';
   },null,{timeout:30000});
+  // Exercise the actual textured reference GLB in Chromium. Node's GLTFLoader
+  // cannot decode its embedded images; browser QA verifies the supported
+  // fallback still has a complete animation controller, not just a mesh.
+  const tabFallback=await page.evaluate(async()=>{
+    const [{GLTFLoader},{createTabMotionRig},T]=await Promise.all([
+      import('/vendor/GLTFLoader.js'),import('/tab-motion.js'),
+      import('/vendor/three.module.js')
+    ]);
+    const reference=await new GLTFLoader().loadAsync('/assets/characters/Tab_Reference.glb');
+    const root=new T.Group();root.add(reference.scene);
+    const motion=createTabMotionRig(reference,root,{tailorVictoriaBlouse:false});
+    const state=motion.update(.016,{walking:false,heading:0});
+    return {rigged:!!motion.walk&&!!motion.idle&&!!motion.bear,
+      tailored:!!reference.scene.userData.tailoredBlouse,
+      updated:state?.walking===false&&state?.footSlip?.length===2};
+  });
+  assert.equal(tabFallback.rigged,true,'Tab reference fallback must keep its animation controller');
+  assert.equal(tabFallback.tailored,false,'Victoria blouse fit must not run on reference GLB');
+  assert.equal(tabFallback.updated,true,'Tab reference controller must update without error');
+  report.results.push({mode:'tab-reference-fallback',...tabFallback});
   await page.screenshot({path:dir+'/production-wide.png'});
   const measured=await page.evaluate(async()=>{
     const T=await import('/vendor/three.module.js');

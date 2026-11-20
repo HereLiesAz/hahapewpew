@@ -247,16 +247,51 @@ export function copyShiftLimbsToQwerty(shiftModel, qwertyModel){
       triangles.get(joints[0]).push(local.x,local.y,local.z);
     }
   }
+  // Retarget the Shift *shape* into Qwerty's actual original joint envelopes.
+  // Merely multiplying coordinates about the bones left the thigh detached
+  // from the torso and lifted the sole off the ground. The old fitted Qwerty
+  // limb is authoritative for its limb endpoints, not for its appearance.
+  const original=target[0],originalSkin=original.geometry.attributes.skinIndex;
+  const envelopes=new Map(names.map(name=>[name,new THREE.Box3()]));
+  for(let i=0;i<original.geometry.attributes.position.count;i++){
+    const name=original.skeleton.bones[originalSkin.getX(i)]?.name;
+    const envelope=envelopes.get(name);
+    if(!envelope)continue;
+    original.getVertexPosition(i,local).applyMatrix4(original.matrixWorld);
+    qwertyModel.getObjectByName(name).worldToLocal(local);
+    envelope.expandByPoint(local);
+  }
   const built=[];
   for(const name of names){
     const data=triangles.get(name);
     if(data.length<9)throw Error('No transferable Shift geometry: '+name);
     const bone=qwertyModel.getObjectByName(name);
     if(!bone?.isBone)throw Error('Qwerty receiver missing: '+name);
+    const envelope=envelopes.get(name);
+    if(envelope.isEmpty())throw Error('Missing Qwerty original limb envelope: '+name);
+    const sourceBounds=new THREE.Box3();
+    for(let i=0;i<data.length;i+=3)
+      sourceBounds.expandByPoint(new THREE.Vector3(data[i],data[i+1],data[i+2]));
+    const originalCenter=envelope.getCenter(new THREE.Vector3());
+    const shiftCenter=sourceBounds.getCenter(new THREE.Vector3());
+    const sourceY=sourceBounds.max.y-sourceBounds.min.y;
+    const originalY=envelope.max.y-envelope.min.y;
+    const widthScale=name.startsWith('hip')||name.startsWith('knee')||
+      name.startsWith('ankle')?2.50:1.65;
+    // Position Y is fitted to both original joint endpoints, including the
+    // ankle's exact sole plane. X/Z keep Shift's distinctive cross-section.
+    const fitted=[];
+    for(let i=0;i<data.length;i+=3){
+      fitted.push(
+        originalCenter.x+(data[i]-shiftCenter.x)*widthScale,
+        sourceY>1e-6&&originalY>1e-6
+          ? envelope.min.y+(data[i+1]-sourceBounds.min.y)*originalY/sourceY
+          : originalCenter.y+(data[i+1]-shiftCenter.y)*widthScale,
+        originalCenter.z+(data[i+2]-shiftCenter.z)*widthScale
+      );
+    }
     const geometry=new THREE.BufferGeometry();
-    const scale=name.startsWith('hip')||name.startsWith('knee')||name.startsWith('ankle')?2.50:1.65;
-    geometry.setAttribute('position',new THREE.Float32BufferAttribute(
-      data.map(v=>v*scale),3));
+    geometry.setAttribute('position',new THREE.Float32BufferAttribute(fitted,3));
     geometry.computeVertexNormals();
     const copy=new THREE.Mesh(geometry,mesh.material);
     copy.name='Qwerty.CopiedShift.'+name;copy.castShadow=true;copy.receiveShadow=true;
