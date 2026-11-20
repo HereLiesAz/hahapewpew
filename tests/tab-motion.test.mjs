@@ -399,7 +399,7 @@ test('Victoria blouse keeps the reference narrow bodice and restrained sleeves',
   cloth.material.onBeforeCompile(sampleShader);
   assert.match(sampleShader.vertexShader,/varying vec3 vTabClothLocal;/);
   assert.match(sampleShader.fragmentShader,/fabricPleat/);
-  assert.match(sampleShader.fragmentShader,/1\\.0-\\.28\\*fabricFront/,
+  assert.ok(sampleShader.fragmentShader.includes('1.0-.28*fabricFront'),
     'reference cloth folds should be restrained rather than black ink stripes');
   assert.match(sampleShader.fragmentShader,/totalEmissiveRadiance/);
   assert.ok(!sampleShader.vertexShader.includes('\\n'),
