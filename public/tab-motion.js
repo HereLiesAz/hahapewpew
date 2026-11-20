@@ -71,7 +71,7 @@ function tailorTabBlouse(gltf){
       const depth=1+seam*(-.045+.055*smooth);
       // Three restrained long cloth creases, not radial piping or cylinders.
       const angle=Math.atan2(z,x);
-      const crease=.012*seam*Math.sin(3*angle+1.8*t);
+      const crease=.070*seam*Math.sin(5*angle+.7*t);
       positions.setXYZ(i,x*(width+crease),y,z*(depth+crease*.65));
       bodice++;
     }else if((bone==='shoulderL'||bone==='shoulderR')&&y>1.43&&y<1.91){
@@ -89,10 +89,10 @@ function tailorTabBlouse(gltf){
       // Reference sleeves hang close to the upper arms. The rounded shoulder
       // cap and soft cuff are cloth, but neither is a puffed tube.
       const cap=Math.sin(Math.PI*t)**2;
-      const taper=-.10*t;
-      const cuff=.045*Math.pow(Math.max(0,(t-.86)/.14),2);
+      const taper=-.18*t;
+      const cuff=.025*Math.pow(Math.max(0,(t-.86)/.14),2);
       const crease=.018*Math.sin(4*angle+3*t)*cap;
-      const radius=1+.08*cap+taper+cuff+crease;
+      const radius=1+.045*cap+taper+cuff+crease;
       const sag=.014*Math.sin(Math.PI*t)*(1+Math.sin(angle));
       const oval=.70+.12*Math.sin(Math.PI*t);
       positions.setXYZ(i,cx+rx*radius,cy+ry*radius-sag,
@@ -110,9 +110,30 @@ function tailorTabBlouse(gltf){
     clothMaterial.emissiveIntensity=.55;
     mesh.material=clothMaterial;
   }
-  // The UV-split dress already has smooth authored normals. Recomputing face
-  // normals here creates visible triangular patches on the dark cloth.
+  // The authored smooth normals describe the *old* tube surfaces. Recompute
+  // after sculpting, then weld the normals (not the UV-split vertices) at
+  // coincident positions. Raw face normals alone show triangle patches.
   positions.needsUpdate=true;
+  if(!geometry.index){
+    const originalNormals=geometry.attributes.normal?.clone();
+    geometry.computeVertexNormals();
+    const normal=geometry.attributes.normal,groups=new Map(),keys=[];
+    for(let i=0;i<positions.count;i++){
+      const key=[positions.getX(i),positions.getY(i),positions.getZ(i)]
+        .map(v=>Math.round(v*10000)).join(',');
+      keys.push(key);
+      let sum=groups.get(key);
+      if(!sum){sum=[0,0,0];groups.set(key,sum);}
+      sum[0]+=normal.getX(i);sum[1]+=normal.getY(i);sum[2]+=normal.getZ(i);
+    }
+    for(let i=0;i<positions.count;i++){
+      const sum=groups.get(keys[i]),length=Math.hypot(...sum);
+      if(length>1e-8)normal.setXYZ(i,sum[0]/length,sum[1]/length,sum[2]/length);
+      else if(originalNormals)normal.setXYZ(i,originalNormals.getX(i),
+        originalNormals.getY(i),originalNormals.getZ(i));
+    }
+    normal.needsUpdate=true;
+  }
   mesh.geometry=geometry;gltf.scene.userData.tailoredBlouse=true;
 }
 export function createTabMotionRig(gltf,root,{tailorVictoriaBlouse=false}={}){
