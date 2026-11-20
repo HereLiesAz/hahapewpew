@@ -94,13 +94,22 @@ function tailorTabBlouse(gltf){
       const crease=.018*Math.sin(4*angle+3*t)*cap;
       const radius=1+.08*cap+taper+cuff+crease;
       const sag=.014*Math.sin(Math.PI*t)*(1+Math.sin(angle));
-      const oval=.91+.09*Math.sin(Math.PI*t);
+      const oval=.70+.12*Math.sin(Math.PI*t);
       positions.setXYZ(i,cx+rx*radius,cy+ry*radius-sag,
         cz+rz*radius*oval);
       sleeves++;
     }
   }
   if(sleeves<300||bodice<100)throw Error('Tab blouse vertices missing');
+  // The original dark top is effectively black under the production neutral
+  // lights, concealing every sewn fold. Give ONLY this material enough soft
+  // ambient bounce to read as the reference's worn graphite cloth.
+  if(mesh.material.isMeshStandardMaterial){
+    const clothMaterial=mesh.material.clone();
+    clothMaterial.emissive.set(0x393431);
+    clothMaterial.emissiveIntensity=.55;
+    mesh.material=clothMaterial;
+  }
   // The UV-split dress already has smooth authored normals. Recomputing face
   // normals here creates visible triangular patches on the dark cloth.
   positions.needsUpdate=true;
