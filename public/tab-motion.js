@@ -115,12 +115,12 @@ function tailorTabBlouse(gltf){
     clothMaterial.onBeforeCompile=shader=>{
       shader.vertexShader=shader.vertexShader
         .replace('#include <common>',
-          '#include <common>\\nvarying vec3 vTabClothLocal;')
+          '#include <common>\nvarying vec3 vTabClothLocal;')
         .replace('#include <begin_vertex>',
-          '#include <begin_vertex>\\nvTabClothLocal=position;');
+          '#include <begin_vertex>\nvTabClothLocal=position;');
       shader.fragmentShader=shader.fragmentShader
         .replace('#include <common>',
-          '#include <common>\\nvarying vec3 vTabClothLocal;')
+          '#include <common>\nvarying vec3 vTabClothLocal;')
         .replace('#include <emissivemap_fragment>',`
           #include <emissivemap_fragment>
           float fabricFront=smoothstep(0.015,0.085,vTabClothLocal.z);
