@@ -92,7 +92,7 @@ function tailorTabBlouse(gltf){
   mesh.geometry=geometry;gltf.scene.userData.tailoredBlouse=true;
 }
 
-export function createTabMotionRig(gltf,root){
+export function createTabMotionRig(gltf,root,{tailorVictoriaBlouse=false}={}){
   if(!gltf?.scene||!Array.isArray(gltf.animations)||!root?.isObject3D)
     throw new TypeError('Tab motion requires a loaded skinned glTF and its character root');
   const clips=new Map(gltf.animations.map(clip=>[clip.name,clip]));
@@ -112,7 +112,7 @@ export function createTabMotionRig(gltf,root){
   let skin=0;gltf.scene.traverse(n=>{if(n.isSkinnedMesh)skin++});
   if(skin<1)throw new Error('Tab has no skinned mesh');
   if(joints.bear.parent!==joints.handR)throw new Error('Teddy must remain held by right hand');
-  tailorTabBlouse(gltf);
+  if(tailorVictoriaBlouse)tailorTabBlouse(gltf);
   const mixer=new THREE.AnimationMixer(gltf.scene);
   const walk=mixer.clipAction(clips.get('Tab_Walk'));
   const idle=mixer.clipAction(clips.get('Tab_Idle'));
