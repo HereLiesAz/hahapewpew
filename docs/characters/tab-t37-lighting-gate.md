@@ -52,3 +52,7 @@ PR #67 passed its browser regressions but the **actual** `tab-victoria-front.png
 This draft correction increases genuine mesh pleat relief along the upper cloth, tapers the sleeve ends and recalculates normals from the deformed surface. Since the source is unindexed UV-split triangle soup, coincident vertices share averaged normals without welding UV boundaries. The new test checks substantial nonuniform cloth relief and finite normals, in addition to the unchanged hem, skirt and source-fallback tests.
 
 **Acceptance remains open.** Compare fresh actual production-GLB neutral-background front/side and motion captures against the provided illustration and photograph. Specifically reject a three-cylinder bodice/sleeve silhouette or obvious triangulated shading. Do not mark T3.7 complete from a CI success alone.
+
+### Live rendering follow-up
+
+The Chromium run for the first structural trial on draft PR #68 passed, but its real front/side images still showed almost no visible folds. Surface-normal and geometric variations were hidden by the dark blouse. The amended draft retains the 3D pleats and adds a Victoria-only local-coordinate fabric-shadow modulation to the cloth's ambient component, leaving lighting on other materials and actors unchanged. The effect follows the existing skinned vertices and is limited to the front upper bodice. This is still a candidate, not acceptance. Browser compilation and the captured front/side images must pass visual inspection; never substitute synthetic shader assertions for the GPU result.
