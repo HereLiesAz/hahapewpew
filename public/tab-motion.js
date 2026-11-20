@@ -88,15 +88,18 @@ function tailorTabBlouse(gltf){
       const rx=x-cx,ry=y-cy,rz=z-cz,angle=Math.atan2(rz,rx);
       // Reference sleeves hang close to the upper arms. The rounded shoulder
       // cap and soft cuff are cloth, but neither is a puffed tube.
+      // The reference has soft shoulder caps and short, close-fitting
+      // sleeves. Keep their roots broad enough to overlap the bodice,
+      // but shorten and taper them instead of shrinking entire cylinders.
       const cap=Math.sin(Math.PI*t)**2;
-      const taper=-.11*t;
-      const cuff=.02*Math.pow(Math.max(0,(t-.86)/.14),2);
-      const crease=.018*Math.sin(4*angle+3*t)*cap;
-      const radius=.72+.04*cap+taper+cuff+crease;
-      const sag=.014*Math.sin(Math.PI*t)*(1+Math.sin(angle));
-      const oval=.70+.12*Math.sin(Math.PI*t);
-      positions.setXYZ(i,cx+rx*radius,cy+ry*radius-sag,
-        cz+rz*radius*oval);
+      const crease=.013*Math.sin(4*angle+2*t)*cap;
+      const radius=.92-.25*t+.025*cap+crease;
+      const length=.87;
+      const sag=.009*Math.sin(Math.PI*t)*(1+Math.sin(angle));
+      const oval=.72+.08*cap;
+      positions.setXYZ(i,start[0]+(cx-start[0])*length+rx*radius,
+        start[1]+(cy-start[1])*length+ry*radius-sag,
+        start[2]+(cz-start[2])*length+rz*radius*oval);
       sleeves++;
     }
   }
@@ -124,14 +127,16 @@ function tailorTabBlouse(gltf){
         .replace('#include <emissivemap_fragment>',`
           #include <emissivemap_fragment>
           float fabricFront=smoothstep(0.015,0.085,vTabClothLocal.z);
-          float fabricBody=smoothstep(1.36,1.44,vTabClothLocal.y)*
-            (1.0-smoothstep(1.77,1.85,vTabClothLocal.y));
-          float fabricPleat=pow(max(0.0,
-            sin(35.0*vTabClothLocal.x+2.4*vTabClothLocal.y+0.7*sin(12.0*vTabClothLocal.y+14.0*vTabClothLocal.x))),4.0);
-          totalEmissiveRadiance*=1.0-.60*fabricFront*fabricBody*fabricPleat;
+          float fabricBody=smoothstep(1.49,1.60,vTabClothLocal.y)*
+            (1.0-smoothstep(1.76,1.84,vTabClothLocal.y));
+          float shiftedX=vTabClothLocal.x+
+            0.012*sin(9.0*vTabClothLocal.y+13.0*vTabClothLocal.x);
+          float fabricPleat=smoothstep(0.64,0.93,
+            0.5+0.5*cos(44.0*shiftedX+5.0*vTabClothLocal.y));
+          totalEmissiveRadiance*=1.0-.28*fabricFront*fabricBody*fabricPleat;
         `);
     };
-    clothMaterial.customProgramCacheKey=()=> 'tab-garment-pleats-1';
+    clothMaterial.customProgramCacheKey=()=> 'tab-garment-pleats-2';
     mesh.material=clothMaterial;
   }
   // The authored smooth normals describe the *old* tube surfaces. Recompute
