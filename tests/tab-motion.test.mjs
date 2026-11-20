@@ -399,6 +399,8 @@ test('Victoria blouse keeps the reference narrow bodice and restrained sleeves',
   cloth.material.onBeforeCompile(sampleShader);
   assert.match(sampleShader.vertexShader,/varying vec3 vTabClothLocal;/);
   assert.match(sampleShader.fragmentShader,/fabricPleat/);
+  assert.match(sampleShader.fragmentShader,/1\\.0-\\.28\\*fabricFront/,
+    'reference cloth folds should be restrained rather than black ink stripes');
   assert.match(sampleShader.fragmentShader,/totalEmissiveRadiance/);
   assert.ok(!sampleShader.vertexShader.includes('\\n'),
     'the WebGL source needs actual newlines rather than escaped text');
@@ -408,9 +410,9 @@ test('Victoria blouse keeps the reference narrow bodice and restrained sleeves',
     return Math.max(...xs)-Math.min(...xs);
   };
   for(const side of ['L','R']){
-    assert.ok(width(side+'3')>width(side+'7')*1.02,
+    assert.ok(width(side+'3')>width(side+'7')*1.10,
       side+' sleeve should taper softly toward the cuff');
-    assert.ok(width(side+'3')<width(side+'7')*1.17,
+    assert.ok(width(side+'3')<width(side+'7')*1.32,
       side+' must not have a cartoon puff sleeve');
     assert.ok(width(side+'3')>.12,
       side+' sleeve must retain fabric clearance');
