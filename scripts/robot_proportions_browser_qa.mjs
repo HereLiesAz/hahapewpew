@@ -52,7 +52,7 @@ try {
     const state=motion.update(.016,{walking:false,heading:0});
     return {rigged:!!motion.walk&&!!motion.idle&&!!motion.bear,
       tailored:!!reference.scene.userData.tailoredBlouse,
-      updated:Number.isFinite(state?.motion)};
+      updated:state?.walking===false&&state?.footSlip?.length===2};
   });
   assert.equal(tabFallback.rigged,true,'Tab reference fallback must keep its animation controller');
   assert.equal(tabFallback.tailored,false,'Victoria blouse fit must not run on reference GLB');
