@@ -345,3 +345,64 @@ test('Victoria-only tailoring never runs against an incompatible reference costu
   assert.throws(()=>createTabMotionRig(gltf,f.character,{tailorVictoriaBlouse:true}),
     /Tab blouse vertices missing/);
 });
+
+test('Victoria blouse forms gathered shoulders, narrower cuffs and a shaped waist',()=>{
+  const f=fixture();
+  const positions=[],joints=[],weights=[],rings=new Map();
+  const bones=[f.names.get('shoulder.L'),f.names.get('shoulder.R'),f.names.get('chest')];
+  for(const [side,start,end,index] of [
+    ['L',[-.223,1.777,0],[-.366,1.532,0],0],
+    ['R',[.223,1.776,0],[.292,1.571,.005],1]
+  ]){
+    for(let row=0;row<=8;row++){
+      const t=row/8,indices=[];
+      for(let k=0;k<24;k++){
+        const angle=2*Math.PI*k/24;
+        const x=start[0]+(end[0]-start[0])*t+.09*Math.cos(angle);
+        const y=start[1]+(end[1]-start[1])*t;
+        const z=start[2]+(end[2]-start[2])*t+.09*Math.sin(angle);
+        indices.push(positions.length/3);
+        positions.push(x,y,z);joints.push(index,0,0,0);weights.push(1,0,0,0);
+      }
+      rings.set(side+row,indices);
+    }
+  }
+  for(let row=0;row<=11;row++){
+    const y=1.35+.51*row/11,indices=[];
+    for(let k=0;k<12;k++){
+      const angle=2*Math.PI*k/12;
+      indices.push(positions.length/3);
+      positions.push(.2*Math.cos(angle),y,.14*Math.sin(angle));
+      joints.push(2,0,0,0);weights.push(1,0,0,0);
+    }
+    rings.set('body'+row,indices);
+  }
+  const geometry=new THREE.BufferGeometry();
+  geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+  geometry.setAttribute('skinIndex',new THREE.Uint16BufferAttribute(joints,4));
+  geometry.setAttribute('skinWeight',new THREE.Float32BufferAttribute(weights,4));
+  const cloth=new THREE.SkinnedMesh(geometry,new THREE.MeshBasicMaterial({name:'Tab/Dress_Dark'}));
+  cloth.bind(new THREE.Skeleton(bones));f.scene.add(cloth);
+  const original=Float32Array.from(positions);
+  const animations=['Tab_Walk','Tab_Idle','Tab_Bear_Swing']
+    .map(name=>new THREE.AnimationClip(name,1,[]));
+  createTabMotionRig({scene:f.scene,animations},f.character,{tailorVictoriaBlouse:true});
+  assert.equal(f.scene.userData.tailoredBlouse,true);
+  const result=cloth.geometry.attributes.position;
+  const width=key=>{
+    const xs=rings.get(key).map(i=>result.getX(i));
+    return Math.max(...xs)-Math.min(...xs);
+  };
+  for(const side of ['L','R']){
+    assert.ok(width(side+'3')>width(side+'7')*1.17,
+      side+' upper sleeve must billow above its narrower cuff');
+    assert.ok(width(side+'3')>.19,
+      side+' sleeve needs actual volume, not a straight narrow cylinder');
+  }
+  assert.ok(width('body8')>width('body3')*1.22,
+    'blouse bust must be wider than the waist');
+  for(const i of rings.get('body0')){
+    assert.ok(Math.abs(result.getX(i)-original[i*3])<1e-6,
+      'shirt hem must join original skirt without a geometry jump');
+  }
+});
