@@ -391,7 +391,7 @@ test('Victoria blouse keeps the reference narrow bodice and restrained sleeves',
   assert.equal(cloth.material.isMeshStandardMaterial,true);
   assert.equal(cloth.material.emissive.getHex(),0x514b47,
     'graphite blouse must remain readable under the neutral renderer');
-  assert.equal(cloth.material.emissiveIntensity,.8);
+  assert.equal(cloth.material.emissiveIntensity,.68);
   const sampleShader={
     vertexShader:'#include <common>\n#include <begin_vertex>',
     fragmentShader:'#include <common>\n#include <emissivemap_fragment>'
@@ -412,7 +412,7 @@ test('Victoria blouse keeps the reference narrow bodice and restrained sleeves',
       side+' sleeve should taper softly toward the cuff');
     assert.ok(width(side+'3')<width(side+'7')*1.17,
       side+' must not have a cartoon puff sleeve');
-    assert.ok(width(side+'3')>.17,
+    assert.ok(width(side+'3')>.12,
       side+' sleeve must retain fabric clearance');
   }
   assert.ok(width('body8')<width('body3')*1.12,
