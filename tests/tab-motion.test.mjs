@@ -1,6 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from '../public/vendor/three.module.js';
+import {readFileSync} from 'node:fs';
+import {GLTFLoader} from '../public/vendor/GLTFLoader.js';
 import {createTabMotionRig} from '../public/tab-motion.js';
 
 const parts={
@@ -319,4 +321,26 @@ test('reinitializing for a neutral reference capture restores authored bind pose
   close(f.names.get('knee.R').rotation.x,0,1e-9);
   close(f.names.get('neck').rotation.y,0,1e-9);
   assert.equal(f.motion.debug().travel,0);
+});
+test('reference Tab fallback keeps its complete animation rig without Victoria-only blouse tailoring',async()=>{
+  const bytes=readFileSync(new URL('../public/assets/characters/Tab_Reference.glb',import.meta.url));
+  const buffer=bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength);
+  const gltf=await new Promise((resolve,reject)=>new GLTFLoader().parse(buffer,'',resolve,reject));
+  const actor=new THREE.Group();
+  actor.add(gltf.scene);
+  const motion=createTabMotionRig(gltf,actor,{tailorVictoriaBlouse:false});
+  assert.ok(motion.walk&&motion.idle&&motion.bear,'reference fallback requires all acting clips');
+  assert.equal(gltf.scene.userData.tailoredBlouse,undefined,
+    'unsupported reference costume must not receive Victoria-specific alterations');
+  assert.doesNotThrow(()=>motion.update(.016,{walking:false,heading:0}));
+});
+
+test('only explicitly selected Victoria asset receives the tailored blouse',async()=>{
+  const bytes=readFileSync(new URL('../public/assets/characters/Tab_Victoria.glb',import.meta.url));
+  const buffer=bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength);
+  const gltf=await new Promise((resolve,reject)=>new GLTFLoader().parse(buffer,'',resolve,reject));
+  const actor=new THREE.Group();
+  actor.add(gltf.scene);
+  createTabMotionRig(gltf,actor,{tailorVictoriaBlouse:true});
+  assert.equal(gltf.scene.userData.tailoredBlouse,true);
 });
