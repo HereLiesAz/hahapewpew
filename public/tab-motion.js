@@ -89,10 +89,10 @@ function tailorTabBlouse(gltf){
       // Reference sleeves hang close to the upper arms. The rounded shoulder
       // cap and soft cuff are cloth, but neither is a puffed tube.
       const cap=Math.sin(Math.PI*t)**2;
-      const taper=-.18*t;
-      const cuff=.025*Math.pow(Math.max(0,(t-.86)/.14),2);
+      const taper=-.11*t;
+      const cuff=.02*Math.pow(Math.max(0,(t-.86)/.14),2);
       const crease=.018*Math.sin(4*angle+3*t)*cap;
-      const radius=1+.045*cap+taper+cuff+crease;
+      const radius=.72+.04*cap+taper+cuff+crease;
       const sag=.014*Math.sin(Math.PI*t)*(1+Math.sin(angle));
       const oval=.70+.12*Math.sin(Math.PI*t);
       positions.setXYZ(i,cx+rx*radius,cy+ry*radius-sag,
@@ -107,7 +107,7 @@ function tailorTabBlouse(gltf){
   if(mesh.material.isMeshStandardMaterial){
     const clothMaterial=mesh.material.clone();
     clothMaterial.emissive.set(0x514b47);
-    clothMaterial.emissiveIntensity=.8;
+    clothMaterial.emissiveIntensity=.68;
     // The cloth texture's base color is extremely dark; geometric relief
     // alone was invisible in actual Chromium captures. Shade the ambient
     // bounce with longitudinal creases in LOCAL cloth coordinates, so the
@@ -127,7 +127,7 @@ function tailorTabBlouse(gltf){
           float fabricBody=smoothstep(1.36,1.44,vTabClothLocal.y)*
             (1.0-smoothstep(1.77,1.85,vTabClothLocal.y));
           float fabricPleat=pow(max(0.0,
-            sin(35.0*vTabClothLocal.x+2.4*vTabClothLocal.y)),4.0);
+            sin(35.0*vTabClothLocal.x+2.4*vTabClothLocal.y+0.7*sin(12.0*vTabClothLocal.y+14.0*vTabClothLocal.x))),4.0);
           totalEmissiveRadiance*=1.0-.60*fabricFront*fabricBody*fabricPleat;
         `);
     };
