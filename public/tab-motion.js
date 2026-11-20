@@ -65,9 +65,14 @@ function tailorTabBlouse(gltf){
       const t=Math.max(0,Math.min(1,(y-1.35)/.51));
       const ease=Math.sin(Math.PI*t);
       const angle=Math.atan2(z,x);
-      const shape=1+.24*(t-.36)*ease;
-      const fold=.025*Math.sin(5*angle+9*t)*ease*ease;
-      const depth=1+(.12*t+.025)*ease;
+      // A real fitted blouse has a narrow tucked waist and broad shoulders.
+      // The old near-constant radius was the remaining tube silhouette.
+      const u=Math.max(0,Math.min(1,(t-.12)/.78));
+      const slope=u*u*(3-2*u);
+      const hem=Math.max(0,1-Math.min(1,t/.10))**2;
+      const shape=.78+.39*slope+.22*hem;
+      const fold=.032*Math.sin(5*angle+9*t)*ease*ease;
+      const depth=.81+.35*slope+.19*hem;
       positions.setXYZ(i,x*(shape+fold),y,
         z*(depth+fold*.8)-.012*ease*Math.cos(angle*2));
       bodice++;
@@ -86,14 +91,17 @@ function tailorTabBlouse(gltf){
       // Rounded dropped shoulder, a gathered puff, a narrow upper arm and
       // a modest turned cuff make the sleeve drape instead of read as a rod.
       const bell=Math.sin(Math.PI*Math.min(1,(t+.045)/1.045));
-      const shoulder=.30*Math.pow(Math.max(0,bell),1.35);
-      const taper=-.17*t;
-      const cuff=.20*Math.pow(Math.max(0,(t-.82)/.18),2);
-      const pleat=.048*Math.sin(6*angle+7*t)*Math.sin(Math.PI*t)**2;
-      const radius=1.03+shoulder+taper+cuff+pleat;
-      const sag=.014*Math.sin(Math.PI*t)*(1+Math.sin(angle));
+      const shoulder=.46*Math.pow(Math.max(0,bell),1.35);
+      const taper=-.27*t;
+      const cuff=.18*Math.pow(Math.max(0,(t-.83)/.17),2);
+      const pleat=.05*Math.sin(6*angle+7*t)*Math.sin(Math.PI*t)**2;
+      const radius=1.08+shoulder+taper+cuff+pleat;
+      const sag=.023*Math.sin(Math.PI*t)*(1+Math.sin(angle));
+      // The flattened, cloth-like sleeve section cannot be mistaken for a
+      // constant-radius cylinder when viewed from the side or front.
+      const oval=.84+.16*Math.sin(Math.PI*t);
       positions.setXYZ(i,cx+rx*radius,cy+ry*radius-sag,
-        cz+rz*radius);
+        cz+rz*radius*oval);
       sleeves++;
     }
   }
