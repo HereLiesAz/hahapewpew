@@ -393,14 +393,14 @@ test('Victoria blouse keeps the reference narrow bodice and restrained sleeves',
     'graphite blouse must remain readable under the neutral renderer');
   assert.equal(cloth.material.emissiveIntensity,.8);
   const sampleShader={
-    vertexShader:'#include <common>\\n#include <begin_vertex>',
-    fragmentShader:'#include <common>\\n#include <emissivemap_fragment>'
+    vertexShader:'#include <common>\n#include <begin_vertex>',
+    fragmentShader:'#include <common>\n#include <emissivemap_fragment>'
   };
   cloth.material.onBeforeCompile(sampleShader);
   assert.match(sampleShader.vertexShader,/varying vec3 vTabClothLocal;/);
   assert.match(sampleShader.fragmentShader,/fabricPleat/);
   assert.match(sampleShader.fragmentShader,/totalEmissiveRadiance/);
-  assert.ok(!sampleShader.vertexShader.includes('\\\\n'),
+  assert.ok(!sampleShader.vertexShader.includes('\\n'),
     'the WebGL source needs actual newlines rather than escaped text');
   const result=cloth.geometry.attributes.position;
   const width=key=>{
