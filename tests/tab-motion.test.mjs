@@ -409,6 +409,17 @@ test('Victoria blouse keeps the reference narrow bodice and restrained sleeves',
     'reference bodice must not bulge above the waistband');
   assert.ok(width('body8')>width('body3')*.95,
     'reference bodice must not collapse into a corset');
+  const relief=rings.get('body6').map(i=>Math.hypot(
+    result.getX(i)/.20,result.getZ(i)/.14));
+  assert.ok(Math.max(...relief)-Math.min(...relief)>.06,
+    'bodice needs visible 3D fabric pleats, not a featureless shirt tube');
+  const normals=cloth.geometry.getAttribute('normal');
+  assert.equal(normals.count,result.count,
+    'sculpted UV-split cloth needs refreshed per-vertex normals');
+  for(const i of rings.get('body6'))
+    assert.ok(Number.isFinite(normals.getX(i))&&Number.isFinite(normals.getY(i))
+      &&Number.isFinite(normals.getZ(i)),
+      'cloth normals must remain finite after seam smoothing');
   for(const i of rings.get('body0')){
     assert.ok(Math.abs(result.getX(i)-original[i*3])<1e-6,
       'shirt hem must join original skirt without a geometry jump');
