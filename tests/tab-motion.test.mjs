@@ -346,7 +346,7 @@ test('Victoria-only tailoring never runs against an incompatible reference costu
     /Tab blouse vertices missing/);
 });
 
-test('Victoria blouse forms gathered shoulders, narrower cuffs and a shaped waist',()=>{
+test('Victoria blouse keeps the reference narrow bodice and restrained sleeves',()=>{
   const f=fixture();
   const positions=[],joints=[],weights=[],rings=new Map();
   const bones=[f.names.get('shoulder.L'),f.names.get('shoulder.R'),f.names.get('chest')];
@@ -394,13 +394,17 @@ test('Victoria blouse forms gathered shoulders, narrower cuffs and a shaped wais
     return Math.max(...xs)-Math.min(...xs);
   };
   for(const side of ['L','R']){
-    assert.ok(width(side+'3')>width(side+'7')*1.17,
-      side+' upper sleeve must billow above its narrower cuff');
-    assert.ok(width(side+'3')>.19,
-      side+' sleeve needs actual volume, not a straight narrow cylinder');
+    assert.ok(width(side+'3')>width(side+'7')*1.02,
+      side+' sleeve should taper softly toward the cuff');
+    assert.ok(width(side+'3')<width(side+'7')*1.17,
+      side+' must not have a cartoon puff sleeve');
+    assert.ok(width(side+'3')>.17,
+      side+' sleeve must retain fabric clearance');
   }
-  assert.ok(width('body8')>width('body3')*1.22,
-    'blouse bust must be wider than the waist');
+  assert.ok(width('body8')<width('body3')*1.12,
+    'reference bodice must not bulge above the waistband');
+  assert.ok(width('body8')>width('body3')*.95,
+    'reference bodice must not collapse into a corset');
   for(const i of rings.get('body0')){
     assert.ok(Math.abs(result.getX(i)-original[i*3])<1e-6,
       'shirt hem must join original skirt without a geometry jump');
