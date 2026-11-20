@@ -749,7 +749,6 @@ try {
     },frame);
     await capture('tab-t36-motion-'+String(frame).padStart(2,'0'),'tab-victoria-front');
   }
-  if(process.env.TAB_BLOUSE_SCREENSHOT_ONLY!=='1'){
   const movie=spawnSync('ffmpeg',[
     '-nostdin','-v','error','-y','-framerate','12',
     '-i',dir+'/tab-t36-motion-%02d.png',
@@ -759,7 +758,6 @@ try {
   assert.equal(movie.status,0,'Tab production animation clip encoding failed: '+movie.stderr);
   report.results.push({mode:'tab-t36-webgl-movie',frames:movieFrames,fps:12,
     file:'tab-t36-walk-pause-turn.mp4'});
-  }
   await page.evaluate(()=>{
     const {t}=window.__productionQA;
     t.root.position.set(0,0,-1.7);t.asset.reset();t.root.rotation.y=Math.PI/2;
