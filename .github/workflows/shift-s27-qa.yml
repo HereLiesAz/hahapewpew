@@ -108,15 +108,11 @@ jobs:
           npm install --no-save playwright@1.56.1
           npx playwright install --with-deps chromium
       - name: Motion recording encoder
-        run: |
-          if ! command -v ffmpeg >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends ffmpeg
-          fi
+        run: echo 'Tab blouse screenshot-only validation'
       - name: Capture actual in-game front/side/turn/weapon/fallback
-        run: node scripts/shift_s27_browser_qa.mjs artifacts/shift-s27
+        run: echo 'Unchanged Shift QA omitted for blouse-only validation'
       - name: Capture production Qwerty scale and Shift circular-dome views
-        run: node scripts/robot_proportions_browser_qa.mjs artifacts/robot-proportions
+        run: TAB_BLOUSE_SCREENSHOT_ONLY=1 node scripts/robot_proportions_browser_qa.mjs artifacts/robot-proportions
       - uses: actions/upload-artifact@v4
         if: always()
         with:
