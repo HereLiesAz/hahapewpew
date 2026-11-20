@@ -381,13 +381,17 @@ test('Victoria blouse keeps the reference narrow bodice and restrained sleeves',
   geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
   geometry.setAttribute('skinIndex',new THREE.Uint16BufferAttribute(joints,4));
   geometry.setAttribute('skinWeight',new THREE.Float32BufferAttribute(weights,4));
-  const cloth=new THREE.SkinnedMesh(geometry,new THREE.MeshBasicMaterial({name:'Tab/Dress_Dark'}));
+  const cloth=new THREE.SkinnedMesh(geometry,new THREE.MeshStandardMaterial({name:'Tab/Dress_Dark'}));
   cloth.bind(new THREE.Skeleton(bones));f.scene.add(cloth);
   const original=Float32Array.from(positions);
   const animations=['Tab_Walk','Tab_Idle','Tab_Bear_Swing']
     .map(name=>new THREE.AnimationClip(name,1,[]));
   createTabMotionRig({scene:f.scene,animations},f.character,{tailorVictoriaBlouse:true});
   assert.equal(f.scene.userData.tailoredBlouse,true);
+  assert.equal(cloth.material.isMeshStandardMaterial,true);
+  assert.equal(cloth.material.emissive.getHex(),0x393431,
+    'dark graphite blouse must retain visible ambient cloth detail');
+  assert.equal(cloth.material.emissiveIntensity,.55);
   const result=cloth.geometry.attributes.position;
   const width=key=>{
     const xs=rings.get(key).map(i=>result.getX(i));
