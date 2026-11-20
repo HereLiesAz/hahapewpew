@@ -44,3 +44,27 @@ The isolated Victoria front and side captures from the prior character QA still 
 The source illustration shows a dark, short-sleeved, near-straight bodice with a modest taper into the contrasting waist seam. Its upper cloth has only a few elongated folds, not a pronounced bust or puff sleeves. The earlier runtime fit deliberately exaggerated both, contrary to the illustration. The Victoria-only runtime fit now limits bodice width/depth variation, uses low-amplitude longitudinal crease relief, and tapers sleeves subtly with a restrained cuff. Original skirt, waistband, character scale, box, skin, bear, rig and animation clips are untouched.
 
 `tests/tab-motion.test.mjs` now rejects inflated bust and puff-sleeve dimensions on an independently specified synthetic garment. These assertions are a geometry regression, **not** evidence of visual acceptance. The actual loaded Victoria GLB still needs ground-free front and side Chromium captures reviewed against the user's artwork before declaring the costume matched.
+
+## Structural blouse visual failure and corrective trial (2026-11-20)
+
+PR #67 passed its browser regressions but the **actual** `tab-victoria-front.png` and `tab-victoria-side.png` from run 44686942640 showed a nearly black, straight tube-like upper garment and stiff detached-looking sleeves. The second live render from run 44688752357 (commit `a442137aef0958717460042c1092ab7204b8930c`) recovered some cloth visibility but still failed the garment silhouette: the sleeve caps looked separate from the bodice. PR #67 was merged externally before this visual gate passed; **do not treat that merge as reference approval**.
+
+This draft correction increases genuine mesh pleat relief along the upper cloth, tapers the sleeve ends and recalculates normals from the deformed surface. Since the source is unindexed UV-split triangle soup, coincident vertices share averaged normals without welding UV boundaries. The new test checks substantial nonuniform cloth relief and finite normals, in addition to the unchanged hem, skirt and source-fallback tests.
+
+**Acceptance remains open.** Compare fresh actual production-GLB neutral-background front/side and motion captures against the provided illustration and photograph. Specifically reject a three-cylinder bodice/sleeve silhouette or obvious triangulated shading. Do not mark T3.7 complete from a CI success alone.
+
+### Live rendering follow-up
+
+The Chromium run for the first structural trial on draft PR #68 passed, but its real front/side images still showed almost no visible folds. Surface-normal and geometric variations were hidden by the dark blouse. The amended draft retains the 3D pleats and adds a Victoria-only local-coordinate fabric-shadow modulation to the cloth's ambient component, leaving lighting on other materials and actors unchanged. The effect follows the existing skinned vertices and is limited to the front upper bodice. This is still a candidate, not acceptance. Browser compilation and the captured front/side images must pass visual inspection; never substitute synthetic shader assertions for the GPU result.
+
+### Reference silhouette follow-up, 2026-11-20
+
+Inspected the production-GLB Chromium images in workflow run [44694319720](https://github.com/HereLiesAz/hahapewpew/actions/runs/44694319720), notably `tab-dress-front.png`, `tab-victoria-front.png`, and `tab-victoria-side.png`. The latest preceding candidate still failed visually: two hard, regularly spaced upper-bodice stripes and sleeve volume detached from the upper arm. The photographed source and original illustration instead require softer, less regular creases and narrow short sleeves with broader shoulder roots.
+
+The next draft pass shortens only the runtime Victoria sleeves along their existing arm axes, increases the root radius for shoulder coverage, and tapers to a smaller cuff. It narrows shader shadows to faint, curved upper-bodice folds instead of ink-like full-height stripes. Original skirt, bear, printed box, joint rig and fallback remain outside the edit. Acceptance still requires a fresh captured **front and side** from the new commit, not only passing tests.
+
+### Post-correction visual inspection: still rejected
+
+Workflow [44697396041](https://github.com/HereLiesAz/hahapewpew/actions/runs/44697396041), artifact `14611792889`, passed the full regression and actual Chromium QA. Opened the new `robot-proportions/tab-dress-front.png` and `tab-dress-side.png` in the artifact. The amended sleeves are shorter and narrower, and the neckline stripes less severe, but the blouse is still too rigid and the shoulder/sleeve joins remain visibly distinct. **Do not merge draft PR #68 on the strength of this CI success.**
+
+Next correction must replace the disconnected shoulder/bodice topology with a continuous fabric surface around the shoulder and underarm; more sleeve radius adjustments or decorative shader creases alone are not sufficient. Preserve the existing photographed/artwork silhouette, waist seam, child proportions, skirt, bear, rig and GLB fallback. Resume visual comparison after a genuine topology fix.

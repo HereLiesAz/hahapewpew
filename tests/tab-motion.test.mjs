@@ -389,26 +389,49 @@ test('Victoria blouse keeps the reference narrow bodice and restrained sleeves',
   createTabMotionRig({scene:f.scene,animations},f.character,{tailorVictoriaBlouse:true});
   assert.equal(f.scene.userData.tailoredBlouse,true);
   assert.equal(cloth.material.isMeshStandardMaterial,true);
-  assert.equal(cloth.material.emissive.getHex(),0x393431,
-    'dark graphite blouse must retain visible ambient cloth detail');
-  assert.equal(cloth.material.emissiveIntensity,.55);
+  assert.equal(cloth.material.emissive.getHex(),0x514b47,
+    'graphite blouse must remain readable under the neutral renderer');
+  assert.equal(cloth.material.emissiveIntensity,.68);
+  const sampleShader={
+    vertexShader:'#include <common>\n#include <begin_vertex>',
+    fragmentShader:'#include <common>\n#include <emissivemap_fragment>'
+  };
+  cloth.material.onBeforeCompile(sampleShader);
+  assert.match(sampleShader.vertexShader,/varying vec3 vTabClothLocal;/);
+  assert.match(sampleShader.fragmentShader,/fabricPleat/);
+  assert.ok(sampleShader.fragmentShader.includes('1.0-.28*fabricFront'),
+    'reference cloth folds should be restrained rather than black ink stripes');
+  assert.match(sampleShader.fragmentShader,/totalEmissiveRadiance/);
+  assert.ok(!sampleShader.vertexShader.includes('\\n'),
+    'the WebGL source needs actual newlines rather than escaped text');
   const result=cloth.geometry.attributes.position;
   const width=key=>{
     const xs=rings.get(key).map(i=>result.getX(i));
     return Math.max(...xs)-Math.min(...xs);
   };
   for(const side of ['L','R']){
-    assert.ok(width(side+'3')>width(side+'7')*1.02,
+    assert.ok(width(side+'3')>width(side+'7')*1.10,
       side+' sleeve should taper softly toward the cuff');
-    assert.ok(width(side+'3')<width(side+'7')*1.17,
+    assert.ok(width(side+'3')<width(side+'7')*1.32,
       side+' must not have a cartoon puff sleeve');
-    assert.ok(width(side+'3')>.17,
+    assert.ok(width(side+'3')>.12,
       side+' sleeve must retain fabric clearance');
   }
   assert.ok(width('body8')<width('body3')*1.12,
     'reference bodice must not bulge above the waistband');
   assert.ok(width('body8')>width('body3')*.95,
     'reference bodice must not collapse into a corset');
+  const relief=rings.get('body6').map(i=>Math.hypot(
+    result.getX(i)/.20,result.getZ(i)/.14));
+  assert.ok(Math.max(...relief)-Math.min(...relief)>.06,
+    'bodice needs visible 3D fabric pleats, not a featureless shirt tube');
+  const normals=cloth.geometry.getAttribute('normal');
+  assert.equal(normals.count,result.count,
+    'sculpted UV-split cloth needs refreshed per-vertex normals');
+  for(const i of rings.get('body6'))
+    assert.ok(Number.isFinite(normals.getX(i))&&Number.isFinite(normals.getY(i))
+      &&Number.isFinite(normals.getZ(i)),
+      'cloth normals must remain finite after seam smoothing');
   for(const i of rings.get('body0')){
     assert.ok(Math.abs(result.getX(i)-original[i*3])<1e-6,
       'shirt hem must join original skirt without a geometry jump');

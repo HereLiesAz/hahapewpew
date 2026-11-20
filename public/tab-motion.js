@@ -71,7 +71,7 @@ function tailorTabBlouse(gltf){
       const depth=1+seam*(-.045+.055*smooth);
       // Three restrained long cloth creases, not radial piping or cylinders.
       const angle=Math.atan2(z,x);
-      const crease=.012*seam*Math.sin(3*angle+1.8*t);
+      const crease=.070*seam*Math.sin(5*angle+.7*t);
       positions.setXYZ(i,x*(width+crease),y,z*(depth+crease*.65));
       bodice++;
     }else if((bone==='shoulderL'||bone==='shoulderR')&&y>1.43&&y<1.91){
@@ -88,15 +88,18 @@ function tailorTabBlouse(gltf){
       const rx=x-cx,ry=y-cy,rz=z-cz,angle=Math.atan2(rz,rx);
       // Reference sleeves hang close to the upper arms. The rounded shoulder
       // cap and soft cuff are cloth, but neither is a puffed tube.
+      // The reference has soft shoulder caps and short, close-fitting
+      // sleeves. Keep their roots broad enough to overlap the bodice,
+      // but shorten and taper them instead of shrinking entire cylinders.
       const cap=Math.sin(Math.PI*t)**2;
-      const taper=-.10*t;
-      const cuff=.045*Math.pow(Math.max(0,(t-.86)/.14),2);
-      const crease=.018*Math.sin(4*angle+3*t)*cap;
-      const radius=1+.08*cap+taper+cuff+crease;
-      const sag=.014*Math.sin(Math.PI*t)*(1+Math.sin(angle));
-      const oval=.70+.12*Math.sin(Math.PI*t);
-      positions.setXYZ(i,cx+rx*radius,cy+ry*radius-sag,
-        cz+rz*radius*oval);
+      const crease=.013*Math.sin(4*angle+2*t)*cap;
+      const radius=.92-.25*t+.025*cap+crease;
+      const length=.87;
+      const sag=.009*Math.sin(Math.PI*t)*(1+Math.sin(angle));
+      const oval=.72+.08*cap;
+      positions.setXYZ(i,start[0]+(cx-start[0])*length+rx*radius,
+        start[1]+(cy-start[1])*length+ry*radius-sag,
+        start[2]+(cz-start[2])*length+rz*radius*oval);
       sleeves++;
     }
   }
@@ -106,13 +109,60 @@ function tailorTabBlouse(gltf){
   // ambient bounce to read as the reference's worn graphite cloth.
   if(mesh.material.isMeshStandardMaterial){
     const clothMaterial=mesh.material.clone();
-    clothMaterial.emissive.set(0x393431);
-    clothMaterial.emissiveIntensity=.55;
+    clothMaterial.emissive.set(0x514b47);
+    clothMaterial.emissiveIntensity=.68;
+    // The cloth texture's base color is extremely dark; geometric relief
+    // alone was invisible in actual Chromium captures. Shade the ambient
+    // bounce with longitudinal creases in LOCAL cloth coordinates, so the
+    // creases remain attached when the skinned character animates.
+    clothMaterial.onBeforeCompile=shader=>{
+      shader.vertexShader=shader.vertexShader
+        .replace('#include <common>',
+          '#include <common>\nvarying vec3 vTabClothLocal;')
+        .replace('#include <begin_vertex>',
+          '#include <begin_vertex>\nvTabClothLocal=position;');
+      shader.fragmentShader=shader.fragmentShader
+        .replace('#include <common>',
+          '#include <common>\nvarying vec3 vTabClothLocal;')
+        .replace('#include <emissivemap_fragment>',`
+          #include <emissivemap_fragment>
+          float fabricFront=smoothstep(0.015,0.085,vTabClothLocal.z);
+          float fabricBody=smoothstep(1.49,1.60,vTabClothLocal.y)*
+            (1.0-smoothstep(1.76,1.84,vTabClothLocal.y));
+          float shiftedX=vTabClothLocal.x+
+            0.012*sin(9.0*vTabClothLocal.y+13.0*vTabClothLocal.x);
+          float fabricPleat=smoothstep(0.64,0.93,
+            0.5+0.5*cos(44.0*shiftedX+5.0*vTabClothLocal.y));
+          totalEmissiveRadiance*=1.0-.28*fabricFront*fabricBody*fabricPleat;
+        `);
+    };
+    clothMaterial.customProgramCacheKey=()=> 'tab-garment-pleats-2';
     mesh.material=clothMaterial;
   }
-  // The UV-split dress already has smooth authored normals. Recomputing face
-  // normals here creates visible triangular patches on the dark cloth.
+  // The authored smooth normals describe the *old* tube surfaces. Recompute
+  // after sculpting, then weld the normals (not the UV-split vertices) at
+  // coincident positions. Raw face normals alone show triangle patches.
   positions.needsUpdate=true;
+  if(!geometry.index){
+    const originalNormals=geometry.attributes.normal?.clone();
+    geometry.computeVertexNormals();
+    const normal=geometry.attributes.normal,groups=new Map(),keys=[];
+    for(let i=0;i<positions.count;i++){
+      const key=[positions.getX(i),positions.getY(i),positions.getZ(i)]
+        .map(v=>Math.round(v*10000)).join(',');
+      keys.push(key);
+      let sum=groups.get(key);
+      if(!sum){sum=[0,0,0];groups.set(key,sum);}
+      sum[0]+=normal.getX(i);sum[1]+=normal.getY(i);sum[2]+=normal.getZ(i);
+    }
+    for(let i=0;i<positions.count;i++){
+      const sum=groups.get(keys[i]),length=Math.hypot(...sum);
+      if(length>1e-8)normal.setXYZ(i,sum[0]/length,sum[1]/length,sum[2]/length);
+      else if(originalNormals)normal.setXYZ(i,originalNormals.getX(i),
+        originalNormals.getY(i),originalNormals.getZ(i));
+    }
+    normal.needsUpdate=true;
+  }
   mesh.geometry=geometry;gltf.scene.userData.tailoredBlouse=true;
 }
 export function createTabMotionRig(gltf,root,{tailorVictoriaBlouse=false}={}){
