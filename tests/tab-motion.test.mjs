@@ -346,7 +346,7 @@ test('Victoria-only tailoring never runs against an incompatible reference costu
     /Tab blouse vertices missing/);
 });
 
-test('Victoria blouse forms gathered shoulders, narrower cuffs and a shaped waist',()=>{
+test('Victoria blouse keeps the reference narrow bodice and restrained sleeves',()=>{
   const f=fixture();
   const positions=[],joints=[],weights=[],rings=new Map();
   const bones=[f.names.get('shoulder.L'),f.names.get('shoulder.R'),f.names.get('chest')];
@@ -381,26 +381,34 @@ test('Victoria blouse forms gathered shoulders, narrower cuffs and a shaped wais
   geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
   geometry.setAttribute('skinIndex',new THREE.Uint16BufferAttribute(joints,4));
   geometry.setAttribute('skinWeight',new THREE.Float32BufferAttribute(weights,4));
-  const cloth=new THREE.SkinnedMesh(geometry,new THREE.MeshBasicMaterial({name:'Tab/Dress_Dark'}));
+  const cloth=new THREE.SkinnedMesh(geometry,new THREE.MeshStandardMaterial({name:'Tab/Dress_Dark'}));
   cloth.bind(new THREE.Skeleton(bones));f.scene.add(cloth);
   const original=Float32Array.from(positions);
   const animations=['Tab_Walk','Tab_Idle','Tab_Bear_Swing']
     .map(name=>new THREE.AnimationClip(name,1,[]));
   createTabMotionRig({scene:f.scene,animations},f.character,{tailorVictoriaBlouse:true});
   assert.equal(f.scene.userData.tailoredBlouse,true);
+  assert.equal(cloth.material.isMeshStandardMaterial,true);
+  assert.equal(cloth.material.emissive.getHex(),0x393431,
+    'dark graphite blouse must retain visible ambient cloth detail');
+  assert.equal(cloth.material.emissiveIntensity,.55);
   const result=cloth.geometry.attributes.position;
   const width=key=>{
     const xs=rings.get(key).map(i=>result.getX(i));
     return Math.max(...xs)-Math.min(...xs);
   };
   for(const side of ['L','R']){
-    assert.ok(width(side+'3')>width(side+'7')*1.17,
-      side+' upper sleeve must billow above its narrower cuff');
-    assert.ok(width(side+'3')>.19,
-      side+' sleeve needs actual volume, not a straight narrow cylinder');
+    assert.ok(width(side+'3')>width(side+'7')*1.02,
+      side+' sleeve should taper softly toward the cuff');
+    assert.ok(width(side+'3')<width(side+'7')*1.17,
+      side+' must not have a cartoon puff sleeve');
+    assert.ok(width(side+'3')>.17,
+      side+' sleeve must retain fabric clearance');
   }
-  assert.ok(width('body8')>width('body3')*1.22,
-    'blouse bust must be wider than the waist');
+  assert.ok(width('body8')<width('body3')*1.12,
+    'reference bodice must not bulge above the waistband');
+  assert.ok(width('body8')>width('body3')*.95,
+    'reference bodice must not collapse into a corset');
   for(const i of rings.get('body0')){
     assert.ok(Math.abs(result.getX(i)-original[i*3])<1e-6,
       'shirt hem must join original skirt without a geometry jump');

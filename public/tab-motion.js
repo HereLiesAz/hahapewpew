@@ -59,22 +59,20 @@ function tailorTabBlouse(gltf){
     const bone=mesh.skeleton.bones[ids.getX(i)]?.name;
     const x=positions.getX(i),y=positions.getY(i),z=positions.getZ(i);
     if((bone==='chest'||bone==='spine')&&y>=1.35&&y<=1.86){
-      // The bodice is no longer a tube: pinch the waist, broaden the bust and
-      // shoulders, and introduce shallow diagonal fabric darts. All changes
-      // ease to zero at the original blouse/neck and skirt seam boundaries.
+      // The reference has a restrained, narrow upper bodice with a distinct
+      // waist seam, not a flared bust or a corset-shaped tube. Keep the
+      // authored top and bottom seams exactly where the skirt/box meet.
       const t=Math.max(0,Math.min(1,(y-1.35)/.51));
-      const ease=Math.sin(Math.PI*t);
+      const seam=Math.sin(Math.PI*t)**2;
+      const shoulder=Math.max(0,Math.min(1,(t-.30)/.65));
+      const smooth=shoulder*shoulder*(3-2*shoulder);
+      // Gently taper toward the waistband; barely broaden at the shoulders.
+      const width=1+seam*(-.065+.085*smooth);
+      const depth=1+seam*(-.045+.055*smooth);
+      // Three restrained long cloth creases, not radial piping or cylinders.
       const angle=Math.atan2(z,x);
-      // A real fitted blouse has a narrow tucked waist and broad shoulders.
-      // The old near-constant radius was the remaining tube silhouette.
-      const u=Math.max(0,Math.min(1,(t-.12)/.78));
-      const slope=u*u*(3-2*u);
-      const hem=Math.max(0,1-Math.min(1,t/.10))**2;
-      const shape=.78+.39*slope+.22*hem;
-      const fold=.032*Math.sin(5*angle+9*t)*ease*ease;
-      const depth=.81+.35*slope+.19*hem;
-      positions.setXYZ(i,x*(shape+fold),y,
-        z*(depth+fold*.8)-.012*ease*Math.cos(angle*2));
+      const crease=.012*seam*Math.sin(3*angle+1.8*t);
+      positions.setXYZ(i,x*(width+crease),y,z*(depth+crease*.65));
       bodice++;
     }else if((bone==='shoulderL'||bone==='shoulderR')&&y>1.43&&y<1.91){
       const left=bone==='shoulderL';
@@ -88,24 +86,30 @@ function tailorTabBlouse(gltf){
         (ax*ax+ay*ay+az*az)));
       const cx=start[0]+t*ax,cy=start[1]+t*ay,cz=start[2]+t*az;
       const rx=x-cx,ry=y-cy,rz=z-cz,angle=Math.atan2(rz,rx);
-      // Rounded dropped shoulder, a gathered puff, a narrow upper arm and
-      // a modest turned cuff make the sleeve drape instead of read as a rod.
-      const bell=Math.sin(Math.PI*Math.min(1,(t+.045)/1.045));
-      const shoulder=.46*Math.pow(Math.max(0,bell),1.35);
-      const taper=-.27*t;
-      const cuff=.18*Math.pow(Math.max(0,(t-.83)/.17),2);
-      const pleat=.05*Math.sin(6*angle+7*t)*Math.sin(Math.PI*t)**2;
-      const radius=1.08+shoulder+taper+cuff+pleat;
-      const sag=.023*Math.sin(Math.PI*t)*(1+Math.sin(angle));
-      // The flattened, cloth-like sleeve section cannot be mistaken for a
-      // constant-radius cylinder when viewed from the side or front.
-      const oval=.84+.16*Math.sin(Math.PI*t);
+      // Reference sleeves hang close to the upper arms. The rounded shoulder
+      // cap and soft cuff are cloth, but neither is a puffed tube.
+      const cap=Math.sin(Math.PI*t)**2;
+      const taper=-.10*t;
+      const cuff=.045*Math.pow(Math.max(0,(t-.86)/.14),2);
+      const crease=.018*Math.sin(4*angle+3*t)*cap;
+      const radius=1+.08*cap+taper+cuff+crease;
+      const sag=.014*Math.sin(Math.PI*t)*(1+Math.sin(angle));
+      const oval=.70+.12*Math.sin(Math.PI*t);
       positions.setXYZ(i,cx+rx*radius,cy+ry*radius-sag,
         cz+rz*radius*oval);
       sleeves++;
     }
   }
   if(sleeves<300||bodice<100)throw Error('Tab blouse vertices missing');
+  // The original dark top is effectively black under the production neutral
+  // lights, concealing every sewn fold. Give ONLY this material enough soft
+  // ambient bounce to read as the reference's worn graphite cloth.
+  if(mesh.material.isMeshStandardMaterial){
+    const clothMaterial=mesh.material.clone();
+    clothMaterial.emissive.set(0x393431);
+    clothMaterial.emissiveIntensity=.55;
+    mesh.material=clothMaterial;
+  }
   // The UV-split dress already has smooth authored normals. Recomputing face
   // normals here creates visible triangular patches on the dark cloth.
   positions.needsUpdate=true;
