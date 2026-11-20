@@ -56,3 +56,9 @@ This draft correction increases genuine mesh pleat relief along the upper cloth,
 ### Live rendering follow-up
 
 The Chromium run for the first structural trial on draft PR #68 passed, but its real front/side images still showed almost no visible folds. Surface-normal and geometric variations were hidden by the dark blouse. The amended draft retains the 3D pleats and adds a Victoria-only local-coordinate fabric-shadow modulation to the cloth's ambient component, leaving lighting on other materials and actors unchanged. The effect follows the existing skinned vertices and is limited to the front upper bodice. This is still a candidate, not acceptance. Browser compilation and the captured front/side images must pass visual inspection; never substitute synthetic shader assertions for the GPU result.
+
+### Reference silhouette follow-up, 2026-11-20
+
+Inspected the production-GLB Chromium images in workflow run [44694319720](https://github.com/HereLiesAz/hahapewpew/actions/runs/44694319720), notably `tab-dress-front.png`, `tab-victoria-front.png`, and `tab-victoria-side.png`. The latest preceding candidate still failed visually: two hard, regularly spaced upper-bodice stripes and sleeve volume detached from the upper arm. The photographed source and original illustration instead require softer, less regular creases and narrow short sleeves with broader shoulder roots.
+
+The next draft pass shortens only the runtime Victoria sleeves along their existing arm axes, increases the root radius for shoulder coverage, and tapers to a smaller cuff. It narrows shader shadows to faint, curved upper-bodice folds instead of ink-like full-height stripes. Original skirt, bear, printed box, joint rig and fallback remain outside the edit. Acceptance still requires a fresh captured **front and side** from the new commit, not only passing tests.
